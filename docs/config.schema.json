@@ -6,7 +6,7 @@
   "properties": {
     "agents": {
       "type": "object",
-      "description": "Per-agent overrides (claude, gemini, codex).",
+      "description": "Per-agent overrides (claude, gemini, codex). Use this to customize executable paths, args, env, timeouts, or to enable shell mode.",
       "propertyNames": {
         "enum": [
           "claude",
@@ -19,41 +19,49 @@
         "additionalProperties": false,
         "properties": {
           "executable": {
-            "type": "string"
+            "type": "string",
+            "description": "Executable name or full path. On Windows, you can point to a .exe/.cmd/.bat shim if PATH resolution fails."
           },
           "enabled": {
             "type": "boolean",
             "description": "Enable or disable this agent."
           },
           "default_model": {
-            "type": "string"
+            "type": "string",
+            "description": "Default model name used when none is provided on the command line."
           },
           "additional_args": {
             "type": "array",
+            "description": "Arguments always appended to the command.",
             "items": {
               "type": "string"
             }
           },
           "shell_executable": {
-            "type": "string"
+            "type": "string",
+            "description": "Optional shell executable (e.g., /bin/zsh, cmd, wsl.exe). When set with shell_command_prefix, the command runs through this shell."
           },
           "shell_args": {
             "type": "array",
+            "description": "Arguments passed to the shell executable (e.g., -i -c, /c, -e bash -lc).",
             "items": {
               "type": "string"
             }
           },
           "shell_command_prefix": {
-            "type": "string"
+            "type": "string",
+            "description": "Prefix command used in shell mode. The prompt and args are appended after this string."
           },
           "env": {
             "type": "object",
+            "description": "Environment variables for the agent process.",
             "additionalProperties": {
               "type": "string"
             }
           },
           "timeout_seconds": {
             "type": "integer",
+            "description": "Process timeout in seconds.",
             "minimum": 1
           }
         }

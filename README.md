@@ -211,9 +211,11 @@ Paths:
 - Windows: `%APPDATA%\\cag\\config.json` (fallback: `%LOCALAPPDATA%`, `%USERPROFILE%`)
 - Other/unknown: `<cwd>/.cag/config.json`
 
-For more details, see [config.schema.json](docs/config.schema.json).
+For more available options, see [config.schema.json](docs/config.schema.json).
 
-### Example: override codex binary
+#### Example: override codex binary
+
+If you want to use a different binary than the default one, or `cag` cannot find the tool, you can set `agents.<name>.executable` to a full path in your config.
 
 ```json
 {
@@ -228,7 +230,21 @@ For more details, see [config.schema.json](docs/config.schema.json).
 }
 ```
 
-### Example: shell mode (non-portable)
+#### Windows only: override codex binary
+
+Windows example (npm-installed CLI shim):
+
+```json
+{
+  "agents": {
+    "codex": {
+      "executable": "C:\\\\Users\\\\you\\\\AppData\\\\Roaming\\\\npm\\\\codex.cmd"
+    }
+  }
+}
+```
+
+#### Example: shell mode (non-portable)
 
 Use if you rely on shell functions/aliases:
 
@@ -246,6 +262,24 @@ Use if you rely on shell functions/aliases:
 
 In this example, the command will be run via the shell executable `/bin/zsh` with the arguments `-i -c`.
 `codex_project` is a shell function/alias, that allow use codex with project specific settings.
+
+#### Example: run via WSL (Windows only, optional)
+
+Use this when your CLI tools are installed in WSL and not in Windows.
+
+```json
+{
+  "agents": {
+    "claude": {
+      "shell_executable": "wsl.exe",
+      "shell_args": ["-e", "bash", "-lc"],
+      "shell_command_prefix": "claude -p --output-format json --permission-mode acceptEdits"
+    }
+  }
+}
+```
+
+This runs `claude` inside WSL via `bash -lc`. Adjust `shell_command_prefix` per agent.
 
 Invalid configs are reported to stderr with per-field errors.
 
