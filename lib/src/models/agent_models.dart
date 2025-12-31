@@ -5,22 +5,9 @@ class AgentModelRegistry {
   const AgentModelRegistry._();
 
   static const claudeModels = [
-    ModelConfig(
-      name: 'sonnet',
-      description:
-          'Balanced speed/quality. Use for: general tasks, code review, discussions',
-      isDefault: true,
-    ),
-    ModelConfig(
-      name: 'opus',
-      description:
-          'Most capable, slower. Use for: complex reasoning, architecture decisions',
-    ),
-    ModelConfig(
-      name: 'haiku',
-      description:
-          'Fastest, cheapest. Use for: simple questions, quick lookups',
-    ),
+    ModelConfig(name: 'sonnet', description: 'Balanced speed/quality. Use for: general tasks, code review, discussions', isDefault: true),
+    ModelConfig(name: 'opus', description: 'Most capable, slower. Use for: complex reasoning, architecture decisions'),
+    ModelConfig(name: 'haiku', description: 'Fastest, cheapest. Use for: simple questions, quick lookups'),
   ];
 
   static const geminiModels = [
@@ -32,54 +19,27 @@ class AgentModelRegistry {
     ),
     ModelConfig(
       name: 'gemini-3-pro-preview',
-      description:
-          'More capable. Use for: complex analysis, architectural questions',
+      description: 'More capable. Use for: complex analysis, architectural questions',
       aliases: ['pro'],
     ),
   ];
 
   static const codexModels = [
-    ModelConfig(
-      name: 'gpt-5.2',
-      description: 'Balanced. Use for: general tasks, discussions, coding',
-      isDefault: true,
-      aliases: ['gpt'],
-    ),
-    ModelConfig(
-      name: 'gpt-5.2-codex',
-      description: 'Code-specialized. Use for: complex coding, hard debugging',
-      aliases: ['codex'],
-    ),
+    ModelConfig(name: 'gpt-5.2', description: 'Balanced. Use for: general tasks, discussions, coding', isDefault: true, aliases: ['gpt']),
+    ModelConfig(name: 'gpt-5.2-codex', description: 'Code-specialized. Use for: complex coding, hard debugging', aliases: ['codex']),
     ModelConfig(
       name: 'gpt-5.1-codex-mini',
-      description:
-          'Lighter code model. Use for: quick code questions, simple fixes',
+      description: 'Lighter code model. Use for: quick code questions, simple fixes',
       aliases: ['mini'],
     ),
   ];
 
   static const cursorModels = [
-    ModelConfig(
-      name: 'composer-1',
-      description: 'Default Cursor model.',
-      isDefault: true,
-    ),
-    ModelConfig(
-      name: 'auto',
-      description: 'Cursor auto model selection.',
-    ),
-    ModelConfig(
-      name: 'grok',
-      description: 'Grok model via Cursor.',
-    ),
+    ModelConfig(name: 'composer-1', description: 'Cursor`s fastest model.', isDefault: true),
+    ModelConfig(name: 'auto', description: 'Cursor will automatically select the best model for the task.'),
   ];
 
-  static const byAgent = {
-    'claude': claudeModels,
-    'gemini': geminiModels,
-    'codex': codexModels,
-    'cursor': cursorModels,
-  };
+  static const byAgent = {'claude': claudeModels, 'gemini': geminiModels, 'codex': codexModels, 'cursor': cursorModels};
 
   static List<ModelConfig> modelsFor(String agent) {
     return byAgent[agent] ?? const [];

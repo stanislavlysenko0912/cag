@@ -316,6 +316,18 @@ fvm dart run bin/cag.dart <command>
 fvm dart analyze
 ```
 
+### Formatting
+
+```bash
+make fmt
+```
+
+To enable the pre-commit formatter hook:
+
+```bash
+make hooks
+```
+
 ### Build & Install
 
 ```bash

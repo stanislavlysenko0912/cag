@@ -1,4 +1,4 @@
-.PHONY: build run install uninstall clean gen
+.PHONY: build run install uninstall clean gen fmt hooks
 
 NAME := cag
 UNAME_S := $(shell uname -s)
@@ -20,6 +20,12 @@ build: gen
 
 run:
 	fvm dart run bin/$(NAME).dart
+
+fmt:
+	fvm dart format .
+
+hooks:
+	git config core.hooksPath .githooks
 
 install:
 	@mkdir -p $(BIN_DIR)

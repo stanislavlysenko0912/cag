@@ -1,0 +1,16 @@
+#!/bin/sh
+set -e
+
+if command -v fvm >/dev/null 2>&1; then
+  DART="fvm dart"
+else
+  DART="dart"
+fi
+
+FILES=$(git diff --cached --name-only --diff-filter=ACM -- '*.dart')
+if [ -z "$FILES" ]; then
+  exit 0
+fi
+
+$DART format $FILES
+git add $FILES
