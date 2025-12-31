@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "cag config",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "agents": {
+      "type": "object",
+      "description": "Per-agent overrides (claude, gemini, codex).",
+      "propertyNames": {
+        "enum": [
+          "claude",
+          "gemini",
+          "codex"
+        ]
+      },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "executable": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Enable or disable this agent."
+          },
+          "default_model": {
+            "type": "string"
+          },
+          "additional_args": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "shell_executable": {
+            "type": "string"
+          },
+          "shell_args": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "shell_command_prefix": {
+            "type": "string"
+          },
+          "env": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "timeout_seconds": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    }
+  }
+}

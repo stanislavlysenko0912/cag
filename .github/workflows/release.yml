@@ -1,0 +1,174 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: macos-14
+            artifact: cag_macos_arm64
+            ext: ''
+          - os: macos-15-intel
+            artifact: cag_macos_x64
+            ext: ''
+          # - os: ubuntu-20.04
+          #   artifact: cag_linux_x64
+          #   ext: ''
+          - os: windows-latest
+            artifact: cag_windows_x64
+            ext: '.exe'
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Dart
+        uses: dart-lang/setup-dart@v1
+
+      - name: Install FVM
+        run: dart pub global activate fvm
+
+      - name: Add pub-cache to PATH (Unix)
+        if: runner.os != 'Windows'
+        run: echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
+
+      - name: Add pub-cache to PATH (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: echo "$env:LOCALAPPDATA\Pub\Cache\bin" >> $env:GITHUB_PATH
+
+      - name: Cache FVM
+        uses: actions/cache@v4
+        with:
+          path: .fvm/flutter_sdk
+          key: fvm-${{ runner.os }}-${{ hashFiles('.fvmrc') }}
+          restore-keys: |
+            fvm-${{ runner.os }}-
+
+      - name: Setup Flutter via FVM
+        run: |
+          fvm install
+          fvm use
+
+      - name: Cache pub dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: pub-${{ runner.os }}-${{ hashFiles('pubspec.lock') }}
+          restore-keys: |
+            pub-${{ runner.os }}-
+
+      - name: Get dependencies
+        run: fvm dart pub get
+
+      - name: Generate schema
+        run: fvm dart run tool/gen_schema.dart
+
+      - name: Build (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          mkdir -p build
+          VERSION="${GITHUB_REF_NAME#v}"
+          fvm dart compile exe bin/cag.dart -o build/cag --define=APP_VERSION=$VERSION
+
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path build
+          $version = "$env:GITHUB_REF_NAME" -replace '^v', ''
+          fvm dart compile exe bin/cag.dart -o build/cag.exe --define=APP_VERSION=$version
+
+      - name: Create tarball (Unix)
+        if: runner.os != 'Windows'
+        run: tar -czvf ${{ matrix.artifact }}.tar.gz -C build cag
+
+      - name: Create zip (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Compress-Archive -Path build/cag.exe -DestinationPath ${{ matrix.artifact }}.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            *.tar.gz
+            *.zip
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Generate checksums
+        run: |
+          cd artifacts
+          sha256sum *.tar.gz *.zip > SHA256SUMS
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/*.tar.gz
+            artifacts/*.zip
+            artifacts/SHA256SUMS
+          generate_release_notes: true
+
+      - name: Save checksums for formula update
+        uses: actions/upload-artifact@v4
+        with:
+          name: checksums
+          path: artifacts/SHA256SUMS
+
+  update-formula:
+    needs: release
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: checksums
+
+      - name: Update Homebrew formula
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+
+          SHA_MACOS_ARM64=$(grep cag_macos_arm64 SHA256SUMS | awk '{print $1}')
+          SHA_MACOS_X64=$(grep cag_macos_x64 SHA256SUMS | awk '{print $1}')
+          # SHA_LINUX_X64=$(grep cag_linux_x64 SHA256SUMS | awk '{print $1}')
+
+          sed -i "s/version \".*\"/version \"$VERSION\"/" Formula/cag.rb
+          sed -i "s/sha256 \"SHA256_MACOS_ARM64\"/sha256 \"$SHA_MACOS_ARM64\"/" Formula/cag.rb
+          sed -i "s/sha256 \"SHA256_MACOS_X64\"/sha256 \"$SHA_MACOS_X64\"/" Formula/cag.rb
+          # sed -i "s/sha256 \"SHA256_LINUX_X64\"/sha256 \"$SHA_LINUX_X64\"/" Formula/cag.rb
+
+          # Also update if already has real hashes (for subsequent releases)
+          sed -i "s/sha256 \"[a-f0-9]\{64\}\"/sha256 \"PLACEHOLDER\"/g" Formula/cag.rb
+          sed -i "0,/PLACEHOLDER/s//$SHA_MACOS_ARM64/" Formula/cag.rb
+          sed -i "0,/PLACEHOLDER/s//$SHA_MACOS_X64/" Formula/cag.rb
+          # sed -i "0,/PLACEHOLDER/s//$SHA_LINUX_X64/" Formula/cag.rb
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/cag.rb
+          git commit -m "chore: update Homebrew formula to ${GITHUB_REF_NAME}" || exit 0
+          git push
