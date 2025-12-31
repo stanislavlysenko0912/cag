@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Added a friendly Windows error hint for missing agent executables.
+- Fixed custom `env` config replacing entire environment instead of merging with parent.
 
 ### Documentation
 - Documented Windows `.cmd` example and optional WSL setup.

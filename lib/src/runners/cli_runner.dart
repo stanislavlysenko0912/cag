@@ -73,7 +73,7 @@ class CLIRunner {
       return await Process.run(
         executable,
         args,
-        environment: env,
+        environment: env != null ? {...Platform.environment, ...env} : null,
         workingDirectory: workingDirectory,
         runInShell: false,
       ).timeout(
