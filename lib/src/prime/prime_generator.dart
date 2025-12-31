@@ -11,10 +11,10 @@ class PrimeGenerator {
     final agentExamples = _agentExamples(agentCommands);
     final sessionExample = agentExamples.isNotEmpty ? agentExamples.first : (agent: 'agent', model: 'model');
 
-    buffer.writeln('# CLI Agents tool usage guide');
+    buffer.writeln('# CLI Agents CAG - tool usage guide');
     buffer.writeln();
     buffer.writeln(
-      '> User has CLI wrapper for AI agents. Use it to get another opinion, search code, validate ideas, or discuss architecture.',
+      '> User has CLI wrapper for AI agents, named "cag". Use it to get another opinion, search code, validate ideas, or discuss architecture.',
     );
     buffer.writeln();
     buffer.writeln(

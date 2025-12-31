@@ -11,6 +11,20 @@ CLI wrapper for multiple AI agent CLIs (Claude, Gemini, Codex) with consensus/co
 - **MCP server** — integrate with Cursor, Claude Code, and other MCP-compatible tools
 - **Configurable** — override executables and arguments per agent
 
+## Requirements
+
+This tool wraps external AI CLIs that must be installed separately:
+
+| CLI | Install |
+|-----|---------|
+| `claude` | [Claude Code](https://docs.anthropic.com/en/docs/claude-code) |
+| `gemini` | [Gemini CLI](https://github.com/google-gemini/gemini-cli) |
+| `codex` | [Codex CLI](https://github.com/openai/codex) |
+
+You only need to install the CLIs you plan to use.
+If you don't want to use some of the agents, you can disable them in the config.
+
+
 ## Installation
 
 ### macOS / Linux (Homebrew) — recommended
@@ -52,19 +66,6 @@ curl -fsSL https://raw.githubusercontent.com/stanislavlysenko0912/cag/main/insta
 irm https://raw.githubusercontent.com/stanislavlysenko0912/cag/main/install.ps1 | iex
 ```
 
-## Requirements
-
-This tool wraps external AI CLIs that must be installed separately:
-
-| CLI | Install |
-|-----|---------|
-| `claude` | [Claude Code](https://docs.anthropic.com/en/docs/claude-code) |
-| `gemini` | [Gemini CLI](https://github.com/google-gemini/gemini-cli) |
-| `codex` | [Codex CLI](https://github.com/openai/codex) |
-
-You only need to install the CLIs you plan to use.
-If you don't want to use some of the agents, you can disable them in the config.
-
 ## Commands
 
 ### Agents
@@ -89,6 +90,7 @@ Models and aliases:
 - **gemini**: `gemini-3-flash-preview` (alias `flash`, default), `gemini-3-pro-preview` (alias `pro`)
 - **codex**: `gpt-5.2` (alias `gpt`, default), `gpt-5.2-codex` (alias `codex`), `gpt-5.1-codex-mini` (alias `mini`)
 
+> [!CAUTION]
 > **⚠️ Permission Note:** Agents run with elevated permissions for non-interactive execution:
 >
 > | Agent | Flags | Effect |
@@ -129,6 +131,7 @@ cag council \
 ### prime
 
 Prints a Markdown usage guide for agent commands and consensus.
+Takes up approximately about ~1k context tokens.
 
 ```bash
 cag prime
@@ -181,12 +184,13 @@ cag mcp --transport http --host 127.0.0.1 --port 7331
 
 Available MCP tools:
 
-> All tools use about ~3k context tokens.
-
 - `cag_agent` – run a single agent
 - `cag_consensus` – run consensus across multiple agents
 - `cag_council` – run multi-stage council (answers, reviews, chairman)
 - `cag_models` – list supported models
+
+> [!NOTE]
+> All tools use about ~3k context tokens. If you very care about context tokens, you can use `cag prime` with hooks, or directly tell agent to run prime command before start working (if your agent don't support hooks) to get the usage guide, instead of mcp tools.
 
 ### Sessions
 
