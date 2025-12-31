@@ -6,7 +6,7 @@ import 'package:cag/cag.dart';
 import 'package:mcp_dart/mcp_dart.dart';
 
 const String _appVersion = String.fromEnvironment('APP_VERSION', defaultValue: 'unknown');
-const _knownAgents = ['claude', 'gemini', 'codex'];
+const _knownAgents = ['claude', 'gemini', 'codex', 'cursor'];
 
 ToolInputSchema _buildAgentInputSchema(List<String> enabledAgents) {
   return JsonSchema.object(
@@ -269,20 +269,28 @@ Future<McpServer> _buildServer() async {
   final claudeConfig = configService.applyOverrides(ClaudeAgent.defaultConfig, configService.overridesFor(config, 'claude'));
   final geminiConfig = configService.applyOverrides(GeminiAgent.defaultConfig, configService.overridesFor(config, 'gemini'));
   final codexConfig = configService.applyOverrides(CodexAgent.defaultConfig, configService.overridesFor(config, 'codex'));
+  final cursorConfig = configService.applyOverrides(CursorAgent.defaultConfig, configService.overridesFor(config, 'cursor'));
 
-  final enabledAgents = <String>[if (claudeConfig.enabled) 'claude', if (geminiConfig.enabled) 'gemini', if (codexConfig.enabled) 'codex'];
+  final enabledAgents = <String>[
+    if (claudeConfig.enabled) 'claude',
+    if (geminiConfig.enabled) 'gemini',
+    if (codexConfig.enabled) 'codex',
+    if (cursorConfig.enabled) 'cursor',
+  ];
 
   final agentDefaults = <String, String>{
     if (claudeConfig.enabled) 'claude': claudeConfig.defaultModel ?? (AgentModelRegistry.defaultModelName('claude') ?? 'sonnet'),
     if (geminiConfig.enabled)
       'gemini': geminiConfig.defaultModel ?? (AgentModelRegistry.defaultModelName('gemini') ?? 'gemini-3-flash-preview'),
     if (codexConfig.enabled) 'codex': codexConfig.defaultModel ?? (AgentModelRegistry.defaultModelName('codex') ?? 'gpt-5.2'),
+    if (cursorConfig.enabled) 'cursor': cursorConfig.defaultModel ?? (AgentModelRegistry.defaultModelName('cursor') ?? 'composer-1'),
   };
 
   final agents = <String, BaseAgent>{
     if (claudeConfig.enabled) 'claude': ClaudeAgent(config: claudeConfig),
     if (geminiConfig.enabled) 'gemini': GeminiAgent(config: geminiConfig),
     if (codexConfig.enabled) 'codex': CodexAgent(config: codexConfig),
+    if (cursorConfig.enabled) 'cursor': CursorAgent(config: cursorConfig),
   };
 
   final consensusRunner = ConsensusRunner();

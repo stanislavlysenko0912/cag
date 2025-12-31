@@ -26,6 +26,13 @@ class CommandDefinitions {
     flags: [CommandFlag(flag: '--system', shortFlag: '-s', description: 'System prompt')],
   );
 
+  static const cursor = CommandMetadata(
+    name: 'cursor',
+    description: 'Run Cursor Agent CLI. Use for Cursor Composer workflows.',
+    models: AgentModelRegistry.cursorModels,
+    flags: [CommandFlag(flag: '--system', shortFlag: '-s', description: 'System prompt (prepended to prompt)')],
+  );
+
   static const consensus = CommandMetadata(
     name: 'consensus',
     description: '''Multi-model consensus for complex decisions. Models run in parallel with stance-based prompts (blinded).
@@ -87,7 +94,7 @@ cag council -a "agent:model" -a "..." -c "agent:model" "<prompt>"
   );
 
   /// All commands for iteration.
-  static const all = [claude, gemini, codex, consensus, council];
+  static const all = [claude, gemini, codex, cursor, consensus, council];
 
   /// Find command by name.
   static CommandMetadata? find(String name) {

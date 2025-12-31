@@ -16,8 +16,9 @@ void main(List<String> args) async {
   final claudeConfig = configService.applyOverrides(ClaudeAgent.defaultConfig, configService.overridesFor(config, 'claude'));
   final geminiConfig = configService.applyOverrides(GeminiAgent.defaultConfig, configService.overridesFor(config, 'gemini'));
   final codexConfig = configService.applyOverrides(CodexAgent.defaultConfig, configService.overridesFor(config, 'codex'));
+  final cursorConfig = configService.applyOverrides(CursorAgent.defaultConfig, configService.overridesFor(config, 'cursor'));
 
-  final agentConfigs = {'claude': claudeConfig, 'gemini': geminiConfig, 'codex': codexConfig};
+  final agentConfigs = {'claude': claudeConfig, 'gemini': geminiConfig, 'codex': codexConfig, 'cursor': cursorConfig};
   final enabledAgents = agentConfigs.entries.where((entry) => entry.value.enabled).map((entry) => entry.key).toSet();
 
   final runner = CommandRunner<void>('cag', 'CLI wrapper for AI agents')
@@ -63,6 +64,19 @@ void main(List<String> args) async {
         metaPrinter: printCodexMeta,
         systemHelp: 'System prompt',
         resumeHelp: 'Resume session (thread_id)',
+      ),
+    );
+  }
+  if (cursorConfig.enabled) {
+    runner.addCommand(
+      AgentCommand(
+        agentName: 'cursor',
+        descriptionText: 'Run Cursor Agent CLI',
+        defaultModel: cursorConfig.defaultModel ?? (AgentModelRegistry.defaultModelName('cursor') ?? 'composer-1'),
+        agent: CursorAgent(config: cursorConfig),
+        metaPrinter: printCursorMeta,
+        systemHelp: 'System prompt (prepended to prompt)',
+        resumeHelp: 'Resume session (session_id)',
       ),
     );
   }

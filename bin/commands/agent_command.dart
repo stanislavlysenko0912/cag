@@ -147,3 +147,15 @@ void printCodexMeta(ParsedResponse response) {
     }
   }
 }
+
+void printCursorMeta(ParsedResponse response) {
+  if (response.metadata['request_id'] != null) {
+    print('request_id: ${response.metadata['request_id']}');
+  }
+  if (response.metadata['duration_ms'] != null) {
+    print('duration_ms: ${response.metadata['duration_ms']}');
+  }
+  if (response.metadata['duration_api_ms'] != null) {
+    print('duration_api_ms: ${response.metadata['duration_api_ms']}');
+  }
+}

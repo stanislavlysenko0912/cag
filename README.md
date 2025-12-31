@@ -1,10 +1,10 @@
 # CLI Agents
 
-CLI wrapper for multiple AI agent CLIs (Claude, Gemini, Codex) with consensus/council modes and session resume.
+CLI wrapper for multiple AI agent CLIs (Claude, Gemini, Codex, Cursor) with consensus/council modes and session resume.
 
 ## Features
 
-- **Unified interface** — single CLI for Claude, Gemini, and Codex with consistent flags and output
+- **Unified interface** — single CLI for Claude, Gemini, Codex, and Cursor with consistent flags and output
 - **Session resume** — continue conversations with `-r <session_id>`
 - **Consensus mode** — run multiple models in parallel with stance-based prompts (for/against/neutral)
 - **Council mode** — multi-stage deliberation: independent answers → peer review → chairman synthesis
@@ -20,6 +20,7 @@ This tool wraps external AI CLIs that must be installed separately:
 | `claude` | [Claude Code](https://docs.anthropic.com/en/docs/claude-code) |
 | `gemini` | [Gemini CLI](https://github.com/google-gemini/gemini-cli) |
 | `codex` | [Codex CLI](https://github.com/openai/codex) |
+| `cursor` | [Cursor Agent CLI](https://cursor.com/cli) |
 
 You only need to install the CLIs you plan to use.
 If you don't want to use some of the agents, you can disable them in the config.
@@ -74,6 +75,7 @@ irm https://raw.githubusercontent.com/stanislavlysenko0912/cag/main/install.ps1 
 cag claude -m sonnet "Review this function"
 cag gemini -m pro "Find issues in this parser"
 cag codex -m gpt "Explain this architecture"
+cag cursor -m composer-1 "Summarize this architecture"
 ```
 
 Common flags:
@@ -89,6 +91,7 @@ Models and aliases:
 - **claude**: `sonnet` (default), `opus`, `haiku`
 - **gemini**: `gemini-3-flash-preview` (alias `flash`, default), `gemini-3-pro-preview` (alias `pro`)
 - **codex**: `gpt-5.2` (alias `gpt`, default), `gpt-5.2-codex` (alias `codex`), `gpt-5.1-codex-mini` (alias `mini`)
+- **cursor**: `composer-1` (default), `auto`, `grok`
 
 > [!CAUTION]
 > **⚠️ Permission Note:** Agents run with elevated permissions for non-interactive execution:
@@ -98,6 +101,7 @@ Models and aliases:
 > | **claude** | `--permission-mode acceptEdits` | Auto-approve file edits |
 > | **codex** | `--dangerously-bypass-approvals-and-sandbox` | Bypass all approvals and sandbox |
 > | **gemini** | `--yolo` | Auto-approve all actions |
+> | **cursor** | `--force` | Force allow commands unless explicitly denied |
 >
 > These flags enable automated usage. Override via config if you need different behavior.
 
@@ -118,7 +122,7 @@ cag consensus \
 Multi-stage council: independent answers, peer reviews with ranking, then chairman synthesis.
 By default, participant answers are hidden in CLI output. Use `--include-answers` to show answers and session IDs.
 
-Council idea is based on Andrej Karpathy’s llm-council [`repo`](https://github.com/karpathy/llm-council/tree/master).
+Council idea is based on Andrej Karpathy’s [`llm-council`](https://github.com/karpathy/llm-council/tree/master).
 
 ```bash
 cag council \

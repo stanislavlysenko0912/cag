@@ -6,12 +6,13 @@
   "properties": {
     "agents": {
       "type": "object",
-      "description": "Per-agent overrides (claude, gemini, codex). Use this to customize executable paths, args, env, timeouts, or to enable shell mode.",
+      "description": "Per-agent overrides (claude, gemini, codex, cursor). Use this to customize executable paths, args, env, timeouts, or to enable shell mode.",
       "propertyNames": {
         "enum": [
           "claude",
           "gemini",
-          "codex"
+          "codex",
+          "cursor"
         ]
       },
       "additionalProperties": {

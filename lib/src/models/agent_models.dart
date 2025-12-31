@@ -58,10 +58,27 @@ class AgentModelRegistry {
     ),
   ];
 
+  static const cursorModels = [
+    ModelConfig(
+      name: 'composer-1',
+      description: 'Default Cursor model.',
+      isDefault: true,
+    ),
+    ModelConfig(
+      name: 'auto',
+      description: 'Cursor auto model selection.',
+    ),
+    ModelConfig(
+      name: 'grok',
+      description: 'Grok model via Cursor.',
+    ),
+  ];
+
   static const byAgent = {
     'claude': claudeModels,
     'gemini': geminiModels,
     'codex': codexModels,
+    'cursor': cursorModels,
   };
 
   static List<ModelConfig> modelsFor(String agent) {

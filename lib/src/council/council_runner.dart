@@ -128,13 +128,16 @@ class CouncilRunner {
   CouncilRunner({
     GeminiAgent? geminiAgent,
     CodexAgent? codexAgent,
+    CursorAgent? cursorAgent,
     ClaudeAgent? claudeAgent,
   }) : _geminiAgent = geminiAgent ?? GeminiAgent(),
        _codexAgent = codexAgent ?? CodexAgent(),
+       _cursorAgent = cursorAgent ?? CursorAgent(),
        _claudeAgent = claudeAgent ?? ClaudeAgent();
 
   final GeminiAgent _geminiAgent;
   final CodexAgent _codexAgent;
+  final CursorAgent _cursorAgent;
   final ClaudeAgent _claudeAgent;
 
   /// Run a new council request.
@@ -178,6 +181,7 @@ class CouncilRunner {
     return switch (agentName) {
       'gemini' => _geminiAgent,
       'codex' => _codexAgent,
+      'cursor' => _cursorAgent,
       'claude' => _claudeAgent,
       _ => throw ArgumentError('Unknown agent: $agentName'),
     };

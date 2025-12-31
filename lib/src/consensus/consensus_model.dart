@@ -35,7 +35,7 @@ class ConsensusParticipant {
     String? resolvedModel,
   }) : _resolvedModel = resolvedModel;
 
-  /// Agent name (gemini, codex, claude).
+  /// Agent name (gemini, codex, claude, cursor).
   final String agent;
 
   /// Model name as provided (may be alias like "flash").
@@ -62,7 +62,7 @@ class ConsensusParticipant {
   /// Parse from CLI format: "agent:model:stance"
   factory ConsensusParticipant.parse(
     String input, {
-    Iterable<String> allowedAgents = const ['gemini', 'codex', 'claude'],
+    Iterable<String> allowedAgents = const ['gemini', 'codex', 'claude', 'cursor'],
   }) {
     final parts = input.split(':');
     if (parts.length != 3) {

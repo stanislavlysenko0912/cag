@@ -11,7 +11,7 @@ class CouncilMember {
     String? resolvedModel,
   }) : _resolvedModel = resolvedModel;
 
-  /// Agent name (gemini, codex, claude).
+  /// Agent name (gemini, codex, claude, cursor).
   final String agent;
 
   /// Model name as provided (may be alias like "flash").
@@ -30,7 +30,7 @@ class CouncilMember {
   /// Throws [ArgumentError] if the format is invalid.
   factory CouncilMember.parse(
     String input, {
-    Iterable<String> allowedAgents = const ['gemini', 'codex', 'claude'],
+    Iterable<String> allowedAgents = const ['gemini', 'codex', 'claude', 'cursor'],
   }) {
     final parts = input.split(':');
     if (parts.length != 2) {

@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Added Cursor Agent CLI integration.
+
 ### Changed
 - Improved Windows support by resolving `.exe/.cmd/.bat` in PATH.
 

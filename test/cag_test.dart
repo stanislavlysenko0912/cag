@@ -121,12 +121,41 @@ void main() {
     });
   });
 
+  group('CursorParser', () {
+    final parser = CursorParser();
+
+    test('parse successfully parses valid JSON output', () {
+      final mockResponse = {
+        'type': 'result',
+        'subtype': 'success',
+        'is_error': false,
+        'duration_ms': 1200,
+        'duration_api_ms': 1150,
+        'result': '\nHello from Cursor',
+        'session_id': 'cursor-session',
+        'request_id': 'cursor-request',
+      };
+
+      final result = parser.parse(stdout: jsonEncode(mockResponse), stderr: '');
+
+      expect(result.content, equals('Hello from Cursor'));
+      expect(result.metadata['session_id'], equals('cursor-session'));
+      expect(result.metadata['request_id'], equals('cursor-request'));
+      expect(result.metadata['duration_ms'], equals(1200));
+    });
+
+    test('throws ParserException on empty stdout', () {
+      expect(() => parser.parse(stdout: '', stderr: ''), throwsA(isA<ParserException>()));
+    });
+  });
+
   group('AgentModelRegistry', () {
     test('resolves model aliases to canonical names', () {
       expect(AgentModelRegistry.findModel('gemini', 'pro')?.name, equals('gemini-3-pro-preview'));
       expect(AgentModelRegistry.findModel('gemini', 'flash')?.name, equals('gemini-3-flash-preview'));
       expect(AgentModelRegistry.findModel('codex', 'gpt')?.name, equals('gpt-5.2'));
       expect(AgentModelRegistry.findModel('codex', 'mini')?.name, equals('gpt-5.1-codex-mini'));
+      expect(AgentModelRegistry.findModel('cursor', 'auto')?.name, equals('auto'));
     });
   });
 
