@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+
+## [0.2.0] - 2025-12-31
+
 ### Added
 - Added Cursor Agent CLI integration.
 - Added `cag detect` command to enable/disable agents based on installed CLIs.
@@ -21,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Documentation
 - Documented Windows `.cmd` example and optional WSL setup.
 
-## [0.1.0]
+## [0.1.0] - 2025-12-30
 
 ### Added
 - Initial version.

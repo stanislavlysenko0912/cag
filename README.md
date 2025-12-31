@@ -1,6 +1,8 @@
-# CLI Agents
+# CAG - CLI Agents Wrapper
 
 CLI wrapper for multiple AI agent CLIs (Claude, Gemini, Codex, Cursor) with consensus/council modes and session resume.
+
+<img src="docs/images/consensus-demo.png" width="700" alt="CAG - CLI Agents Wrapper">
 
 ## Features
 
