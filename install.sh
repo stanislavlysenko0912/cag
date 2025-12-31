@@ -52,21 +52,20 @@ main() {
   info "Version: $VERSION"
 
   local url="https://github.com/${REPO}/releases/download/${VERSION}/cag_${platform}.tar.gz"
-  local tmp_dir
-  tmp_dir="$(mktemp -d)"
-  trap 'rm -rf "$tmp_dir"' EXIT
+  TMP_DIR="$(mktemp -d)"
+  trap 'rm -rf "$TMP_DIR"' EXIT
 
   info "Downloading $url..."
-  curl -fsSL "$url" -o "$tmp_dir/cag.tar.gz"
+  curl -fsSL "$url" -o "$TMP_DIR/cag.tar.gz"
 
   info "Extracting..."
-  tar -xzf "$tmp_dir/cag.tar.gz" -C "$tmp_dir"
+  tar -xzf "$TMP_DIR/cag.tar.gz" -C "$TMP_DIR"
 
   info "Installing to $INSTALL_DIR..."
   if [[ -w "$INSTALL_DIR" ]]; then
-    mv "$tmp_dir/cag" "$INSTALL_DIR/cag"
+    mv "$TMP_DIR/cag" "$INSTALL_DIR/cag"
   else
-    sudo mv "$tmp_dir/cag" "$INSTALL_DIR/cag"
+    sudo mv "$TMP_DIR/cag" "$INSTALL_DIR/cag"
   fi
   chmod +x "$INSTALL_DIR/cag"
 
