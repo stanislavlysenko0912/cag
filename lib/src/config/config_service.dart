@@ -41,6 +41,11 @@ class ConfigService {
     return AppConfig.fromJson(json);
   }
 
+  Future<void> save(AppConfig config) async {
+    final file = File(AppPaths.configPath());
+    await _writeConfig(file, config);
+  }
+
   AgentConfig applyOverrides(AgentConfig base, AgentConfigOverride? overrides) {
     if (overrides == null) return base;
 

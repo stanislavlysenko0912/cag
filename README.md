@@ -47,6 +47,9 @@ curl -fsSL https://raw.githubusercontent.com/stanislavlysenko0912/cag/main/insta
 irm https://raw.githubusercontent.com/stanislavlysenko0912/cag/main/install.ps1 | iex
 ```
 
+> [!NOTE]
+> After installation, run [cag detect](#detect) to enable only the agents installed on your system.
+
 ## Updating
 
 ### Homebrew (macOS/Linux)
@@ -208,6 +211,16 @@ cag codex -r abc-123 "What if data changes hourly?"
 
 Consensus sessions print `consensus_id` and can be resumed with `-r`.
 Council runs are stateless (no resume).
+
+### detect
+
+Detect installed agent CLIs and update config enablement:
+
+```bash
+cag detect
+```
+
+This updates `enabled` flags in your config based on what executables are found on PATH.
 
 ## Config
 

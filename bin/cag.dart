@@ -6,6 +6,7 @@ import 'package:cag/cag.dart';
 import 'commands/agent_command.dart';
 import 'commands/consensus_command.dart';
 import 'commands/council_command.dart';
+import 'commands/detect_command.dart';
 import 'commands/mcp_command.dart';
 import 'commands/prime_command.dart';
 
@@ -24,6 +25,7 @@ void main(List<String> args) async {
   final runner = CommandRunner<void>('cag', 'CLI wrapper for AI agents')
     ..addCommand(ConsensusCommand(enabledAgents: enabledAgents))
     ..addCommand(CouncilCommand(enabledAgents: enabledAgents))
+    ..addCommand(DetectCommand())
     ..addCommand(McpCommand())
     ..addCommand(PrimeCommand(enabledAgents: enabledAgents))
     ..argParser.addFlag('version', abbr: 'v', negatable: false, help: 'Print version');
