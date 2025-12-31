@@ -20,10 +20,24 @@ class AgentCommand extends Command<void> {
     required this.resumeHelp,
   }) {
     argParser
-      ..addOption('model', abbr: 'm', help: 'Model to use', defaultsTo: defaultModel)
+      ..addOption(
+        'model',
+        abbr: 'm',
+        help: 'Model to use',
+        defaultsTo: defaultModel,
+      )
       ..addOption('system', abbr: 's', help: systemHelp)
-      ..addFlag('json', abbr: 'j', negatable: false, help: 'Output full JSON response')
-      ..addFlag('meta', negatable: false, help: 'Include metadata (tokens, cost)')
+      ..addFlag(
+        'json',
+        abbr: 'j',
+        negatable: false,
+        help: 'Output full JSON response',
+      )
+      ..addFlag(
+        'meta',
+        negatable: false,
+        help: 'Include metadata (tokens, cost)',
+      )
       ..addOption('resume', abbr: 'r', help: resumeHelp);
   }
 
@@ -61,7 +75,12 @@ class AgentCommand extends Command<void> {
     final resolvedModel = _resolveModel(model);
 
     try {
-      final response = await agent.execute(prompt: prompt, model: resolvedModel, systemPrompt: systemPrompt, resume: resume);
+      final response = await agent.execute(
+        prompt: prompt,
+        model: resolvedModel,
+        systemPrompt: systemPrompt,
+        resume: resume,
+      );
 
       if (outputJson) {
         print(const JsonEncoder.withIndent('  ').convert(response.toJson()));
@@ -86,13 +105,19 @@ class AgentCommand extends Command<void> {
     final modelConfig = cmdDef.findModel(modelInput);
     if (modelConfig == null) {
       final available = cmdDef.models.map((m) => m.name).join(', ');
-      throw UsageException('Unknown model "$modelInput". Available: $available', usage);
+      throw UsageException(
+        'Unknown model "$modelInput". Available: $available',
+        usage,
+      );
     }
 
     return modelConfig.name;
   }
 
-  void _printTextResponse(ParsedResponse response, {required bool includeMeta}) {
+  void _printTextResponse(
+    ParsedResponse response, {
+    required bool includeMeta,
+  }) {
     final sessionId = response.metadata['session_id'] ?? 'unknown';
     OutputFormatter.printSessionStart('$sessionId');
     print(response.content);

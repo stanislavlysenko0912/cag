@@ -30,7 +30,12 @@ class CouncilMember {
   /// Throws [ArgumentError] if the format is invalid.
   factory CouncilMember.parse(
     String input, {
-    Iterable<String> allowedAgents = const ['gemini', 'codex', 'claude', 'cursor'],
+    Iterable<String> allowedAgents = const [
+      'gemini',
+      'codex',
+      'claude',
+      'cursor',
+    ],
   }) {
     final parts = input.split(':');
     if (parts.length != 2) {

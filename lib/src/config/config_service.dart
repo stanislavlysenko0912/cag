@@ -60,7 +60,8 @@ class ConfigService {
       timeoutSeconds: overrides.timeoutSeconds ?? base.timeoutSeconds,
       shellExecutable: overrides.shellExecutable ?? base.shellExecutable,
       shellArgs: overrides.shellArgs ?? base.shellArgs,
-      shellCommandPrefix: overrides.shellCommandPrefix ?? base.shellCommandPrefix,
+      shellCommandPrefix:
+          overrides.shellCommandPrefix ?? base.shellCommandPrefix,
     );
   }
 

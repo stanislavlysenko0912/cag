@@ -69,10 +69,7 @@ class DetectCommand extends Command<void> {
     return AppConfig(agents: agents);
   }
 
-  String _resolveExecutable(
-    AgentConfig base,
-    AgentConfigOverride? override,
-  ) {
+  String _resolveExecutable(AgentConfig base, AgentConfigOverride? override) {
     final shellPrefix = override?.shellCommandPrefix ?? base.shellCommandPrefix;
     if (shellPrefix != null && shellPrefix.trim().isNotEmpty) {
       return override?.shellExecutable ??

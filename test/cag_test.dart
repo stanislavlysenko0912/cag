@@ -31,7 +31,10 @@ void main() {
     });
 
     test('throws ParserException on invalid JSON', () {
-      expect(() => parser.parse(stdout: 'not json', stderr: ''), throwsA(isA<ParserException>()));
+      expect(
+        () => parser.parse(stdout: 'not json', stderr: ''),
+        throwsA(isA<ParserException>()),
+      );
     });
   });
 
@@ -57,25 +60,34 @@ void main() {
       expect(result.metadata['duration_ms'], equals(200));
     });
 
-    test('parse extracts content from assistant message if result field is missing', () {
-      final mockResponse = [
-        {
-          'type': 'assistant',
-          'message': {
-            'content': [
-              {'type': 'text', 'text': 'Content from message'},
-            ],
+    test(
+      'parse extracts content from assistant message if result field is missing',
+      () {
+        final mockResponse = [
+          {
+            'type': 'assistant',
+            'message': {
+              'content': [
+                {'type': 'text', 'text': 'Content from message'},
+              ],
+            },
           },
-        },
-        {'type': 'result', 'is_error': false},
-      ];
+          {'type': 'result', 'is_error': false},
+        ];
 
-      final result = parser.parse(stdout: jsonEncode(mockResponse), stderr: '');
-      expect(result.content, equals('Content from message'));
-    });
+        final result = parser.parse(
+          stdout: jsonEncode(mockResponse),
+          stderr: '',
+        );
+        expect(result.content, equals('Content from message'));
+      },
+    );
 
     test('throws ParserException on empty stdout', () {
-      expect(() => parser.parse(stdout: '', stderr: ''), throwsA(isA<ParserException>()));
+      expect(
+        () => parser.parse(stdout: '', stderr: ''),
+        throwsA(isA<ParserException>()),
+      );
     });
   });
 
@@ -106,7 +118,10 @@ void main() {
       final lines = [
         jsonEncode({'type': 'thread.started', 'thread_id': 'codex-thread'}),
       ];
-      expect(() => parser.parse(stdout: lines.join('\n'), stderr: ''), throwsA(isA<ParserException>()));
+      expect(
+        () => parser.parse(stdout: lines.join('\n'), stderr: ''),
+        throwsA(isA<ParserException>()),
+      );
     });
 
     test('returns error content when only error events are present', () {
@@ -145,17 +160,35 @@ void main() {
     });
 
     test('throws ParserException on empty stdout', () {
-      expect(() => parser.parse(stdout: '', stderr: ''), throwsA(isA<ParserException>()));
+      expect(
+        () => parser.parse(stdout: '', stderr: ''),
+        throwsA(isA<ParserException>()),
+      );
     });
   });
 
   group('AgentModelRegistry', () {
     test('resolves model aliases to canonical names', () {
-      expect(AgentModelRegistry.findModel('gemini', 'pro')?.name, equals('gemini-3-pro-preview'));
-      expect(AgentModelRegistry.findModel('gemini', 'flash')?.name, equals('gemini-3-flash-preview'));
-      expect(AgentModelRegistry.findModel('codex', 'gpt')?.name, equals('gpt-5.2'));
-      expect(AgentModelRegistry.findModel('codex', 'mini')?.name, equals('gpt-5.1-codex-mini'));
-      expect(AgentModelRegistry.findModel('cursor', 'auto')?.name, equals('auto'));
+      expect(
+        AgentModelRegistry.findModel('gemini', 'pro')?.name,
+        equals('gemini-3-pro-preview'),
+      );
+      expect(
+        AgentModelRegistry.findModel('gemini', 'flash')?.name,
+        equals('gemini-3-flash-preview'),
+      );
+      expect(
+        AgentModelRegistry.findModel('codex', 'gpt')?.name,
+        equals('gpt-5.2'),
+      );
+      expect(
+        AgentModelRegistry.findModel('codex', 'mini')?.name,
+        equals('gpt-5.1-codex-mini'),
+      );
+      expect(
+        AgentModelRegistry.findModel('cursor', 'auto')?.name,
+        equals('auto'),
+      );
     });
   });
 
@@ -168,22 +201,38 @@ void main() {
     });
 
     test('parse throws ArgumentError on invalid format', () {
-      expect(() => ConsensusParticipant.parse('gemini:pro'), throwsArgumentError);
-      expect(() => ConsensusParticipant.parse('gemini:pro:for:extra'), throwsArgumentError);
+      expect(
+        () => ConsensusParticipant.parse('gemini:pro'),
+        throwsArgumentError,
+      );
+      expect(
+        () => ConsensusParticipant.parse('gemini:pro:for:extra'),
+        throwsArgumentError,
+      );
     });
 
     test('parse throws ArgumentError on invalid agent', () {
-      expect(() => ConsensusParticipant.parse('unknown:pro:for'), throwsArgumentError);
+      expect(
+        () => ConsensusParticipant.parse('unknown:pro:for'),
+        throwsArgumentError,
+      );
     });
 
     test('parse throws ArgumentError on invalid stance', () {
-      expect(() => ConsensusParticipant.parse('gemini:pro:unknown'), throwsArgumentError);
+      expect(
+        () => ConsensusParticipant.parse('gemini:pro:unknown'),
+        throwsArgumentError,
+      );
     });
   });
 
   group('AgentConfig', () {
     test('AgentConfig creates with default values', () {
-      const config = AgentConfig(name: 'test', executable: 'test-cli', parser: 'json');
+      const config = AgentConfig(
+        name: 'test',
+        executable: 'test-cli',
+        parser: 'json',
+      );
 
       expect(config.name, equals('test'));
 
@@ -203,7 +252,9 @@ void main() {
 
           description: 'A test agent',
 
-          models: [ModelConfig(name: 'm1', description: 'Model 1', isDefault: true)],
+          models: [
+            ModelConfig(name: 'm1', description: 'Model 1', isDefault: true),
+          ],
         ),
       ];
 
@@ -239,7 +290,12 @@ void main() {
     });
 
     test('save and loadAll', () async {
-      final session = ConsensusSession(consensusId: 'c1', prompt: 'test prompt', participants: [], createdAt: DateTime.now());
+      final session = ConsensusSession(
+        consensusId: 'c1',
+        prompt: 'test prompt',
+        participants: [],
+        createdAt: DateTime.now(),
+      );
 
       await storage.save(session);
 
@@ -253,7 +309,12 @@ void main() {
     });
 
     test('load by ID', () async {
-      final session = ConsensusSession(consensusId: 'c2', prompt: 'test prompt 2', participants: [], createdAt: DateTime.now());
+      final session = ConsensusSession(
+        consensusId: 'c2',
+        prompt: 'test prompt 2',
+        participants: [],
+        createdAt: DateTime.now(),
+      );
 
       await storage.save(session);
 
@@ -265,7 +326,12 @@ void main() {
     });
 
     test('delete session', () async {
-      final session = ConsensusSession(consensusId: 'c3', prompt: 'test prompt 3', participants: [], createdAt: DateTime.now());
+      final session = ConsensusSession(
+        consensusId: 'c3',
+        prompt: 'test prompt 3',
+        participants: [],
+        createdAt: DateTime.now(),
+      );
 
       await storage.save(session);
 

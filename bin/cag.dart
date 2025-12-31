@@ -14,13 +14,33 @@ void main(List<String> args) async {
   final configService = ConfigService();
   final config = await configService.loadOrCreate();
 
-  final claudeConfig = configService.applyOverrides(ClaudeAgent.defaultConfig, configService.overridesFor(config, 'claude'));
-  final geminiConfig = configService.applyOverrides(GeminiAgent.defaultConfig, configService.overridesFor(config, 'gemini'));
-  final codexConfig = configService.applyOverrides(CodexAgent.defaultConfig, configService.overridesFor(config, 'codex'));
-  final cursorConfig = configService.applyOverrides(CursorAgent.defaultConfig, configService.overridesFor(config, 'cursor'));
+  final claudeConfig = configService.applyOverrides(
+    ClaudeAgent.defaultConfig,
+    configService.overridesFor(config, 'claude'),
+  );
+  final geminiConfig = configService.applyOverrides(
+    GeminiAgent.defaultConfig,
+    configService.overridesFor(config, 'gemini'),
+  );
+  final codexConfig = configService.applyOverrides(
+    CodexAgent.defaultConfig,
+    configService.overridesFor(config, 'codex'),
+  );
+  final cursorConfig = configService.applyOverrides(
+    CursorAgent.defaultConfig,
+    configService.overridesFor(config, 'cursor'),
+  );
 
-  final agentConfigs = {'claude': claudeConfig, 'gemini': geminiConfig, 'codex': codexConfig, 'cursor': cursorConfig};
-  final enabledAgents = agentConfigs.entries.where((entry) => entry.value.enabled).map((entry) => entry.key).toSet();
+  final agentConfigs = {
+    'claude': claudeConfig,
+    'gemini': geminiConfig,
+    'codex': codexConfig,
+    'cursor': cursorConfig,
+  };
+  final enabledAgents = agentConfigs.entries
+      .where((entry) => entry.value.enabled)
+      .map((entry) => entry.key)
+      .toSet();
 
   final runner = CommandRunner<void>('cag', 'CLI wrapper for AI agents')
     ..addCommand(ConsensusCommand(enabledAgents: enabledAgents))
@@ -28,14 +48,21 @@ void main(List<String> args) async {
     ..addCommand(DetectCommand())
     ..addCommand(McpCommand())
     ..addCommand(PrimeCommand(enabledAgents: enabledAgents))
-    ..argParser.addFlag('version', abbr: 'v', negatable: false, help: 'Print version');
+    ..argParser.addFlag(
+      'version',
+      abbr: 'v',
+      negatable: false,
+      help: 'Print version',
+    );
 
   if (claudeConfig.enabled) {
     runner.addCommand(
       AgentCommand(
         agentName: 'claude',
         descriptionText: 'Run Claude CLI agent',
-        defaultModel: claudeConfig.defaultModel ?? (AgentModelRegistry.defaultModelName('claude') ?? 'sonnet'),
+        defaultModel:
+            claudeConfig.defaultModel ??
+            (AgentModelRegistry.defaultModelName('claude') ?? 'sonnet'),
         agent: ClaudeAgent(config: claudeConfig),
         metaPrinter: printClaudeMeta,
         systemHelp: 'System prompt (appended)',
@@ -48,7 +75,10 @@ void main(List<String> args) async {
       AgentCommand(
         agentName: 'gemini',
         descriptionText: 'Run Gemini CLI agent',
-        defaultModel: geminiConfig.defaultModel ?? (AgentModelRegistry.defaultModelName('gemini') ?? 'gemini-3-flash-preview'),
+        defaultModel:
+            geminiConfig.defaultModel ??
+            (AgentModelRegistry.defaultModelName('gemini') ??
+                'gemini-3-flash-preview'),
         agent: GeminiAgent(config: geminiConfig),
         metaPrinter: printGeminiMeta,
         systemHelp: 'System prompt',
@@ -61,7 +91,9 @@ void main(List<String> args) async {
       AgentCommand(
         agentName: 'codex',
         descriptionText: 'Run Codex CLI agent',
-        defaultModel: codexConfig.defaultModel ?? (AgentModelRegistry.defaultModelName('codex') ?? 'gpt-5.2'),
+        defaultModel:
+            codexConfig.defaultModel ??
+            (AgentModelRegistry.defaultModelName('codex') ?? 'gpt-5.2'),
         agent: CodexAgent(config: codexConfig),
         metaPrinter: printCodexMeta,
         systemHelp: 'System prompt',
@@ -74,7 +106,9 @@ void main(List<String> args) async {
       AgentCommand(
         agentName: 'cursor',
         descriptionText: 'Run Cursor Agent CLI',
-        defaultModel: cursorConfig.defaultModel ?? (AgentModelRegistry.defaultModelName('cursor') ?? 'composer-1'),
+        defaultModel:
+            cursorConfig.defaultModel ??
+            (AgentModelRegistry.defaultModelName('cursor') ?? 'composer-1'),
         agent: CursorAgent(config: cursorConfig),
         metaPrinter: printCursorMeta,
         systemHelp: 'System prompt (prepended to prompt)',
@@ -100,5 +134,8 @@ void main(List<String> args) async {
 }
 
 class AppInfo {
-  static const version = String.fromEnvironment('APP_VERSION', defaultValue: 'unknown');
+  static const version = String.fromEnvironment(
+    'APP_VERSION',
+    defaultValue: 'unknown',
+  );
 }

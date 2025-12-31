@@ -7,13 +7,36 @@ import 'package:cag/cag.dart';
 import 'output_formatter.dart';
 
 class ConsensusCommand extends Command<void> {
-  ConsensusCommand({required Set<String> enabledAgents}) : _enabledAgents = enabledAgents {
+  ConsensusCommand({required Set<String> enabledAgents})
+    : _enabledAgents = enabledAgents {
     argParser
-      ..addMultiOption('add', abbr: 'a', help: 'Add participant: agent:model:stance')
-      ..addOption('proposal', abbr: 'p', help: 'Proposal/idea being evaluated (optional, provides context)')
-      ..addOption('resume', abbr: 'r', help: 'Resume consensus session (consensus_id)')
-      ..addFlag('json', abbr: 'j', negatable: false, help: 'Output full JSON response')
-      ..addFlag('list', abbr: 'l', negatable: false, help: 'List saved consensus sessions');
+      ..addMultiOption(
+        'add',
+        abbr: 'a',
+        help: 'Add participant: agent:model:stance',
+      )
+      ..addOption(
+        'proposal',
+        abbr: 'p',
+        help: 'Proposal/idea being evaluated (optional, provides context)',
+      )
+      ..addOption(
+        'resume',
+        abbr: 'r',
+        help: 'Resume consensus session (consensus_id)',
+      )
+      ..addFlag(
+        'json',
+        abbr: 'j',
+        negatable: false,
+        help: 'Output full JSON response',
+      )
+      ..addFlag(
+        'list',
+        abbr: 'l',
+        negatable: false,
+        help: 'List saved consensus sessions',
+      );
   }
 
   final Set<String> _enabledAgents;
@@ -38,7 +61,9 @@ This command runs the specified models in parallel with stance-based prompts.'''
     }
 
     if (_enabledAgents.isEmpty) {
-      stderr.writeln('No agents are enabled. Enable at least one agent in config.');
+      stderr.writeln(
+        'No agents are enabled. Enable at least one agent in config.',
+      );
       exit(1);
     }
 
@@ -60,15 +85,28 @@ This command runs the specified models in parallel with stance-based prompts.'''
 
       if (resume != null) {
         if (addOptions.isNotEmpty) {
-          throw UsageException('Cannot add participants when resuming. Participants are fixed.', usage);
+          throw UsageException(
+            'Cannot add participants when resuming. Participants are fixed.',
+            usage,
+          );
         }
         await _validateResumeParticipants(resume);
         result = await runner.resume(consensusId: resume, prompt: prompt);
       } else {
         if (addOptions.length < 2) {
-          throw UsageException('Consensus requires at least 2 participants (-a)', usage);
+          throw UsageException(
+            'Consensus requires at least 2 participants (-a)',
+            usage,
+          );
         }
-        final participants = addOptions.map((input) => ConsensusParticipant.parse(input, allowedAgents: _enabledAgents)).toList();
+        final participants = addOptions
+            .map(
+              (input) => ConsensusParticipant.parse(
+                input,
+                allowedAgents: _enabledAgents,
+              ),
+            )
+            .toList();
 
         // Validate and resolve model aliases
         for (final p in participants) {
@@ -78,13 +116,20 @@ This command runs the specified models in parallel with stance-based prompts.'''
           final modelConfig = cmdDef.findModel(p.model);
           if (modelConfig == null) {
             final available = cmdDef.models.map((m) => m.name).join(', ');
-            throw UsageException('Unknown model "${p.model}" for ${p.agent}. Available: $available', usage);
+            throw UsageException(
+              'Unknown model "${p.model}" for ${p.agent}. Available: $available',
+              usage,
+            );
           }
           // Resolve alias to full model name
           p.resolvedModel = modelConfig.name;
         }
 
-        result = await runner.run(prompt: prompt, participants: participants, proposal: proposal);
+        result = await runner.run(
+          prompt: prompt,
+          participants: participants,
+          proposal: proposal,
+        );
       }
 
       if (outputJson) {
@@ -110,9 +155,15 @@ This command runs the specified models in parallel with stance-based prompts.'''
     if (session == null) {
       throw UsageException('Consensus session not found: $consensusId', usage);
     }
-    final disabledAgents = session.participants.map((p) => p.agent).where((agent) => !_enabledAgents.contains(agent)).toSet();
+    final disabledAgents = session.participants
+        .map((p) => p.agent)
+        .where((agent) => !_enabledAgents.contains(agent))
+        .toSet();
     if (disabledAgents.isNotEmpty) {
-      throw UsageException('Consensus session includes disabled agents: ${disabledAgents.join(', ')}', usage);
+      throw UsageException(
+        'Consensus session includes disabled agents: ${disabledAgents.join(', ')}',
+        usage,
+      );
     }
   }
 
@@ -131,13 +182,19 @@ This command runs the specified models in parallel with stance-based prompts.'''
 
     print('Consensus sessions (${sessions.length}/${allSessions.length}):\n');
     for (final session in sessions) {
-      final participants = session.participants.map((p) => '${p.agent}:${p.model}:${p.stance.value}').join(', ');
-      final promptPreview = session.prompt.length > 128 ? '${session.prompt.substring(0, 128)}...' : session.prompt;
+      final participants = session.participants
+          .map((p) => '${p.agent}:${p.model}:${p.stance.value}')
+          .join(', ');
+      final promptPreview = session.prompt.length > 128
+          ? '${session.prompt.substring(0, 128)}...'
+          : session.prompt;
       print('  ${session.consensusId}');
       print('    Created: ${session.createdAt.toLocal()}');
       print('    Participants: $participants');
       if (session.proposal != null) {
-        final proposalPreview = session.proposal!.length > 128 ? '${session.proposal!.substring(0, 128)}...' : session.proposal;
+        final proposalPreview = session.proposal!.length > 128
+            ? '${session.proposal!.substring(0, 128)}...'
+            : session.proposal;
         print('    Proposal: $proposalPreview');
       }
       print('    Prompt: $promptPreview');
@@ -166,7 +223,11 @@ This command runs the specified models in parallel with stance-based prompts.'''
 
     for (final r in result.results) {
       final p = r.participant;
-      OutputFormatter.printParticipantHeader(agent: p.agent, model: p.model, stance: p.stance.value);
+      OutputFormatter.printParticipantHeader(
+        agent: p.agent,
+        model: p.model,
+        stance: p.stance.value,
+      );
 
       if (r.success) {
         OutputFormatter.printSessionStart(r.response!.sessionId ?? 'unknown');

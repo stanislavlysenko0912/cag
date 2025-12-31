@@ -5,11 +5,16 @@ class PrimeGenerator {
   const PrimeGenerator();
 
   /// Generate full onboarding markdown.
-  String generate(List<CommandMetadata> commands, {Set<String>? enabledAgents}) {
+  String generate(
+    List<CommandMetadata> commands, {
+    Set<String>? enabledAgents,
+  }) {
     final buffer = StringBuffer();
     final agentCommands = _agentCommands(commands, enabledAgents);
     final agentExamples = _agentExamples(agentCommands);
-    final sessionExample = agentExamples.isNotEmpty ? agentExamples.first : (agent: 'agent', model: 'model');
+    final sessionExample = agentExamples.isNotEmpty
+        ? agentExamples.first
+        : (agent: 'agent', model: 'model');
 
     buffer.writeln('# CLI Agents CAG - tool usage guide');
     buffer.writeln();
@@ -44,15 +49,23 @@ class PrimeGenerator {
     // Session concept - explain first
     buffer.writeln('## How Sessions Work');
     buffer.writeln();
-    buffer.writeln('Every agent call returns a `session_id`. Pass it with `-r` to continue the conversation with full context preserved.');
+    buffer.writeln(
+      'Every agent call returns a `session_id`. Pass it with `-r` to continue the conversation with full context preserved.',
+    );
     buffer.writeln();
     buffer.writeln('```bash');
-    buffer.writeln('cag ${sessionExample.agent} "How should I organize caching?"');
+    buffer.writeln(
+      'cag ${sessionExample.agent} "How should I organize caching?"',
+    );
     buffer.writeln('# Output: session_id: abc-123');
     buffer.writeln('# ... response ...');
     buffer.writeln();
-    buffer.writeln('cag ${sessionExample.agent} -r abc-123 "What if data changes frequently?"');
-    buffer.writeln('# Continues same conversation, agent remembers previous context');
+    buffer.writeln(
+      'cag ${sessionExample.agent} -r abc-123 "What if data changes frequently?"',
+    );
+    buffer.writeln(
+      '# Continues same conversation, agent remembers previous context',
+    );
     buffer.writeln('```');
     buffer.writeln();
 
@@ -72,7 +85,9 @@ class PrimeGenerator {
     buffer.writeln('## Tips');
     buffer.writeln();
     buffer.writeln('- All agents run in current directory with file access');
-    buffer.writeln("- Don't delegate code writing — ask for direction/validation");
+    buffer.writeln(
+      "- Don't delegate code writing — ask for direction/validation",
+    );
     buffer.writeln('- Provide your proposal in consensus mode');
     buffer.writeln();
 
@@ -102,7 +117,9 @@ class PrimeGenerator {
       buffer.writeln('|-------|-------|---------|');
       for (final model in cmd.models) {
         final name = model.isDefault ? '`${model.name}` ⭐' : '`${model.name}`';
-        final alias = model.aliases.isNotEmpty ? '`${model.aliases.first}`' : '—';
+        final alias = model.aliases.isNotEmpty
+            ? '`${model.aliases.first}`'
+            : '—';
         buffer.writeln('| $name | $alias | ${model.description} |');
       }
       buffer.writeln();
@@ -117,8 +134,14 @@ class PrimeGenerator {
     }
   }
 
-  void _writeConsensus(StringBuffer buffer, List<CommandMetadata> agentCommands, List<({String agent, String model})> agentExamples) {
-    final first = agentExamples.isNotEmpty ? agentExamples.first : (agent: 'agent', model: 'model');
+  void _writeConsensus(
+    StringBuffer buffer,
+    List<CommandMetadata> agentCommands,
+    List<({String agent, String model})> agentExamples,
+  ) {
+    final first = agentExamples.isNotEmpty
+        ? agentExamples.first
+        : (agent: 'agent', model: 'model');
     final second = agentExamples.length > 1 ? agentExamples[1] : first;
     final agentList = _formatAgentList(agentCommands);
 
@@ -132,9 +155,15 @@ class PrimeGenerator {
     // How it works
     buffer.writeln('### How It Works');
     buffer.writeln();
-    buffer.writeln('1. You provide detailed task context (prompt) and optionally your proposal (`-p`)');
-    buffer.writeln('2. Each model evaluates from its assigned stance (for/against/neutral)');
-    buffer.writeln('3. Returns `consensus_id` — use with `-r` to ask follow-up questions');
+    buffer.writeln(
+      '1. You provide detailed task context (prompt) and optionally your proposal (`-p`)',
+    );
+    buffer.writeln(
+      '2. Each model evaluates from its assigned stance (for/against/neutral)',
+    );
+    buffer.writeln(
+      '3. Returns `consensus_id` — use with `-r` to ask follow-up questions',
+    );
     buffer.writeln();
 
     // Usage
@@ -147,10 +176,14 @@ class PrimeGenerator {
     );
     buffer.writeln('# Output: consensus_id: cons-abc123');
     buffer.writeln();
-    buffer.writeln('# With your proposal for models to evaluate. It is desirable to provide this information');
+    buffer.writeln(
+      '# With your proposal for models to evaluate. It is desirable to provide this information',
+    );
     buffer.writeln('cag consensus \\');
     buffer.writeln('  -p "Use Redis with 5min TTL" \\');
-    buffer.writeln('  -a "${first.agent}:${first.model}:for" -a "${second.agent}:${second.model}:against" \\');
+    buffer.writeln(
+      '  -a "${first.agent}:${first.model}:for" -a "${second.agent}:${second.model}:against" \\',
+    );
     buffer.writeln('  "Need caching for user profiles, 10k RPM"');
     buffer.writeln();
     buffer.writeln('# Continue conversation (context preserved)');
@@ -168,19 +201,29 @@ class PrimeGenerator {
     buffer.writeln();
     buffer.writeln('- **agent**: $agentList');
     buffer.writeln('- **model**: full name or alias (see agent tables above)');
-    buffer.writeln('- **stance**: `for` (find benefits), `against` (find risks), `neutral` (balanced)');
+    buffer.writeln(
+      '- **stance**: `for` (find benefits), `against` (find risks), `neutral` (balanced)',
+    );
     buffer.writeln();
   }
 
-  void _writeCouncil(StringBuffer buffer, List<CommandMetadata> agentCommands, List<({String agent, String model})> agentExamples) {
-    final first = agentExamples.isNotEmpty ? agentExamples.first : (agent: 'agent', model: 'model');
+  void _writeCouncil(
+    StringBuffer buffer,
+    List<CommandMetadata> agentCommands,
+    List<({String agent, String model})> agentExamples,
+  ) {
+    final first = agentExamples.isNotEmpty
+        ? agentExamples.first
+        : (agent: 'agent', model: 'model');
     final second = agentExamples.length > 1 ? agentExamples[1] : first;
     final third = agentExamples.length > 2 ? agentExamples[2] : first;
     final agentList = _formatAgentList(agentCommands);
 
     buffer.writeln('## Council');
     buffer.writeln();
-    buffer.writeln('Multi-stage council: independent answers, peer reviews with ranking, and chairman synthesis.');
+    buffer.writeln(
+      'Multi-stage council: independent answers, peer reviews with ranking, and chairman synthesis.',
+    );
     buffer.writeln();
     buffer.writeln('Council runs are stateless (no resume).');
     buffer.writeln();
@@ -191,7 +234,9 @@ class PrimeGenerator {
     buffer.writeln('2. Each participant reviews and ranks anonymized answers');
     buffer.writeln('3. Chairman synthesizes a final response (new session)');
     buffer.writeln();
-    buffer.writeln('Chairman tip: pick the strongest reasoning model available for best synthesis.');
+    buffer.writeln(
+      'Chairman tip: pick the strongest reasoning model available for best synthesis.',
+    );
     buffer.writeln();
 
     buffer.writeln('### Usage');
@@ -212,7 +257,10 @@ class PrimeGenerator {
     buffer.writeln();
   }
 
-  List<CommandMetadata> _agentCommands(List<CommandMetadata> commands, Set<String>? enabledAgents) {
+  List<CommandMetadata> _agentCommands(
+    List<CommandMetadata> commands,
+    Set<String>? enabledAgents,
+  ) {
     final agentCommands = commands.where((c) => c.models.isNotEmpty);
     if (enabledAgents == null) {
       return agentCommands.toList();
@@ -220,10 +268,14 @@ class PrimeGenerator {
     return agentCommands.where((c) => enabledAgents.contains(c.name)).toList();
   }
 
-  List<({String agent, String model})> _agentExamples(List<CommandMetadata> agentCommands) {
+  List<({String agent, String model})> _agentExamples(
+    List<CommandMetadata> agentCommands,
+  ) {
     return agentCommands.map((cmd) {
       final model = cmd.defaultModel;
-      final modelToken = model == null ? 'model' : (model.aliases.isNotEmpty ? model.aliases.first : model.name);
+      final modelToken = model == null
+          ? 'model'
+          : (model.aliases.isNotEmpty ? model.aliases.first : model.name);
       return (agent: cmd.name, model: modelToken);
     }).toList();
   }

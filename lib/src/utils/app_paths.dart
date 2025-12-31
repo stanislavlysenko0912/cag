@@ -9,7 +9,11 @@ class AppPaths {
 
   static String dataHome() {
     if (Platform.isWindows) {
-      return _firstNonEmpty([Platform.environment['APPDATA'], Platform.environment['LOCALAPPDATA'], Platform.environment['USERPROFILE']]) ??
+      return _firstNonEmpty([
+            Platform.environment['APPDATA'],
+            Platform.environment['LOCALAPPDATA'],
+            Platform.environment['USERPROFILE'],
+          ]) ??
           Directory.current.path;
     }
 
@@ -30,7 +34,9 @@ class AppPaths {
   }
 
   static String appDataDir() {
-    return Platform.isMacOS ? p.join(dataHome(), '.$appDirName') : p.join(dataHome(), appDirName);
+    return Platform.isMacOS
+        ? p.join(dataHome(), '.$appDirName')
+        : p.join(dataHome(), appDirName);
   }
 
   static String consensusPath() {
@@ -46,7 +52,11 @@ class AppPaths {
   }
 
   static String? _homeDir() {
-    return _firstNonEmpty([Platform.environment['HOME'], Platform.environment['USERPROFILE'], Platform.environment['HOMEPATH']]);
+    return _firstNonEmpty([
+      Platform.environment['HOME'],
+      Platform.environment['USERPROFILE'],
+      Platform.environment['HOMEPATH'],
+    ]);
   }
 
   static String? _firstNonEmpty(List<String?> values) {

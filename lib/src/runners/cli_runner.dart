@@ -84,11 +84,7 @@ class CLIRunner {
       );
     } on ProcessException catch (error) {
       throw CLIRunnerException(
-        _friendlyProcessExceptionMessage(
-          error,
-          originalExecutable,
-          executable,
-        ),
+        _friendlyProcessExceptionMessage(error, originalExecutable, executable),
       );
     }
   }
@@ -99,7 +95,9 @@ class CLIRunner {
     String resolvedExecutable,
   ) {
     final details = error.message.isNotEmpty ? ': ${error.message}' : '';
-    final buffer = StringBuffer('Failed to start "$resolvedExecutable"$details');
+    final buffer = StringBuffer(
+      'Failed to start "$resolvedExecutable"$details',
+    );
     if (Platform.isWindows) {
       buffer.write(
         '\nWindows hint: ensure "$originalExecutable" is installed and on PATH, '

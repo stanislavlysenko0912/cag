@@ -5,17 +5,32 @@ import 'package:args/command_runner.dart';
 import 'package:cag/cag.dart';
 import 'package:mcp_dart/mcp_dart.dart';
 
-const String _appVersion = String.fromEnvironment('APP_VERSION', defaultValue: 'unknown');
+const String _appVersion = String.fromEnvironment(
+  'APP_VERSION',
+  defaultValue: 'unknown',
+);
 const _knownAgents = ['claude', 'gemini', 'codex', 'cursor'];
 
 ToolInputSchema _buildAgentInputSchema(List<String> enabledAgents) {
   return JsonSchema.object(
     properties: {
-      'agent': JsonSchema.string(description: 'Agent name.', enumValues: enabledAgents),
-      'prompt': JsonSchema.string(description: 'User prompt to send to the agent. Provide full context, constraints, and desired output.'),
-      'model': JsonSchema.string(description: 'Model name or alias supported by the agent.'),
-      'system': JsonSchema.string(description: 'Optional system prompt to prepend.'),
-      'resume': JsonSchema.string(description: 'Optional session/thread ID to resume.'),
+      'agent': JsonSchema.string(
+        description: 'Agent name.',
+        enumValues: enabledAgents,
+      ),
+      'prompt': JsonSchema.string(
+        description:
+            'User prompt to send to the agent. Provide full context, constraints, and desired output.',
+      ),
+      'model': JsonSchema.string(
+        description: 'Model name or alias supported by the agent.',
+      ),
+      'system': JsonSchema.string(
+        description: 'Optional system prompt to prepend.',
+      ),
+      'resume': JsonSchema.string(
+        description: 'Optional session/thread ID to resume.',
+      ),
     },
     required: ['agent', 'prompt'],
     additionalProperties: false,
@@ -24,8 +39,12 @@ ToolInputSchema _buildAgentInputSchema(List<String> enabledAgents) {
 
 final ToolOutputSchema _agentOutputSchema = JsonSchema.object(
   properties: {
-    'content': JsonSchema.string(description: 'Primary text response from the agent.'),
-    'metadata': JsonSchema.object(description: 'Session metadata (currently only session_id).'),
+    'content': JsonSchema.string(
+      description: 'Primary text response from the agent.',
+    ),
+    'metadata': JsonSchema.object(
+      description: 'Session metadata (currently only session_id).',
+    ),
   },
   required: ['content', 'metadata'],
   additionalProperties: false,
@@ -34,11 +53,23 @@ final ToolOutputSchema _agentOutputSchema = JsonSchema.object(
 JsonObject _buildConsensusParticipantSchema(List<String> enabledAgents) {
   return JsonSchema.object(
     properties: {
-      'agent': JsonSchema.string(description: 'Agent name.', enumValues: enabledAgents),
-      'model': JsonSchema.string(description: 'Model name or alias supported by the agent.'),
-      'stance': JsonSchema.string(description: 'Stance to take: for, against, or neutral.', enumValues: ['for', 'against', 'neutral']),
-      'session_id': JsonSchema.string(description: 'Optional session ID for resume.'),
-      'stance_prompt': JsonSchema.string(description: 'Optional custom stance prompt override.'),
+      'agent': JsonSchema.string(
+        description: 'Agent name.',
+        enumValues: enabledAgents,
+      ),
+      'model': JsonSchema.string(
+        description: 'Model name or alias supported by the agent.',
+      ),
+      'stance': JsonSchema.string(
+        description: 'Stance to take: for, against, or neutral.',
+        enumValues: ['for', 'against', 'neutral'],
+      ),
+      'session_id': JsonSchema.string(
+        description: 'Optional session ID for resume.',
+      ),
+      'stance_prompt': JsonSchema.string(
+        description: 'Optional custom stance prompt override.',
+      ),
     },
     required: ['agent', 'model', 'stance'],
     additionalProperties: false,
@@ -50,11 +81,20 @@ ToolInputSchema _buildConsensusInputSchema(List<String> enabledAgents) {
   return JsonSchema.object(
     properties: {
       'prompt': JsonSchema.string(
-        description: 'Prompt/question for the consensus round. Provide full context, constraints, and desired output.',
+        description:
+            'Prompt/question for the consensus round. Provide full context, constraints, and desired output.',
       ),
-      'proposal': JsonSchema.string(description: 'Optional proposal to provide context.'),
-      'resume': JsonSchema.string(description: 'Consensus session ID to resume.'),
-      'participants': JsonSchema.array(description: 'Participants to include in the consensus run.', items: participantSchema, minItems: 2),
+      'proposal': JsonSchema.string(
+        description: 'Optional proposal to provide context.',
+      ),
+      'resume': JsonSchema.string(
+        description: 'Consensus session ID to resume.',
+      ),
+      'participants': JsonSchema.array(
+        description: 'Participants to include in the consensus run.',
+        items: participantSchema,
+        minItems: 2,
+      ),
     },
     required: ['prompt'],
     additionalProperties: false,
@@ -64,14 +104,23 @@ ToolInputSchema _buildConsensusInputSchema(List<String> enabledAgents) {
 final ToolOutputSchema _consensusOutputSchema = JsonSchema.object(
   properties: {
     'consensus_id': JsonSchema.string(description: 'Consensus session ID.'),
-    'prompt': JsonSchema.string(description: 'Original prompt for the session.'),
+    'prompt': JsonSchema.string(
+      description: 'Original prompt for the session.',
+    ),
     'results': JsonSchema.array(
       description: 'Per-participant results.',
       items: JsonSchema.object(
         properties: {
-          'participant': JsonSchema.object(description: 'Participant details (agent, model, stance).'),
-          'success': JsonSchema.boolean(description: 'Whether the participant succeeded.'),
-          'response': JsonSchema.object(description: 'Parsed response from the participant (if successful).'),
+          'participant': JsonSchema.object(
+            description: 'Participant details (agent, model, stance).',
+          ),
+          'success': JsonSchema.boolean(
+            description: 'Whether the participant succeeded.',
+          ),
+          'response': JsonSchema.object(
+            description:
+                'Parsed response from the participant (if successful).',
+          ),
           'error': JsonSchema.string(description: 'Error message (if failed).'),
         },
         additionalProperties: true,
@@ -85,8 +134,13 @@ final ToolOutputSchema _consensusOutputSchema = JsonSchema.object(
 JsonObject _buildCouncilMemberSchema(List<String> enabledAgents) {
   return JsonSchema.object(
     properties: {
-      'agent': JsonSchema.string(description: 'Agent name.', enumValues: enabledAgents),
-      'model': JsonSchema.string(description: 'Model name or alias supported by the agent.'),
+      'agent': JsonSchema.string(
+        description: 'Agent name.',
+        enumValues: enabledAgents,
+      ),
+      'model': JsonSchema.string(
+        description: 'Model name or alias supported by the agent.',
+      ),
     },
     required: ['agent', 'model'],
     additionalProperties: false,
@@ -97,10 +151,19 @@ ToolInputSchema _buildCouncilInputSchema(List<String> enabledAgents) {
   final memberSchema = _buildCouncilMemberSchema(enabledAgents);
   return JsonSchema.object(
     properties: {
-      'prompt': JsonSchema.string(description: 'Prompt/question for the council. Provide full context, constraints, and desired output.'),
-      'participants': JsonSchema.array(description: 'Participants to include in the council run.', items: memberSchema, minItems: 2),
+      'prompt': JsonSchema.string(
+        description:
+            'Prompt/question for the council. Provide full context, constraints, and desired output.',
+      ),
+      'participants': JsonSchema.array(
+        description: 'Participants to include in the council run.',
+        items: memberSchema,
+        minItems: 2,
+      ),
       'chairman': memberSchema,
-      'include_answers': JsonSchema.boolean(description: 'Include participant answers and session IDs in output.'),
+      'include_answers': JsonSchema.boolean(
+        description: 'Include participant answers and session IDs in output.',
+      ),
     },
     required: ['prompt'],
     additionalProperties: false,
@@ -109,14 +172,18 @@ ToolInputSchema _buildCouncilInputSchema(List<String> enabledAgents) {
 
 final ToolOutputSchema _councilOutputSchema = JsonSchema.object(
   properties: {
-    'prompt': JsonSchema.string(description: 'Original prompt for the session.'),
+    'prompt': JsonSchema.string(
+      description: 'Original prompt for the session.',
+    ),
     'answers': JsonSchema.array(
       description: 'Stage 1 answers.',
       items: JsonSchema.object(
         properties: {
           'answer_id': JsonSchema.string(description: 'Answer identifier.'),
           'content': JsonSchema.string(description: 'Answer content.'),
-          'session_id': JsonSchema.string(description: 'Session ID for answer (optional).'),
+          'session_id': JsonSchema.string(
+            description: 'Session ID for answer (optional).',
+          ),
           'error': JsonSchema.string(description: 'Error message (if failed).'),
         },
         additionalProperties: false,
@@ -141,7 +208,9 @@ final ToolOutputSchema _councilOutputSchema = JsonSchema.object(
       },
       additionalProperties: false,
     ),
-    'answer_map': JsonSchema.array(description: 'Mapping of answer_id to participants.'),
+    'answer_map': JsonSchema.array(
+      description: 'Mapping of answer_id to participants.',
+    ),
   },
   required: ['prompt', 'reviews', 'chairman_result', 'answer_map'],
   additionalProperties: false,
@@ -154,15 +223,24 @@ final ToolOutputSchema _modelsOutputSchema = JsonSchema.object(
       items: JsonSchema.object(
         properties: {
           'agent': JsonSchema.string(description: 'Agent name.'),
-          'default_model': JsonSchema.string(description: 'Default model name.'),
+          'default_model': JsonSchema.string(
+            description: 'Default model name.',
+          ),
           'models': JsonSchema.array(
             description: 'Supported models.',
             items: JsonSchema.object(
               properties: {
                 'name': JsonSchema.string(description: 'Model name.'),
-                'aliases': JsonSchema.array(description: 'Model aliases.', items: JsonSchema.string()),
-                'description': JsonSchema.string(description: 'Model description.'),
-                'is_default': JsonSchema.boolean(description: 'Whether model is default.'),
+                'aliases': JsonSchema.array(
+                  description: 'Model aliases.',
+                  items: JsonSchema.string(),
+                ),
+                'description': JsonSchema.string(
+                  description: 'Model description.',
+                ),
+                'is_default': JsonSchema.boolean(
+                  description: 'Whether model is default.',
+                ),
               },
               additionalProperties: false,
             ),
@@ -180,10 +258,27 @@ final ToolOutputSchema _modelsOutputSchema = JsonSchema.object(
 class McpCommand extends Command<void> {
   McpCommand() {
     argParser
-      ..addOption('transport', allowed: ['stdio', 'http'], defaultsTo: 'stdio', help: 'Transport type (stdio or http).')
-      ..addOption('host', defaultsTo: '127.0.0.1', help: 'Host to bind for HTTP transport.')
-      ..addOption('port', defaultsTo: '7331', help: 'Port to bind for HTTP transport.')
-      ..addOption('http-path', defaultsTo: '/mcp', help: 'Path for HTTP MCP requests.');
+      ..addOption(
+        'transport',
+        allowed: ['stdio', 'http'],
+        defaultsTo: 'stdio',
+        help: 'Transport type (stdio or http).',
+      )
+      ..addOption(
+        'host',
+        defaultsTo: '127.0.0.1',
+        help: 'Host to bind for HTTP transport.',
+      )
+      ..addOption(
+        'port',
+        defaultsTo: '7331',
+        help: 'Port to bind for HTTP transport.',
+      )
+      ..addOption(
+        'http-path',
+        defaultsTo: '/mcp',
+        help: 'Path for HTTP MCP requests.',
+      );
   }
 
   @override
@@ -238,7 +333,11 @@ class McpCommand extends Command<void> {
     final httpPath = _normalizePath(httpPathRaw);
 
     final mcpServer = await _buildServer();
-    final transport = StreamableHTTPServerTransport(options: StreamableHTTPServerTransportOptions(sessionIdGenerator: generateUUID));
+    final transport = StreamableHTTPServerTransport(
+      options: StreamableHTTPServerTransportOptions(
+        sessionIdGenerator: generateUUID,
+      ),
+    );
     mcpServer.onError = (error) {
       stderr.writeln('MCP server error: $error');
     };
@@ -246,7 +345,9 @@ class McpCommand extends Command<void> {
     await mcpServer.connect(transport);
 
     final server = await HttpServer.bind(host, port);
-    stderr.writeln('MCP HTTP server listening on http://$host:${server.port}$httpPath');
+    stderr.writeln(
+      'MCP HTTP server listening on http://$host:${server.port}$httpPath',
+    );
 
     await for (final request in server) {
       if (request.uri.path == httpPath) {
@@ -266,10 +367,22 @@ Future<McpServer> _buildServer() async {
   final configService = ConfigService();
   final config = await configService.loadOrCreate();
 
-  final claudeConfig = configService.applyOverrides(ClaudeAgent.defaultConfig, configService.overridesFor(config, 'claude'));
-  final geminiConfig = configService.applyOverrides(GeminiAgent.defaultConfig, configService.overridesFor(config, 'gemini'));
-  final codexConfig = configService.applyOverrides(CodexAgent.defaultConfig, configService.overridesFor(config, 'codex'));
-  final cursorConfig = configService.applyOverrides(CursorAgent.defaultConfig, configService.overridesFor(config, 'cursor'));
+  final claudeConfig = configService.applyOverrides(
+    ClaudeAgent.defaultConfig,
+    configService.overridesFor(config, 'claude'),
+  );
+  final geminiConfig = configService.applyOverrides(
+    GeminiAgent.defaultConfig,
+    configService.overridesFor(config, 'gemini'),
+  );
+  final codexConfig = configService.applyOverrides(
+    CodexAgent.defaultConfig,
+    configService.overridesFor(config, 'codex'),
+  );
+  final cursorConfig = configService.applyOverrides(
+    CursorAgent.defaultConfig,
+    configService.overridesFor(config, 'cursor'),
+  );
 
   final enabledAgents = <String>[
     if (claudeConfig.enabled) 'claude',
@@ -279,11 +392,23 @@ Future<McpServer> _buildServer() async {
   ];
 
   final agentDefaults = <String, String>{
-    if (claudeConfig.enabled) 'claude': claudeConfig.defaultModel ?? (AgentModelRegistry.defaultModelName('claude') ?? 'sonnet'),
+    if (claudeConfig.enabled)
+      'claude':
+          claudeConfig.defaultModel ??
+          (AgentModelRegistry.defaultModelName('claude') ?? 'sonnet'),
     if (geminiConfig.enabled)
-      'gemini': geminiConfig.defaultModel ?? (AgentModelRegistry.defaultModelName('gemini') ?? 'gemini-3-flash-preview'),
-    if (codexConfig.enabled) 'codex': codexConfig.defaultModel ?? (AgentModelRegistry.defaultModelName('codex') ?? 'gpt-5.2'),
-    if (cursorConfig.enabled) 'cursor': cursorConfig.defaultModel ?? (AgentModelRegistry.defaultModelName('cursor') ?? 'composer-1'),
+      'gemini':
+          geminiConfig.defaultModel ??
+          (AgentModelRegistry.defaultModelName('gemini') ??
+              'gemini-3-flash-preview'),
+    if (codexConfig.enabled)
+      'codex':
+          codexConfig.defaultModel ??
+          (AgentModelRegistry.defaultModelName('codex') ?? 'gpt-5.2'),
+    if (cursorConfig.enabled)
+      'cursor':
+          cursorConfig.defaultModel ??
+          (AgentModelRegistry.defaultModelName('cursor') ?? 'composer-1'),
   };
 
   final agents = <String, BaseAgent>{
@@ -298,7 +423,10 @@ Future<McpServer> _buildServer() async {
 
   final server = McpServer(
     Implementation(name: 'cag', version: _appVersion),
-    options: const ServerOptions(instructions: 'cag MCP server exposing agent, consensus, and council tools.'),
+    options: const ServerOptions(
+      instructions:
+          'cag MCP server exposing agent, consensus, and council tools.',
+    ),
   );
 
   server.registerTool(
@@ -308,7 +436,12 @@ Future<McpServer> _buildServer() async {
     outputSchema: _agentOutputSchema,
     callback: (args, extra) async {
       final errors = <String>[];
-      final agentName = _readStringArg(args, 'agent', errors, required: true)?.toLowerCase();
+      final agentName = _readStringArg(
+        args,
+        'agent',
+        errors,
+        required: true,
+      )?.toLowerCase();
       final prompt = _readStringArg(args, 'prompt', errors, required: true);
       final modelInput = _readStringArg(args, 'model', errors);
       final systemPrompt = _readStringArg(args, 'system', errors);
@@ -346,7 +479,12 @@ Future<McpServer> _buildServer() async {
       }
 
       try {
-        final response = await agent.execute(prompt: prompt!, model: resolvedModel, systemPrompt: systemPrompt, resume: resume);
+        final response = await agent.execute(
+          prompt: prompt!,
+          model: resolvedModel,
+          systemPrompt: systemPrompt,
+          resume: resume,
+        );
 
         return CallToolResult.fromStructuredContent(_minimalResponse(response));
       } on ParserException catch (e) {
@@ -374,13 +512,17 @@ Future<McpServer> _buildServer() async {
       }
 
       if (resume != null && participantsRaw != null) {
-        return _errorResult('participants cannot be provided when resume is set.');
+        return _errorResult(
+          'participants cannot be provided when resume is set.',
+        );
       }
 
       final participants = <ConsensusParticipant>[];
       if (resume == null) {
         if (participantsRaw == null) {
-          return _errorResult('participants is required when resume is not set.');
+          return _errorResult(
+            'participants is required when resume is not set.',
+          );
         }
         if (participantsRaw is! List) {
           return _errorResult('participants must be an array of objects.');
@@ -394,9 +536,19 @@ Future<McpServer> _buildServer() async {
             return _errorResult('participants entries must be objects.');
           }
 
-          final agentName = _readMapString(entry, 'agent', errors, required: true)?.toLowerCase();
+          final agentName = _readMapString(
+            entry,
+            'agent',
+            errors,
+            required: true,
+          )?.toLowerCase();
           final model = _readMapString(entry, 'model', errors, required: true);
-          final stanceValue = _readMapString(entry, 'stance', errors, required: true);
+          final stanceValue = _readMapString(
+            entry,
+            'stance',
+            errors,
+            required: true,
+          );
           final sessionId = _readMapString(entry, 'session_id', errors);
           final stancePrompt = _readMapString(entry, 'stance_prompt', errors);
 
@@ -405,11 +557,15 @@ Future<McpServer> _buildServer() async {
           }
 
           if (!_knownAgents.contains(agentName)) {
-            return _errorResult(_agentUnknownMessage(agentName!, enabledAgents));
+            return _errorResult(
+              _agentUnknownMessage(agentName!, enabledAgents),
+            );
           }
 
           if (!enabledAgents.contains(agentName)) {
-            return _errorResult(_agentDisabledMessage(agentName!, enabledAgents));
+            return _errorResult(
+              _agentDisabledMessage(agentName!, enabledAgents),
+            );
           }
 
           try {
@@ -434,13 +590,23 @@ Future<McpServer> _buildServer() async {
       try {
         final ConsensusResult result;
         if (resume != null) {
-          final resumeError = await _validateConsensusResume(resume, enabledAgents);
+          final resumeError = await _validateConsensusResume(
+            resume,
+            enabledAgents,
+          );
           if (resumeError != null) {
             return _errorResult(resumeError);
           }
-          result = await consensusRunner.resume(consensusId: resume, prompt: prompt!);
+          result = await consensusRunner.resume(
+            consensusId: resume,
+            prompt: prompt!,
+          );
         } else {
-          result = await consensusRunner.run(prompt: prompt!, participants: participants, proposal: proposal);
+          result = await consensusRunner.run(
+            prompt: prompt!,
+            participants: participants,
+            proposal: proposal,
+          );
         }
 
         final output = {
@@ -502,7 +668,12 @@ Future<McpServer> _buildServer() async {
           return _errorResult('participants entries must be objects.');
         }
 
-        final agentName = _readMapString(entry, 'agent', errors, required: true)?.toLowerCase();
+        final agentName = _readMapString(
+          entry,
+          'agent',
+          errors,
+          required: true,
+        )?.toLowerCase();
         final model = _readMapString(entry, 'model', errors, required: true);
 
         if (errors.isNotEmpty) {
@@ -525,29 +696,54 @@ Future<McpServer> _buildServer() async {
         participants.add(member);
       }
 
-      final chairmanAgent = _readMapString(chairmanRaw, 'agent', errors, required: true)?.toLowerCase();
-      final chairmanModel = _readMapString(chairmanRaw, 'model', errors, required: true);
+      final chairmanAgent = _readMapString(
+        chairmanRaw,
+        'agent',
+        errors,
+        required: true,
+      )?.toLowerCase();
+      final chairmanModel = _readMapString(
+        chairmanRaw,
+        'model',
+        errors,
+        required: true,
+      );
 
       if (errors.isNotEmpty) {
         return _errorResult(errors.join(' '));
       }
 
       if (!_knownAgents.contains(chairmanAgent)) {
-        return _errorResult(_agentUnknownMessage(chairmanAgent!, enabledAgents));
+        return _errorResult(
+          _agentUnknownMessage(chairmanAgent!, enabledAgents),
+        );
       }
 
       if (!enabledAgents.contains(chairmanAgent)) {
-        return _errorResult(_agentDisabledMessage(chairmanAgent!, enabledAgents));
+        return _errorResult(
+          _agentDisabledMessage(chairmanAgent!, enabledAgents),
+        );
       }
 
-      final chairman = CouncilMember(agent: chairmanAgent!, model: chairmanModel!);
-      chairman.resolvedModel = _resolveModel(chairmanAgent, chairmanModel, errors);
+      final chairman = CouncilMember(
+        agent: chairmanAgent!,
+        model: chairmanModel!,
+      );
+      chairman.resolvedModel = _resolveModel(
+        chairmanAgent,
+        chairmanModel,
+        errors,
+      );
       if (errors.isNotEmpty) {
         return _errorResult(errors.join(' '));
       }
 
       try {
-        final result = await councilRunner.run(prompt: prompt!, participants: participants, chairman: chairman);
+        final result = await councilRunner.run(
+          prompt: prompt!,
+          participants: participants,
+          chairman: chairman,
+        );
 
         final output = {
           'prompt': result.prompt,
@@ -558,25 +754,32 @@ Future<McpServer> _buildServer() async {
               return {
                 'answer_id': 'ans_${index + 1}',
                 if (r.response != null) 'content': r.response!.content,
-                if (includeAnswers && r.response?.sessionId != null) 'session_id': r.response!.sessionId,
+                if (includeAnswers && r.response?.sessionId != null)
+                  'session_id': r.response!.sessionId,
                 if (r.error != null) 'error': r.error,
               };
             }).toList(),
           'reviews': result.reviews.map((r) {
             return {
-              'reviewer': '${r.participant.agent.toUpperCase()} (${r.participant.model})',
+              'reviewer':
+                  '${r.participant.agent.toUpperCase()} (${r.participant.model})',
               if (r.response != null) 'content': r.response!.content,
               if (r.error != null) 'error': r.error,
             };
           }).toList(),
           'chairman_result': {
-            if (result.chairman.response != null) 'content': result.chairman.response!.content,
+            if (result.chairman.response != null)
+              'content': result.chairman.response!.content,
             if (result.chairman.error != null) 'error': result.chairman.error,
           },
           'answer_map': result.answers.asMap().entries.map((entry) {
             final index = entry.key;
             final r = entry.value;
-            return {'answer_id': 'ans_${index + 1}', 'label': '${r.participant.agent.toUpperCase()} (${r.participant.model})'};
+            return {
+              'answer_id': 'ans_${index + 1}',
+              'label':
+                  '${r.participant.agent.toUpperCase()} (${r.participant.model})',
+            };
           }).toList(),
         };
 
@@ -596,15 +799,24 @@ Future<McpServer> _buildServer() async {
     description: 'List supported models for each agent.',
     outputSchema: _modelsOutputSchema,
     callback: (args, extra) async {
-      final agentsInfo = CommandDefinitions.all.where((c) => c.models.isNotEmpty).where((c) => enabledAgents.contains(c.name)).map((cmd) {
-        return {
-          'agent': cmd.name,
-          'default_model': cmd.defaultModel?.name,
-          'models': cmd.models.map((model) {
-            return {'name': model.name, 'aliases': model.aliases, 'description': model.description, 'is_default': model.isDefault};
-          }).toList(),
-        };
-      }).toList();
+      final agentsInfo = CommandDefinitions.all
+          .where((c) => c.models.isNotEmpty)
+          .where((c) => enabledAgents.contains(c.name))
+          .map((cmd) {
+            return {
+              'agent': cmd.name,
+              'default_model': cmd.defaultModel?.name,
+              'models': cmd.models.map((model) {
+                return {
+                  'name': model.name,
+                  'aliases': model.aliases,
+                  'description': model.description,
+                  'is_default': model.isDefault,
+                };
+              }).toList(),
+            };
+          })
+          .toList();
 
       return CallToolResult.fromStructuredContent({'agents': agentsInfo});
     },
@@ -620,7 +832,9 @@ CallToolResult _errorResult(String message) {
 Map<String, dynamic> _minimalResponse(ParsedResponse response) {
   return {
     'content': response.content,
-    'metadata': {if (response.sessionId != null) 'session_id': response.sessionId},
+    'metadata': {
+      if (response.sessionId != null) 'session_id': response.sessionId,
+    },
   };
 }
 
@@ -630,7 +844,12 @@ String _normalizePath(String value) {
   return trimmed.startsWith('/') ? trimmed : '/$trimmed';
 }
 
-String? _readStringArg(Map<String, dynamic> args, String key, List<String> errors, {bool required = false}) {
+String? _readStringArg(
+  Map<String, dynamic> args,
+  String key,
+  List<String> errors, {
+  bool required = false,
+}) {
   final value = args[key];
   if (value == null) {
     if (required) {
@@ -648,7 +867,12 @@ String? _readStringArg(Map<String, dynamic> args, String key, List<String> error
   return value;
 }
 
-String? _readMapString(Map entry, String key, List<String> errors, {bool required = false}) {
+String? _readMapString(
+  Map entry,
+  String key,
+  List<String> errors, {
+  bool required = false,
+}) {
   final value = entry[key];
   if (value == null) {
     if (required) {
@@ -687,19 +911,28 @@ String _agentDisabledMessage(String agentName, List<String> enabledAgents) {
   return 'Agent "$agentName" is disabled. Enabled: ${enabledAgents.join(', ')}.';
 }
 
-Future<String?> _validateConsensusResume(String consensusId, List<String> enabledAgents) async {
+Future<String?> _validateConsensusResume(
+  String consensusId,
+  List<String> enabledAgents,
+) async {
   final storage = ConsensusStorage();
   final session = await storage.load(consensusId);
   if (session == null) {
     return 'Consensus session not found: $consensusId';
   }
 
-  final unknownAgents = session.participants.map((p) => p.agent).where((agent) => !_knownAgents.contains(agent)).toSet();
+  final unknownAgents = session.participants
+      .map((p) => p.agent)
+      .where((agent) => !_knownAgents.contains(agent))
+      .toSet();
   if (unknownAgents.isNotEmpty) {
     return 'Consensus session includes unknown agents: ${unknownAgents.join(', ')}';
   }
 
-  final disabledAgents = session.participants.map((p) => p.agent).where((agent) => !enabledAgents.contains(agent)).toSet();
+  final disabledAgents = session.participants
+      .map((p) => p.agent)
+      .where((agent) => !enabledAgents.contains(agent))
+      .toSet();
   if (disabledAgents.isNotEmpty) {
     return 'Consensus session includes disabled agents: ${disabledAgents.join(', ')}';
   }
@@ -716,7 +949,9 @@ String _resolveModel(String agentName, String modelInput, List<String> errors) {
   final modelConfig = cmdDef.findModel(modelInput);
   if (modelConfig == null) {
     final available = cmdDef.models.map((m) => m.name).join(', ');
-    errors.add('Unknown model "$modelInput" for $agentName. Available: $available');
+    errors.add(
+      'Unknown model "$modelInput" for $agentName. Available: $available',
+    );
     return modelInput;
   }
 
