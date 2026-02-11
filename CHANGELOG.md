@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-02-11
+
+### Changed
+- Updated GPT-5.3-Codex model to Codex.
+- Added Composer 1.5 model to Cursor Agent.
+
 
 ## [0.2.0] - 2025-12-31
 

@@ -41,12 +41,12 @@ class AgentModelRegistry {
   static const codexModels = [
     ModelConfig(
       name: 'gpt-5.2',
-      description: 'Balanced. Use for: general tasks, discussions, coding',
+      description: 'Balanced. Use for: general tasks, discussions',
       isDefault: true,
       aliases: ['gpt'],
     ),
     ModelConfig(
-      name: 'gpt-5.2-codex',
+      name: 'gpt-5.3-codex',
       description: 'Code-specialized. Use for: complex coding, hard debugging',
       aliases: ['codex'],
     ),
@@ -60,9 +60,14 @@ class AgentModelRegistry {
 
   static const cursorModels = [
     ModelConfig(
-      name: 'composer-1',
-      description: 'Cursor`s fastest model.',
+      name: 'composer-1.5',
+      description: 'Cursor`s fastest model, use for research and quick tasks',
       isDefault: true,
+    ),
+    ModelConfig(
+      name: 'composer-1',
+      description:
+          'Cursor`s fast model, use simple research and quick small tasks',
     ),
     ModelConfig(
       name: 'auto',
