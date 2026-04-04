@@ -5,12 +5,13 @@ import 'compare_model.dart';
 /// Storage for compare runs using JSONL format.
 class CompareStorage {
   /// Creates compare storage.
-  CompareStorage({String? storagePath})
+  CompareStorage({String? storagePath, StringSink? warningSink})
     : _storage = BaseJsonlStorage<CompareRun>(
         storagePath: storagePath ?? AppPaths.comparePath(),
         fromJson: CompareRun.fromJson,
         toJson: (run) => run.toJson(),
         getId: (run) => run.compareId,
+        warningSink: warningSink,
       );
 
   final BaseJsonlStorage<CompareRun> _storage;

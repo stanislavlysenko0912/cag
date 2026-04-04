@@ -4,12 +4,13 @@ import 'consensus_model.dart';
 
 /// Storage for consensus sessions using JSONL format.
 class ConsensusStorage {
-  ConsensusStorage({String? storagePath})
+  ConsensusStorage({String? storagePath, StringSink? warningSink})
     : _storage = BaseJsonlStorage<ConsensusSession>(
         storagePath: storagePath ?? _defaultPath,
         fromJson: ConsensusSession.fromJson,
         toJson: (session) => session.toJson(),
         getId: (session) => session.consensusId,
+        warningSink: warningSink,
       );
 
   static String get _defaultPath {

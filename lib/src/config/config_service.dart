@@ -10,8 +10,15 @@ import 'agent_config_override.dart';
 import 'app_config.dart';
 
 class ConfigService {
+  ConfigService({String? configPath, StringSink? warningSink})
+    : _configPath = configPath ?? AppPaths.configPath(),
+      _warningSink = warningSink ?? stderr;
+
+  final String _configPath;
+  final StringSink _warningSink;
+
   Future<AppConfig> loadOrCreate() async {
-    final file = File(AppPaths.configPath());
+    final file = File(_configPath);
     if (!await file.exists()) {
       final defaults = AppConfig.defaults();
       await _writeConfig(file, defaults);
@@ -29,27 +36,30 @@ class ConfigService {
     try {
       json = jsonDecode(raw) as Map<String, dynamic>;
     } on FormatException {
-      stderr.writeln('Config parse error: ${file.path}');
+      _warningSink.writeln('Config parse error: ${file.path}');
+      return AppConfig.defaults();
+    } on TypeError {
+      _warningSink.writeln('Config parse error: ${file.path}');
       return AppConfig.defaults();
     }
 
     final migrated = _migrateLegacyConfig(json);
+    final isValid = await _validateConfig(json);
+    if (!isValid) {
+      return AppConfig.defaults();
+    }
+
     if (migrated) {
       await file.parent.create(recursive: true);
       final normalized = const JsonEncoder.withIndent('  ').convert(json);
       await file.writeAsString('$normalized\n');
     }
 
-    final isValid = await _validateConfig(json);
-    if (!isValid) {
-      return AppConfig.defaults();
-    }
-
     return AppConfig.fromJson(json);
   }
 
   Future<void> save(AppConfig config) async {
-    final file = File(AppPaths.configPath());
+    final file = File(_configPath);
     await _writeConfig(file, config);
   }
 
@@ -72,7 +82,10 @@ class ConfigService {
       );
     }
 
-    final models = _mergeModels(AgentModelRegistry.modelsFor(base.name), overrides.models);
+    final models = _mergeModels(
+      AgentModelRegistry.modelsFor(base.name),
+      overrides.models,
+    );
 
     return AgentConfig(
       name: base.name,
@@ -82,16 +95,22 @@ class ConfigService {
       defaultModel: overrides.defaultModel ?? base.defaultModel,
       additionalArgs: overrides.additionalArgs ?? base.additionalArgs,
       env: overrides.env ?? base.env,
-      hardTimeoutSeconds: overrides.hardTimeoutSeconds ?? base.hardTimeoutSeconds,
-      idleTimeoutSeconds: overrides.idleTimeoutSeconds ?? base.idleTimeoutSeconds,
+      hardTimeoutSeconds:
+          overrides.hardTimeoutSeconds ?? base.hardTimeoutSeconds,
+      idleTimeoutSeconds:
+          overrides.idleTimeoutSeconds ?? base.idleTimeoutSeconds,
       shellExecutable: overrides.shellExecutable ?? base.shellExecutable,
       shellArgs: overrides.shellArgs ?? base.shellArgs,
-      shellCommandPrefix: overrides.shellCommandPrefix ?? base.shellCommandPrefix,
+      shellCommandPrefix:
+          overrides.shellCommandPrefix ?? base.shellCommandPrefix,
       availableModels: models,
     );
   }
 
-  List<ModelConfig> _mergeModels(List<ModelConfig> base, List<ModelConfig>? overrides) {
+  List<ModelConfig> _mergeModels(
+    List<ModelConfig> base,
+    List<ModelConfig>? overrides,
+  ) {
     if (overrides == null || overrides.isEmpty) return base;
 
     final map = {for (final m in base) m.name: m};
@@ -109,10 +128,10 @@ class ConfigService {
     final schema = await _loadSchema();
     final result = schema.validate(json);
     if (!result.isValid) {
-      stderr.writeln('Config validation failed at ${AppPaths.configPath()}:');
+      _warningSink.writeln('Config validation failed at $_configPath:');
       for (final error in result.errors) {
         final path = error.instancePath.isNotEmpty ? error.instancePath : '\$';
-        stderr.writeln('  - $path: ${error.message}');
+        _warningSink.writeln('  - $path: ${error.message}');
       }
     }
     return result.isValid;

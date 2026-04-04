@@ -20,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fixed duplicated participant parsing paths to enforce the same validation and normalization rules across compare, consensus, and council models.
+- Fixed JSONL storage loading to skip malformed records with warnings instead of crashing on partial file corruption.
+- Fixed config loading to warn and fall back on invalid content without overwriting broken config files, while only rewriting migrated configs after successful validation.
 
 ## [0.3.0] - 2026-04-04
 

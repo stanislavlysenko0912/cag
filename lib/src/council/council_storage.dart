@@ -5,12 +5,13 @@ import 'council_model.dart';
 /// Storage for council runs using JSONL format.
 class CouncilStorage {
   /// Creates council storage.
-  CouncilStorage({String? storagePath})
+  CouncilStorage({String? storagePath, StringSink? warningSink})
     : _storage = BaseJsonlStorage<CouncilRun>(
         storagePath: storagePath ?? AppPaths.councilPath(),
         fromJson: CouncilRun.fromJson,
         toJson: (run) => run.toJson(),
         getId: (run) => run.councilId,
+        warningSink: warningSink,
       );
 
   final BaseJsonlStorage<CouncilRun> _storage;
