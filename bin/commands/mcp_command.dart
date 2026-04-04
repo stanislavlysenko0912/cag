@@ -43,12 +43,11 @@ ToolInputSchema _buildAgentInputSchema(List<String> enabledAgents) {
 
 final ToolOutputSchema _agentOutputSchema = JsonSchema.object(
   properties: {
-    'result': JsonSchema.string(
-      description: 'CLI-like output string.',
-    ),
+    'result': JsonSchema.string(description: 'CLI-like output string.'),
     'session_id': JsonSchema.string(description: 'Session ID, if available.'),
     'verbose_data': JsonSchema.object(
-      description: 'Expanded structured payload returned only when verbose=true.',
+      description:
+          'Expanded structured payload returned only when verbose=true.',
     ),
   },
   required: ['result'],
@@ -115,7 +114,8 @@ final ToolOutputSchema _consensusOutputSchema = JsonSchema.object(
     'result': JsonSchema.string(description: 'CLI-like output string.'),
     'consensus_id': JsonSchema.string(description: 'Consensus session ID.'),
     'verbose_data': JsonSchema.object(
-      description: 'Expanded structured payload returned only when verbose=true.',
+      description:
+          'Expanded structured payload returned only when verbose=true.',
     ),
   },
   required: ['result', 'consensus_id'],
@@ -195,7 +195,8 @@ final ToolOutputSchema _councilOutputSchema = JsonSchema.object(
   properties: {
     'result': JsonSchema.string(description: 'CLI-like output string.'),
     'verbose_data': JsonSchema.object(
-      description: 'Expanded structured payload returned only when verbose=true.',
+      description:
+          'Expanded structured payload returned only when verbose=true.',
     ),
   },
   required: ['result'],
@@ -207,7 +208,8 @@ final ToolOutputSchema _compareOutputSchema = JsonSchema.object(
     'result': JsonSchema.string(description: 'CLI-like output string.'),
     'compare_id': JsonSchema.string(description: 'Compare run ID.'),
     'verbose_data': JsonSchema.object(
-      description: 'Expanded structured payload returned only when verbose=true.',
+      description:
+          'Expanded structured payload returned only when verbose=true.',
     ),
   },
   required: ['result', 'compare_id'],
@@ -218,7 +220,8 @@ final ToolOutputSchema _modelsOutputSchema = JsonSchema.object(
   properties: {
     'result': JsonSchema.string(description: 'Compact model summary.'),
     'verbose_data': JsonSchema.object(
-      description: 'Expanded structured payload returned only when verbose=true.',
+      description:
+          'Expanded structured payload returned only when verbose=true.',
     ),
   },
   required: ['result'],
@@ -403,11 +406,18 @@ Future<McpServer> _buildServer() async {
   final consensusRunner = ConsensusRunner();
   final councilRunner = CouncilRunner();
 
+  final modelsSection = _buildModelsSection(enabledAgents);
   final server = McpServer(
     Implementation(name: 'cag', version: _appVersion),
-    options: const McpServerOptions(
+    options: McpServerOptions(
       instructions:
-          'cag MCP server exposing agent, compare, consensus, and council tools.',
+          'cag is a multi-agent gateway that lets you query external AI agents '
+          'from within your current session. '
+          'Use it to get a second opinion, validate architectural decisions, brainstorm ideas, '
+          'or leverage multiple models for deeper analysis.\n\n'
+          'Every call returns a session_id. Pass it via resume to continue the conversation with context preserved. '
+          'Provide detailed prompts with full context, constraints, and goals — short prompts produce weak results.\n\n'
+          'Available models:\n$modelsSection',
     ),
   );
 
@@ -533,9 +543,7 @@ Future<McpServer> _buildServer() async {
         final participant = CompareParticipant(
           agent: agentName!,
           model: model!,
-        ).copyWith(
-          resolvedModel: _resolveModel(agentName, model, errors),
-        );
+        ).copyWith(resolvedModel: _resolveModel(agentName, model, errors));
         if (errors.isNotEmpty) {
           return _errorResult(errors.join(' '));
         }
@@ -861,7 +869,10 @@ Future<McpServer> _buildServer() async {
         };
 
         return CallToolResult.fromStructuredContent({
-          'result': _formatCouncilOutput(result, includeAnswers: includeAnswers),
+          'result': _formatCouncilOutput(
+            result,
+            includeAnswers: includeAnswers,
+          ),
           if (verbose) 'verbose_data': verboseData,
         });
       } on ArgumentError catch (e) {
@@ -933,10 +944,7 @@ Map<String, dynamic> _minimalResponse(ParsedResponse response) {
     metadata['usage'] = usage;
   }
 
-  return {
-    'content': response.content,
-    'metadata': metadata,
-  };
+  return {'content': response.content, 'metadata': metadata};
 }
 
 String _formatCompareOutput(CompareRun run) {
@@ -1095,6 +1103,21 @@ String _formatCouncilOutput(
     );
   }
 
+  return buffer.toString().trimRight();
+}
+
+String _buildModelsSection(List<String> enabledAgents) {
+  final buffer = StringBuffer();
+  for (final agentName in enabledAgents) {
+    final cmdDef = CommandDefinitions.find(agentName);
+    if (cmdDef == null || cmdDef.models.isEmpty) continue;
+    buffer.writeln('$agentName:');
+    for (final m in cmdDef.models) {
+      final alias = m.aliases.isNotEmpty ? ' (${m.aliases.join(', ')})' : '';
+      final desc = m.description.isNotEmpty ? ' - ${m.description}' : '';
+      buffer.writeln('  ${m.name}$alias$desc');
+    }
+  }
   return buffer.toString().trimRight();
 }
 

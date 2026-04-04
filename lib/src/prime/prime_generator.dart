@@ -233,7 +233,9 @@ class PrimeGenerator {
     buffer.writeln();
     buffer.writeln('1. Sends the same prompt to multiple agents in parallel');
     buffer.writeln('2. Stores the run under `compare_id`');
-    buffer.writeln('3. Returns per-agent `session_id` values for branch follow-up');
+    buffer.writeln(
+      '3. Returns per-agent `session_id` values for branch follow-up',
+    );
     buffer.writeln();
 
     buffer.writeln('### Usage');

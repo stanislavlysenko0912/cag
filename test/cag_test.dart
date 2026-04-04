@@ -318,13 +318,14 @@ void main() {
           name: 'claude',
           description: 'Claude agent',
           models: [
-            ModelConfig(name: 'sonnet', description: 'Default', isDefault: true),
+            ModelConfig(
+              name: 'sonnet',
+              description: 'Default',
+              isDefault: true,
+            ),
           ],
         ),
-        const CommandMetadata(
-          name: 'compare',
-          description: 'Compare command',
-        ),
+        const CommandMetadata(name: 'compare', description: 'Compare command'),
       ];
 
       final output = generator.generate(commands);

@@ -23,10 +23,7 @@ class CompareParticipant {
   String get resolvedModel => _resolvedModel ?? model;
 
   /// Create a modified copy of this participant.
-  CompareParticipant copyWith({
-    String? sessionId,
-    String? resolvedModel,
-  }) {
+  CompareParticipant copyWith({String? sessionId, String? resolvedModel}) {
     return CompareParticipant(
       agent: agent,
       model: model,
