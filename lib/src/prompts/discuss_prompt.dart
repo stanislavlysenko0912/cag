@@ -25,19 +25,12 @@ Provide as much useful information as possible about the current task/dialog.
 Always provide paths to current files related to context — the agent runs in the same directory, so they can see files by themselves. You don't need to duplicate file contents, only maybe a related part of code that can be better than just a file path.
 Always tell the agent not to change files, only communicate. If you want them to make changes, tell them explicitly.
 
-## How to communicate — collaboration principles
-
-- **Two-way communication** — let the agent ask questions and guide too. You're both active participants
-- **"Yes, and..."** — build on each other's ideas, don't just evaluate
-- **Check understanding** — "do I understand correctly that...", "you mean that..."
-- **Intermediate summaries** — "okay, we agreed on X, now let's move to Y"
-- **Be specific** — not abstract, but concrete solutions for our project
-- **Disagreements as resource** — not a problem, but a chance to find a better solution. Dig deeper, find out why different opinions
-
-## Iterations
-- Keep focus on the result — the goal is to reach a concrete solution, not just discuss
+## Dialogue rules
 - Minimum 3-5 rounds, more if productive
-- Go deeper into interesting points, guide if the agent misses something
+- Build on each other's ideas, don't just evaluate — treat disagreements as a chance to find better solutions
+- Use intermediate summaries to stay aligned: "okay, we agreed on X, now let's move to Y"
+- Stay concrete — specific solutions for this project, not abstract advice
+- Keep focus on reaching an actionable result
 - Don't lose session_id between messages — pass it via `resume` parameter in `cag_agent`
 
 ## Wrap up

@@ -110,6 +110,9 @@ class PrimeGenerator {
     buffer.writeln(
       "- Don't delegate code writing — ask for direction/validation",
     );
+    buffer.writeln(
+      '- Conversations are not just question-answer — use multi-turn dialogue (resume via session_id) to iterate, challenge ideas, and reach better solutions',
+    );
     buffer.writeln('- Provide your proposal in consensus mode');
     buffer.writeln();
 

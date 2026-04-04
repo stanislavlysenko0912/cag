@@ -418,6 +418,7 @@ Future<McpServer> _buildServer() async {
           'Regular agent conversations use a universal session_id. If a tool returns session_id, that conversation can be continued later through the matching agent tool with resume/session_id. '
           'Any other returned ID belongs to a CAG wrapper flow and is not interchangeable with session_id. '
           'Provide detailed prompts with full context, constraints, and goals — short prompts produce weak results.\n\n'
+          'Agent conversations are not just question-answer — use multi-turn dialogue (resume via session_id) to iterate, challenge ideas, and reach better solutions together.\n\n'
           'Available models:\n$modelsSection',
     ),
   );
