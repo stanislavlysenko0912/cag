@@ -13,6 +13,7 @@ class GeminiParser extends BaseParser {
     if (stdout.trim().isEmpty) {
       throw ParserException(
         'Gemini CLI returned empty stdout while JSON output was expected',
+        reason: AgentExitReason.emptyResponse,
       );
     }
 
@@ -53,6 +54,7 @@ class GeminiParser extends BaseParser {
 
     throw ParserException(
       "Gemini CLI response is missing a textual 'response' field",
+      reason: AgentExitReason.emptyResponse,
     );
   }
 

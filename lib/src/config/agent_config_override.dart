@@ -7,7 +7,8 @@ class AgentConfigOverride {
     this.defaultModel,
     this.additionalArgs,
     this.env,
-    this.timeoutSeconds,
+    this.hardTimeoutSeconds,
+    this.idleTimeoutSeconds,
     this.shellExecutable,
     this.shellArgs,
     this.shellCommandPrefix,
@@ -19,7 +20,8 @@ class AgentConfigOverride {
   final String? defaultModel;
   final List<String>? additionalArgs;
   final Map<String, String>? env;
-  final int? timeoutSeconds;
+  final int? hardTimeoutSeconds;
+  final int? idleTimeoutSeconds;
   final String? shellExecutable;
   final List<String>? shellArgs;
   final String? shellCommandPrefix;
@@ -35,8 +37,11 @@ class AgentConfigOverride {
       env: (json['env'] as Map?)?.map(
         (key, value) => MapEntry(key.toString(), value.toString()),
       ),
-      timeoutSeconds: json['timeout_seconds'] is int
-          ? json['timeout_seconds'] as int
+      hardTimeoutSeconds: json['hard_timeout_seconds'] is int
+          ? json['hard_timeout_seconds'] as int
+          : null,
+      idleTimeoutSeconds: json['idle_timeout_seconds'] is int
+          ? json['idle_timeout_seconds'] as int
           : null,
       shellExecutable: json['shell_executable'] as String?,
       shellArgs: (json['shell_args'] as List?)?.whereType<String>().toList(),
@@ -54,7 +59,10 @@ class AgentConfigOverride {
     if (defaultModel != null) 'default_model': defaultModel,
     if (additionalArgs != null) 'additional_args': additionalArgs,
     if (env != null) 'env': env,
-    if (timeoutSeconds != null) 'timeout_seconds': timeoutSeconds,
+    if (hardTimeoutSeconds != null)
+      'hard_timeout_seconds': hardTimeoutSeconds,
+    if (idleTimeoutSeconds != null)
+      'idle_timeout_seconds': idleTimeoutSeconds,
     if (shellExecutable != null) 'shell_executable': shellExecutable,
     if (shellArgs != null) 'shell_args': shellArgs,
     if (shellCommandPrefix != null) 'shell_command_prefix': shellCommandPrefix,

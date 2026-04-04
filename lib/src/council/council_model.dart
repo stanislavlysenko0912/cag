@@ -108,7 +108,7 @@ class CouncilParticipantResult {
   CouncilParticipantResult({
     required this.participant,
     required this.response,
-    this.error,
+    this.failure,
   });
 
   /// Participant details.
@@ -117,18 +117,18 @@ class CouncilParticipantResult {
   /// Parsed response.
   final ParsedResponse? response;
 
-  /// Error message when execution failed.
-  final String? error;
+  /// Structured failure when execution failed.
+  final AgentFailure? failure;
 
   /// Whether the participant succeeded.
-  bool get success => error == null && response != null;
+  bool get success => failure == null && response != null;
 
   /// Converts the result to JSON.
   Map<String, dynamic> toJson() => {
     'participant': participant.toJson(),
     'success': success,
     if (response != null) 'response': response!.toJson(),
-    if (error != null) 'error': error,
+    if (failure != null) 'failure': failure!.toJson(),
   };
 
   /// Builds a participant result from JSON.
@@ -138,7 +138,7 @@ class CouncilParticipantResult {
         json['participant'] as Map<String, dynamic>,
       ),
       response: _parseResponse(json['response']),
-      error: json['error'] as String?,
+      failure: _parseFailure(json['failure']),
     );
   }
 }
@@ -149,7 +149,7 @@ class CouncilReviewResult {
   CouncilReviewResult({
     required this.participant,
     required this.response,
-    this.error,
+    this.failure,
   });
 
   /// Participant details.
@@ -158,18 +158,18 @@ class CouncilReviewResult {
   /// Parsed response.
   final ParsedResponse? response;
 
-  /// Error message when execution failed.
-  final String? error;
+  /// Structured failure when execution failed.
+  final AgentFailure? failure;
 
   /// Whether the review succeeded.
-  bool get success => error == null && response != null;
+  bool get success => failure == null && response != null;
 
   /// Converts the result to JSON.
   Map<String, dynamic> toJson() => {
     'participant': participant.toJson(),
     'success': success,
     if (response != null) 'response': response!.toJson(),
-    if (error != null) 'error': error,
+    if (failure != null) 'failure': failure!.toJson(),
   };
 
   /// Builds a review result from JSON.
@@ -179,7 +179,7 @@ class CouncilReviewResult {
         json['participant'] as Map<String, dynamic>,
       ),
       response: _parseResponse(json['response']),
-      error: json['error'] as String?,
+      failure: _parseFailure(json['failure']),
     );
   }
 }
@@ -190,7 +190,7 @@ class CouncilChairmanResult {
   CouncilChairmanResult({
     required this.chairman,
     required this.response,
-    this.error,
+    this.failure,
   });
 
   /// Chairman details.
@@ -199,18 +199,18 @@ class CouncilChairmanResult {
   /// Parsed response.
   final ParsedResponse? response;
 
-  /// Error message when execution failed.
-  final String? error;
+  /// Structured failure when execution failed.
+  final AgentFailure? failure;
 
   /// Whether the chairman synthesis succeeded.
-  bool get success => error == null && response != null;
+  bool get success => failure == null && response != null;
 
   /// Converts the result to JSON.
   Map<String, dynamic> toJson() => {
     'chairman': chairman.toJson(),
     'success': success,
     if (response != null) 'response': response!.toJson(),
-    if (error != null) 'error': error,
+    if (failure != null) 'failure': failure!.toJson(),
   };
 
   /// Builds a chairman result from JSON.
@@ -220,7 +220,7 @@ class CouncilChairmanResult {
         json['chairman'] as Map<String, dynamic>,
       ),
       response: _parseResponse(json['response']),
-      error: json['error'] as String?,
+      failure: _parseFailure(json['failure']),
     );
   }
 }
@@ -361,4 +361,11 @@ ParsedResponse? _parseResponse(Object? value) {
     content: value['content'] as String,
     metadata: (value['metadata'] as Map?)?.cast<String, dynamic>() ?? const {},
   );
+}
+
+AgentFailure? _parseFailure(Object? value) {
+  if (value is! Map<String, dynamic>) {
+    return null;
+  }
+  return AgentFailure.fromJson(value);
 }

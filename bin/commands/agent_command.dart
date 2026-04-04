@@ -87,11 +87,10 @@ class AgentCommand extends Command<void> {
       } else {
         _printTextResponse(response, includeMeta: includeMeta);
       }
-    } on ParserException catch (e) {
-      stderr.writeln('Parse error: $e');
-      exit(1);
-    } on CLIRunnerException catch (e) {
-      stderr.writeln('Execution error: $e');
+    } on AgentExecutionException catch (e) {
+      stderr.writeln(
+        'Execution error [${e.failure.summary}]: ${e.failure.message}',
+      );
       exit(1);
     }
   }

@@ -134,11 +134,10 @@ Council runs are persisted for inspection and follow-up.''';
     } on ArgumentError catch (error) {
       stderr.writeln('Error: ${error.message}');
       exit(1);
-    } on ParserException catch (error) {
-      stderr.writeln('Parse error: $error');
-      exit(1);
-    } on CLIRunnerException catch (error) {
-      stderr.writeln('Execution error: $error');
+    } on AgentExecutionException catch (error) {
+      stderr.writeln(
+        'Execution error [${error.failure.summary}]: ${error.failure.message}',
+      );
       exit(1);
     }
   }
@@ -205,7 +204,7 @@ Council runs are persisted for inspection and follow-up.''';
       }
       print(result.response!.content);
     } else {
-      print('ERROR: ${result.error}');
+      OutputFormatter.printFailure(result.failure!);
     }
     print('');
   }
@@ -220,7 +219,7 @@ Council runs are persisted for inspection and follow-up.''';
     if (result.success && result.response != null) {
       print(result.response!.content);
     } else {
-      print('ERROR: ${result.error}');
+      OutputFormatter.printFailure(result.failure!);
     }
     print('');
   }
@@ -234,7 +233,7 @@ Council runs are persisted for inspection and follow-up.''';
     if (result.success && result.response != null) {
       print(result.response!.content);
     } else {
-      print('ERROR: ${result.error}');
+      OutputFormatter.printFailure(result.failure!);
     }
     print('');
   }

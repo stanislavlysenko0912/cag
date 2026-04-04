@@ -14,7 +14,8 @@ class CursorAgent extends BaseAgent {
     defaultModel:
         AgentModelRegistry.defaultModelName('cursor') ?? 'composer-2-fast',
     additionalArgs: ['--print', '--output-format', 'json', '--force'],
-    timeoutSeconds: 1800,
+    hardTimeoutSeconds: 1800,
+    idleTimeoutSeconds: 900,
   );
 
   static final _defaultConfig = defaultConfig;

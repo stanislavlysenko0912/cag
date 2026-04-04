@@ -2,8 +2,10 @@ import '../models/models.dart';
 
 /// Exception thrown when CLI output cannot be parsed.
 class ParserException implements Exception {
-  ParserException(this.message);
+  ParserException(this.message, {this.reason = AgentExitReason.parseError});
+
   final String message;
+  final AgentExitReason reason;
 
   @override
   String toString() => 'ParserException: $message';

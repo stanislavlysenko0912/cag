@@ -1,4 +1,5 @@
-/// Shared output formatting for CLI commands.
+import 'package:cag/cag.dart';
+
 class OutputFormatter {
   /// Prints a session start header with session_id.
   static void printSessionStart(String sessionId) {
@@ -37,21 +38,13 @@ class OutputFormatter {
   }
 
   /// Prints a participant header with agent, model, and stance.
-  static void printParticipantHeader({
-    required String agent,
-    required String model,
-    required String stance,
-  }) {
-    final header =
-        '=== ${agent.toUpperCase()} ($model) [${stance.toUpperCase()}] ===';
+  static void printParticipantHeader({required String agent, required String model, required String stance}) {
+    final header = '=== ${agent.toUpperCase()} ($model) [${stance.toUpperCase()}] ===';
     print(header);
   }
 
   /// Prints a participant header for compare runs.
-  static void printCompareParticipantHeader({
-    required String agent,
-    required String model,
-  }) {
+  static void printCompareParticipantHeader({required String agent, required String model}) {
     print('=== ${agent.toUpperCase()} ($model) ===');
   }
 
@@ -63,5 +56,14 @@ class OutputFormatter {
     final hour = local.hour.toString().padLeft(2, '0');
     final minute = local.minute.toString().padLeft(2, '0');
     return '${local.year}-$month-$day $hour:$minute';
+  }
+
+  static String formatFailure(AgentFailure failure) {
+    return '${failure.summary}: ${failure.message}';
+  }
+
+  static void printFailure(AgentFailure failure) {
+    print('ERROR [${failure.summary}]');
+    print(failure.message);
   }
 }

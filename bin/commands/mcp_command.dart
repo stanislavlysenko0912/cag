@@ -5,6 +5,8 @@ import 'package:args/command_runner.dart';
 import 'package:cag/cag.dart';
 import 'package:mcp_dart/mcp_dart.dart';
 
+import 'output_formatter.dart';
+
 const String _appVersion = String.fromEnvironment(
   'APP_VERSION',
   defaultValue: 'unknown',
@@ -487,10 +489,10 @@ Future<McpServer> _buildServer() async {
           if (verbose) 'verbose_data': _minimalResponse(response),
         };
         return CallToolResult.fromStructuredContent(output);
-      } on ParserException catch (e) {
-        return _errorResult('Parse error: $e');
-      } on CLIRunnerException catch (e) {
-        return _errorResult('Execution error: $e');
+      } on AgentExecutionException catch (e) {
+        return _errorResult(
+          'Execution error [${e.failure.summary}]: ${e.failure.message}',
+        );
       }
     },
   );
@@ -568,10 +570,10 @@ Future<McpServer> _buildServer() async {
         return CallToolResult.fromStructuredContent(output);
       } on ArgumentError catch (e) {
         return _errorResult(e.message ?? e.toString());
-      } on ParserException catch (e) {
-        return _errorResult('Parse error: $e');
-      } on CLIRunnerException catch (e) {
-        return _errorResult('Execution error: $e');
+      } on AgentExecutionException catch (e) {
+        return _errorResult(
+          'Execution error [${e.failure.summary}]: ${e.failure.message}',
+        );
       }
     },
   );
@@ -700,7 +702,7 @@ Future<McpServer> _buildServer() async {
               'participant': r.participant.toJson(),
               'success': r.success,
               if (r.response != null) 'response': _minimalResponse(r.response!),
-              if (r.error != null) 'error': r.error,
+              if (r.failure != null) 'failure': r.failure!.toJson(),
             };
           }).toList(),
         };
@@ -712,10 +714,10 @@ Future<McpServer> _buildServer() async {
         });
       } on ArgumentError catch (e) {
         return _errorResult(e.message ?? e.toString());
-      } on ParserException catch (e) {
-        return _errorResult('Parse error: $e');
-      } on CLIRunnerException catch (e) {
-        return _errorResult('Execution error: $e');
+      } on AgentExecutionException catch (e) {
+        return _errorResult(
+          'Execution error [${e.failure.summary}]: ${e.failure.message}',
+        );
       }
     },
   );
@@ -844,10 +846,10 @@ Future<McpServer> _buildServer() async {
         });
       } on ArgumentError catch (e) {
         return _errorResult(e.message ?? e.toString());
-      } on ParserException catch (e) {
-        return _errorResult('Parse error: $e');
-      } on CLIRunnerException catch (e) {
-        return _errorResult('Execution error: $e');
+      } on AgentExecutionException catch (e) {
+        return _errorResult(
+          'Execution error [${e.failure.summary}]: ${e.failure.message}',
+        );
       }
     },
   );
@@ -950,12 +952,12 @@ String _formatCompareOutput(CompareRun run) {
         buffer.writeln('session_id: ${participant.sessionId}');
         buffer.writeln('----');
       }
-      final response = result.response?['content'] as String?;
-      if (response != null) {
-        buffer.writeln(response);
+      if (result.response != null) {
+        buffer.writeln(result.response!.content);
       }
     } else {
-      buffer.writeln('ERROR: ${result.error}');
+      buffer.writeln('ERROR [${result.failure!.summary}]');
+      buffer.writeln(result.failure!.message);
     }
     buffer.writeln();
   }
@@ -1012,7 +1014,8 @@ String _formatConsensusOutput(ConsensusResult result) {
       }
       buffer.writeln(entry.response!.content);
     } else {
-      buffer.writeln('ERROR: ${entry.error}');
+      buffer.writeln('ERROR [${entry.failure!.summary}]');
+      buffer.writeln(entry.failure!.message);
     }
     buffer.writeln();
   }
@@ -1020,12 +1023,14 @@ String _formatConsensusOutput(ConsensusResult result) {
   buffer.writeln('==== SUMMARY ====');
   buffer.writeln('Total: ${result.results.length}');
   buffer.writeln('Succeeded: ${result.successful.length}');
-  if (result.failed.isNotEmpty) {
-    buffer.writeln('Failed: ${result.failed.length}');
-    for (final failed in result.failed) {
-      buffer.writeln('  - ${failed.participant.agent}: ${failed.error}');
+    if (result.failed.isNotEmpty) {
+      buffer.writeln('Failed: ${result.failed.length}');
+      for (final failed in result.failed) {
+        buffer.writeln(
+          '  - ${failed.participant.agent}: ${OutputFormatter.formatFailure(failed.failure!)}',
+        );
+      }
     }
-  }
 
   return buffer.toString().trimRight();
 }
@@ -1054,7 +1059,8 @@ String _formatCouncilOutput(
         }
         buffer.writeln(answer.response!.content);
       } else {
-        buffer.writeln('ERROR: ${answer.error}');
+        buffer.writeln('ERROR [${answer.failure!.summary}]');
+        buffer.writeln(answer.failure!.message);
       }
       buffer.writeln();
     }
@@ -1069,7 +1075,8 @@ String _formatCouncilOutput(
     if (review.success) {
       buffer.writeln(review.response!.content);
     } else {
-      buffer.writeln('ERROR: ${review.error}');
+      buffer.writeln('ERROR [${review.failure!.summary}]');
+      buffer.writeln(review.failure!.message);
     }
     buffer.writeln();
   }
@@ -1081,7 +1088,8 @@ String _formatCouncilOutput(
   if (result.chairmanResult.success) {
     buffer.writeln(result.chairmanResult.response!.content);
   } else {
-    buffer.writeln('ERROR: ${result.chairmanResult.error}');
+    buffer.writeln('ERROR [${result.chairmanResult.failure!.summary}]');
+    buffer.writeln(result.chairmanResult.failure!.message);
   }
   buffer.writeln();
 

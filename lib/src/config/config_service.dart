@@ -3,11 +3,11 @@ import 'dart:io';
 
 import 'package:json_schema/json_schema.dart';
 
+import '../../gen/config_schema.dart';
 import '../models/models.dart';
 import '../utils/app_paths.dart';
 import 'agent_config_override.dart';
 import 'app_config.dart';
-import 'package:cag/gen/config_schema.dart';
 
 class ConfigService {
   Future<AppConfig> loadOrCreate() async {
@@ -31,6 +31,13 @@ class ConfigService {
     } on FormatException {
       stderr.writeln('Config parse error: ${file.path}');
       return AppConfig.defaults();
+    }
+
+    final migrated = _migrateLegacyConfig(json);
+    if (migrated) {
+      await file.parent.create(recursive: true);
+      final normalized = const JsonEncoder.withIndent('  ').convert(json);
+      await file.writeAsString('$normalized\n');
     }
 
     final isValid = await _validateConfig(json);
@@ -77,7 +84,10 @@ class ConfigService {
       defaultModel: overrides.defaultModel ?? base.defaultModel,
       additionalArgs: overrides.additionalArgs ?? base.additionalArgs,
       env: overrides.env ?? base.env,
-      timeoutSeconds: overrides.timeoutSeconds ?? base.timeoutSeconds,
+      hardTimeoutSeconds:
+          overrides.hardTimeoutSeconds ?? base.hardTimeoutSeconds,
+      idleTimeoutSeconds:
+          overrides.idleTimeoutSeconds ?? base.idleTimeoutSeconds,
       shellExecutable: overrides.shellExecutable ?? base.shellExecutable,
       shellArgs: overrides.shellArgs ?? base.shellArgs,
       shellCommandPrefix:
@@ -125,5 +135,31 @@ class ConfigService {
     await file.parent.create(recursive: true);
     final json = const JsonEncoder.withIndent('  ').convert(config.toJson());
     await file.writeAsString('$json\n');
+  }
+
+  bool _migrateLegacyConfig(Map<String, dynamic> json) {
+    final rawAgents = json['agents'];
+    if (rawAgents is! Map<String, dynamic>) {
+      return false;
+    }
+
+    var changed = false;
+    for (final entry in rawAgents.entries) {
+      final value = entry.value;
+      if (value is! Map<String, dynamic>) {
+        continue;
+      }
+
+      final legacyTimeout = value.remove('timeout_seconds');
+      if (legacyTimeout is! int) {
+        continue;
+      }
+
+      value.putIfAbsent('hard_timeout_seconds', () => legacyTimeout);
+      value.putIfAbsent('idle_timeout_seconds', () => legacyTimeout);
+      changed = true;
+    }
+
+    return changed;
   }
 }

@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:uuid/uuid.dart';
 
 import '../agents/agents.dart';
+import '../models/agent_execution.dart';
+import '../models/models.dart';
 import 'council_model.dart';
 import 'council_prompt.dart';
 import 'council_storage.dart';
@@ -102,11 +104,20 @@ class CouncilRunner {
         participant: participant.copyWith(sessionId: response.sessionId),
         response: response,
       );
+    } on AgentExecutionException catch (error) {
+      return CouncilParticipantResult(
+        participant: participant,
+        response: null,
+        failure: error.failure,
+      );
     } catch (error) {
       return CouncilParticipantResult(
         participant: participant,
         response: null,
-        error: error.toString(),
+        failure: AgentFailure(
+          reason: AgentExitReason.crash,
+          message: error.toString(),
+        ),
       );
     }
   }
@@ -138,7 +149,10 @@ class CouncilRunner {
       return CouncilReviewResult(
         participant: participant,
         response: null,
-        error: 'Stage 1 response missing for ${participant.agent}',
+        failure: AgentFailure(
+          reason: AgentExitReason.crash,
+          message: 'Stage 1 response missing for ${participant.agent}',
+        ),
       );
     }
 
@@ -154,11 +168,20 @@ class CouncilRunner {
         resume: null,
       );
       return CouncilReviewResult(participant: participant, response: response);
+    } on AgentExecutionException catch (error) {
+      return CouncilReviewResult(
+        participant: participant,
+        response: null,
+        failure: error.failure,
+      );
     } catch (error) {
       return CouncilReviewResult(
         participant: participant,
         response: null,
-        error: error.toString(),
+        failure: AgentFailure(
+          reason: AgentExitReason.crash,
+          message: error.toString(),
+        ),
       );
     }
   }
@@ -182,11 +205,20 @@ class CouncilRunner {
         resume: null,
       );
       return CouncilChairmanResult(chairman: chairman, response: response);
+    } on AgentExecutionException catch (error) {
+      return CouncilChairmanResult(
+        chairman: chairman,
+        response: null,
+        failure: error.failure,
+      );
     } catch (error) {
       return CouncilChairmanResult(
         chairman: chairman,
         response: null,
-        error: error.toString(),
+        failure: AgentFailure(
+          reason: AgentExitReason.crash,
+          message: error.toString(),
+        ),
       );
     }
   }
@@ -229,7 +261,7 @@ class CouncilRunner {
       final label = 'ans_${index + 1}';
       final content = result.success && result.response != null
           ? result.response!.content.trim()
-          : 'ERROR: ${result.error}';
+          : 'ERROR: ${result.failure}';
       chairmanAnswers.add(
         CouncilAnswer(
           answerId: label,
@@ -249,7 +281,7 @@ class CouncilRunner {
     for (final review in reviews) {
       final content = review.success && review.response != null
           ? review.response!.content.trim()
-          : 'ERROR: ${review.error}';
+          : 'ERROR: ${review.failure}';
       chairmanReviews.add(
         CouncilReview(
           reviewerLabel:

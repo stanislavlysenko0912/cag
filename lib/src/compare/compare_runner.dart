@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:uuid/uuid.dart';
 
 import '../agents/agents.dart';
+import '../models/agent_execution.dart';
+import '../models/models.dart';
 import 'compare_model.dart';
 import 'compare_storage.dart';
 
@@ -78,14 +80,20 @@ class CompareRunner {
       );
       return CompareParticipantResult(
         participant: participant.copyWith(sessionId: response.sessionId),
-        success: true,
-        response: response.toJson(),
+        response: response,
+      );
+    } on AgentExecutionException catch (error) {
+      return CompareParticipantResult(
+        participant: participant,
+        failure: error.failure,
       );
     } catch (error) {
       return CompareParticipantResult(
         participant: participant,
-        success: false,
-        error: error.toString(),
+        failure: AgentFailure(
+          reason: AgentExitReason.crash,
+          message: error.toString(),
+        ),
       );
     }
   }

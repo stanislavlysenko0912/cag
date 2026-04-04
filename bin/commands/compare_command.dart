@@ -112,11 +112,10 @@ class CompareCommand extends Command<void> {
     } on ArgumentError catch (error) {
       stderr.writeln('Error: ${error.message}');
       exit(1);
-    } on ParserException catch (error) {
-      stderr.writeln('Parse error: $error');
-      exit(1);
-    } on CLIRunnerException catch (error) {
-      stderr.writeln('Execution error: $error');
+    } on AgentExecutionException catch (error) {
+      stderr.writeln(
+        'Execution error [${error.failure.summary}]: ${error.failure.message}',
+      );
       exit(1);
     }
   }
@@ -165,12 +164,11 @@ class CompareCommand extends Command<void> {
         if (participant.sessionId != null) {
           OutputFormatter.printSessionStart(participant.sessionId!);
         }
-        final response = result.response?['content'] as String?;
-        if (response != null) {
-          print(response);
+        if (result.response != null) {
+          print(result.response!.content);
         }
       } else {
-        print('ERROR: ${result.error}');
+        OutputFormatter.printFailure(result.failure!);
       }
       print('');
     }

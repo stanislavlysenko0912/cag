@@ -20,7 +20,8 @@ class CodexAgent extends BaseAgent {
       '--json',
       '--skip-git-repo-check',
     ],
-    timeoutSeconds: 1800,
+    hardTimeoutSeconds: 1800,
+    idleTimeoutSeconds: 900,
   );
 
   static final _defaultConfig = defaultConfig;

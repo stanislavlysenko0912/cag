@@ -1,3 +1,5 @@
+import '../models/models.dart';
+
 /// A model participating in compare.
 class CompareParticipant {
   /// Creates a compare participant definition.
@@ -100,30 +102,29 @@ class CompareParticipantResult {
   /// Creates a compare participant result.
   CompareParticipantResult({
     required this.participant,
-    required this.success,
     this.response,
-    this.error,
+    this.failure,
   });
 
   /// Participant details.
   final CompareParticipant participant;
 
-  /// Whether execution succeeded.
-  final bool success;
-
   /// Parsed response when successful.
-  final Map<String, dynamic>? response;
+  final ParsedResponse? response;
 
-  /// Error message when execution failed.
-  final String? error;
+  /// Structured failure when execution failed.
+  final AgentFailure? failure;
+
+  /// Whether execution succeeded.
+  bool get success => failure == null && response != null;
 
   /// Convert result to JSON.
   Map<String, dynamic> toJson() => {
     'participant': participant.toJson(),
     'success': success,
-    if (response != null) 'response': response,
+    if (response != null) 'response': response!.toJson(),
     if (participant.sessionId != null) 'session_id': participant.sessionId,
-    if (error != null) 'error': error,
+    if (failure != null) 'failure': failure!.toJson(),
   };
 
   /// Build result from JSON.
@@ -133,9 +134,8 @@ class CompareParticipantResult {
     );
     return CompareParticipantResult(
       participant: participant,
-      success: json['success'] as bool,
-      response: json['response'] as Map<String, dynamic>?,
-      error: json['error'] as String?,
+      response: _parseResponse(json['response']),
+      failure: _parseFailure(json['failure']),
     );
   }
 }
@@ -202,9 +202,7 @@ class CompareRun {
     'status': status,
     'title': title,
     'prompt': prompt,
-    'participants': participants
-        .map((participant) => participant.toJson())
-        .toList(),
+    'participants': participants.map((participant) => participant.toJson()).toList(),
     'results': results.map((result) => result.toJson()).toList(),
     'created_at': createdAt.toIso8601String(),
     'updated_at': updatedAt.toIso8601String(),
@@ -243,10 +241,25 @@ class CompareRun {
     'updated_at': updatedAt.toIso8601String(),
     'status': status,
     'title': title,
-    'participants': participants
-        .map((participant) => participant.toString())
-        .toList(),
+    'participants': participants.map((participant) => participant.toString()).toList(),
     'success_count': successCount,
     'failure_count': failureCount,
   };
+}
+
+ParsedResponse? _parseResponse(Object? value) {
+  if (value is! Map<String, dynamic>) {
+    return null;
+  }
+  return ParsedResponse(
+    content: value['content'] as String,
+    metadata: (value['metadata'] as Map?)?.cast<String, dynamic>() ?? const {},
+  );
+}
+
+AgentFailure? _parseFailure(Object? value) {
+  if (value is! Map<String, dynamic>) {
+    return null;
+  }
+  return AgentFailure.fromJson(value);
 }

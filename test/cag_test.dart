@@ -241,7 +241,8 @@ void main() {
 
       expect(config.name, equals('test'));
 
-      expect(config.timeoutSeconds, equals(1800));
+      expect(config.hardTimeoutSeconds, equals(1800));
+      expect(config.idleTimeoutSeconds, equals(900));
 
       expect(config.additionalArgs, isEmpty);
     });
@@ -511,11 +512,10 @@ void main() {
               model: 'pro',
               sessionId: 's1',
             ),
-            success: true,
-            response: {
-              'content': 'hello',
-              'metadata': {'session_id': 's1'},
-            },
+            response: ParsedResponse(
+              content: 'hello',
+              metadata: {'session_id': 's1'},
+            ),
           ),
         ],
         createdAt: DateTime.now(),
@@ -621,7 +621,7 @@ void main() {
       expect(run.status, equals('partial_failure'));
       expect(run.successCount, equals(1));
       expect(run.failureCount, equals(1));
-      expect(run.results.last.error, contains('codex failed'));
+      expect(run.results.last.failure?.message, contains('codex failed'));
     });
   });
 
@@ -713,7 +713,10 @@ void main() {
               (participant) => CouncilParticipantResult(
                 participant: participant,
                 response: null,
-                error: 'failed',
+                failure: AgentFailure(
+                  reason: AgentExitReason.crash,
+                  message: 'failed',
+                ),
               ),
             )
             .toList(),
@@ -722,14 +725,20 @@ void main() {
               (participant) => CouncilReviewResult(
                 participant: participant,
                 response: null,
-                error: 'failed',
+                failure: AgentFailure(
+                  reason: AgentExitReason.crash,
+                  message: 'failed',
+                ),
               ),
             )
             .toList(),
         chairmanResult: CouncilChairmanResult(
           chairman: chairman,
           response: null,
-          error: 'failed',
+          failure: AgentFailure(
+            reason: AgentExitReason.crash,
+            message: 'failed',
+          ),
         ),
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
@@ -817,8 +826,11 @@ void main() {
       );
 
       expect(run.status, equals('partial_failure'));
-      expect(run.answers.last.error, contains('codex failed'));
-      expect(run.reviews.last.error, contains('Stage 1 response missing'));
+      expect(run.answers.last.failure?.message, contains('codex failed'));
+      expect(
+        run.reviews.last.failure?.message,
+        contains('Stage 1 response missing'),
+      );
     });
   });
 
@@ -881,7 +893,12 @@ CouncilRun _buildCouncilRun({
                 metadata: {'session_id': 's1'},
               )
             : null,
-        error: answerError,
+        failure: answerError == null
+            ? null
+            : AgentFailure(
+                reason: AgentExitReason.crash,
+                message: answerError,
+              ),
       ),
       CouncilParticipantResult(
         participant: secondParticipant,

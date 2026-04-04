@@ -12,7 +12,10 @@ class CursorParser extends BaseParser {
   ParsedResponse parse({required String stdout, required String stderr}) {
     final trimmed = stdout.trim();
     if (trimmed.isEmpty) {
-      throw ParserException('Cursor Agent CLI returned empty stdout');
+      throw ParserException(
+        'Cursor Agent CLI returned empty stdout',
+        reason: AgentExitReason.emptyResponse,
+      );
     }
 
     final Map<String, dynamic> payload;
@@ -25,7 +28,10 @@ class CursorParser extends BaseParser {
     final result = payload['result'] as String?;
     final content = result?.trim() ?? '';
     if (content.isEmpty) {
-      throw ParserException('Cursor Agent JSON missing non-empty result');
+      throw ParserException(
+        'Cursor Agent JSON missing non-empty result',
+        reason: AgentExitReason.emptyResponse,
+      );
     }
 
     final metadata = <String, dynamic>{'raw': payload};

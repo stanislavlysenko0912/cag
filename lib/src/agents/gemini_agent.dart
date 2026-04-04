@@ -18,7 +18,8 @@ class GeminiAgent extends BaseAgent {
         AgentModelRegistry.defaultModelName('gemini') ??
         'gemini-3-flash-preview',
     additionalArgs: ['-o', 'json', '--yolo'],
-    timeoutSeconds: 1800,
+    hardTimeoutSeconds: 1800,
+    idleTimeoutSeconds: 900,
   );
 
   static final _defaultConfig = defaultConfig;

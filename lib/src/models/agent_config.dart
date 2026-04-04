@@ -10,7 +10,8 @@ class AgentConfig {
     this.defaultModel,
     this.additionalArgs = const [],
     this.env = const {},
-    this.timeoutSeconds = 1800,
+    this.hardTimeoutSeconds = 1800,
+    this.idleTimeoutSeconds = 900,
     this.shellExecutable,
     this.shellArgs = const [],
     this.shellCommandPrefix,
@@ -38,8 +39,11 @@ class AgentConfig {
   /// Environment variables for the process.
   final Map<String, String> env;
 
-  /// Timeout in seconds.
-  final int timeoutSeconds;
+  /// Hard timeout in seconds.
+  final int hardTimeoutSeconds;
+
+  /// Idle timeout in seconds.
+  final int idleTimeoutSeconds;
 
   /// Optional shell executable (e.g., /bin/zsh, cmd).
   final String? shellExecutable;

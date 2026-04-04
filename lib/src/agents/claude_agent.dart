@@ -20,7 +20,8 @@ class ClaudeAgent extends BaseAgent {
       '--permission-mode',
       'acceptEdits',
     ],
-    timeoutSeconds: 1800,
+    hardTimeoutSeconds: 1800,
+    idleTimeoutSeconds: 900,
   );
 
   static final _defaultConfig = defaultConfig;
