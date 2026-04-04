@@ -1,4 +1,5 @@
 import '../models/models.dart';
+import '../utils/participant_parser.dart';
 
 /// A model participating in compare.
 class CompareParticipant {
@@ -44,35 +45,13 @@ class CompareParticipant {
       'cursor',
     ],
   }) {
-    final parts = input.split(':');
-    if (parts.length != 2) {
-      throw ArgumentError(
-        'Invalid format: "$input". Expected: agent:model (e.g., agent:model)',
-      );
-    }
-
-    final agent = parts[0].trim().toLowerCase();
-    final model = parts[1].trim();
-
-    if (agent.isEmpty) {
-      throw ArgumentError('Agent cannot be empty in: "$input"');
-    }
-    if (model.isEmpty) {
-      throw ArgumentError('Model cannot be empty in: "$input"');
-    }
-
-    final validAgents = allowedAgents
-        .map((value) => value.toLowerCase())
-        .toSet();
-    if (validAgents.isEmpty) {
-      throw ArgumentError('No agents are enabled.');
-    }
-    if (!validAgents.contains(agent)) {
-      final allowed = validAgents.toList()..sort();
-      throw ArgumentError('Invalid agent: $agent. Use: ${allowed.join(', ')}');
-    }
-
-    return CompareParticipant(agent: agent, model: model);
+    final parsed = ParticipantParser.parse(
+      input: input,
+      expectedParts: 2,
+      expectedFormat: 'agent:model (e.g., agent:model)',
+      allowedAgents: allowedAgents,
+    );
+    return CompareParticipant(agent: parsed.agent, model: parsed.model);
   }
 
   /// Convert participant to JSON.
@@ -202,7 +181,9 @@ class CompareRun {
     'status': status,
     'title': title,
     'prompt': prompt,
-    'participants': participants.map((participant) => participant.toJson()).toList(),
+    'participants': participants
+        .map((participant) => participant.toJson())
+        .toList(),
     'results': results.map((result) => result.toJson()).toList(),
     'created_at': createdAt.toIso8601String(),
     'updated_at': updatedAt.toIso8601String(),
@@ -241,7 +222,9 @@ class CompareRun {
     'updated_at': updatedAt.toIso8601String(),
     'status': status,
     'title': title,
-    'participants': participants.map((participant) => participant.toString()).toList(),
+    'participants': participants
+        .map((participant) => participant.toString())
+        .toList(),
     'success_count': successCount,
     'failure_count': failureCount,
   };

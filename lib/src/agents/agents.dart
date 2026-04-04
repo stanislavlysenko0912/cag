@@ -1,3 +1,4 @@
+export 'agent_registry.dart';
 export 'base_agent.dart';
 export 'claude_agent.dart';
 export 'codex_agent.dart';

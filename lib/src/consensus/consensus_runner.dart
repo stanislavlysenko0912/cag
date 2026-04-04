@@ -46,16 +46,15 @@ class ConsensusRunner {
     CursorAgent? cursorAgent,
     ClaudeAgent? claudeAgent,
   }) : _storage = storage ?? ConsensusStorage(),
-       _geminiAgent = geminiAgent ?? GeminiAgent(),
-       _codexAgent = codexAgent ?? CodexAgent(),
-       _cursorAgent = cursorAgent ?? CursorAgent(),
-       _claudeAgent = claudeAgent ?? ClaudeAgent();
+       _agentRegistry = AgentRegistry(
+         geminiAgent: geminiAgent,
+         codexAgent: codexAgent,
+         cursorAgent: cursorAgent,
+         claudeAgent: claudeAgent,
+       );
 
   final ConsensusStorage _storage;
-  final GeminiAgent _geminiAgent;
-  final CodexAgent _codexAgent;
-  final CursorAgent _cursorAgent;
-  final ClaudeAgent _claudeAgent;
+  final AgentRegistry _agentRegistry;
 
   static const _uuid = Uuid();
 
@@ -71,17 +70,6 @@ class ConsensusRunner {
     final stancePrompt =
         participant.stancePrompt ?? stancePrompts[participant.stance] ?? '';
     return consensusPrompt.replaceAll('{stance_prompt}', stancePrompt);
-  }
-
-  /// Get agent for participant.
-  BaseAgent _getAgent(String agentName) {
-    return switch (agentName) {
-      'gemini' => _geminiAgent,
-      'codex' => _codexAgent,
-      'cursor' => _cursorAgent,
-      'claude' => _claudeAgent,
-      _ => throw ArgumentError('Unknown agent: $agentName'),
-    };
   }
 
   /// Run a new consensus.
@@ -167,7 +155,7 @@ class ConsensusRunner {
   }) async {
     final futures = participants.map((p) async {
       try {
-        final agent = _getAgent(p.agent);
+        final agent = _agentRegistry.get(p.agent);
         final systemPrompt = buildSystemPrompt(p);
 
         final response = await agent.execute(

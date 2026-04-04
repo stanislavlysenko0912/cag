@@ -1,3 +1,5 @@
+import '../utils/participant_parser.dart';
+
 /// Stance for a model in consensus.
 enum ConsensusStance {
   /// Supportive perspective - find benefits and reasons to proceed.
@@ -69,39 +71,17 @@ class ConsensusParticipant {
       'cursor',
     ],
   }) {
-    final parts = input.split(':');
-    if (parts.length != 3) {
-      throw ArgumentError(
-        'Invalid format: "$input". Expected: agent:model:stance (e.g., agent:model:for)',
-      );
-    }
-
-    final agent = parts[0].trim().toLowerCase();
-    final model = parts[1].trim();
-    final stance = parts[2].trim().toLowerCase();
-
-    if (agent.isEmpty) {
-      throw ArgumentError('Agent cannot be empty in: "$input"');
-    }
-    if (model.isEmpty) {
-      throw ArgumentError('Model cannot be empty in: "$input"');
-    }
-
-    final validAgents = allowedAgents
-        .map((value) => value.toLowerCase())
-        .toSet();
-    if (validAgents.isEmpty) {
-      throw ArgumentError('No agents are enabled.');
-    }
-    if (!validAgents.contains(agent)) {
-      final allowed = validAgents.toList()..sort();
-      throw ArgumentError('Invalid agent: $agent. Use: ${allowed.join(', ')}');
-    }
+    final parsed = ParticipantParser.parse(
+      input: input,
+      expectedParts: 3,
+      expectedFormat: 'agent:model:stance (e.g., agent:model:for)',
+      allowedAgents: allowedAgents,
+    );
 
     return ConsensusParticipant(
-      agent: agent,
-      model: model,
-      stance: ConsensusStance.fromString(stance),
+      agent: parsed.agent,
+      model: parsed.model,
+      stance: ConsensusStance.fromString(parsed.extraParts.single),
     );
   }
 

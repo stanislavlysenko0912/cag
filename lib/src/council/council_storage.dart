@@ -1,72 +1,31 @@
-import 'dart:convert';
-import 'dart:io';
-
 import '../utils/app_paths.dart';
+import '../utils/base_jsonl_storage.dart';
 import 'council_model.dart';
 
 /// Storage for council runs using JSONL format.
 class CouncilStorage {
   /// Creates council storage.
   CouncilStorage({String? storagePath})
-    : _storagePath = storagePath ?? AppPaths.councilPath();
+    : _storage = BaseJsonlStorage<CouncilRun>(
+        storagePath: storagePath ?? AppPaths.councilPath(),
+        fromJson: CouncilRun.fromJson,
+        toJson: (run) => run.toJson(),
+        getId: (run) => run.councilId,
+      );
 
-  final String _storagePath;
-
-  File get _file => File(_storagePath);
-
-  Future<void> _ensureDirectory() async {
-    final dir = _file.parent;
-    if (!await dir.exists()) {
-      await dir.create(recursive: true);
-    }
-  }
+  final BaseJsonlStorage<CouncilRun> _storage;
 
   /// Saves a council run.
   Future<void> save(CouncilRun run) async {
-    await _ensureDirectory();
-
-    final runs = await loadAll();
-    final index = runs.indexWhere((item) => item.councilId == run.councilId);
-    if (index >= 0) {
+    if (await load(run.councilId) != null) {
       run.updatedAt = DateTime.now();
-      runs[index] = run;
-    } else {
-      runs.add(run);
     }
-
-    final lines = runs.map((item) => jsonEncode(item.toJson())).join('\n');
-    await _file.writeAsString(lines.isEmpty ? '' : '$lines\n');
+    await _storage.save(run);
   }
 
   /// Loads a council run by ID.
-  Future<CouncilRun?> load(String councilId) async {
-    final runs = await loadAll();
-    try {
-      return runs.firstWhere((run) => run.councilId == councilId);
-    } catch (_) {
-      return null;
-    }
-  }
+  Future<CouncilRun?> load(String councilId) => _storage.load(councilId);
 
   /// Loads all council runs.
-  Future<List<CouncilRun>> loadAll() async {
-    if (!await _file.exists()) {
-      return [];
-    }
-
-    final content = await _file.readAsString();
-    if (content.trim().isEmpty) {
-      return [];
-    }
-
-    return content
-        .trim()
-        .split('\n')
-        .where((line) => line.trim().isNotEmpty)
-        .map(
-          (line) =>
-              CouncilRun.fromJson(jsonDecode(line) as Map<String, dynamic>),
-        )
-        .toList();
-  }
+  Future<List<CouncilRun>> loadAll() => _storage.loadAll();
 }

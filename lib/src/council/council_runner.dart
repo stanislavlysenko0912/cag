@@ -19,16 +19,15 @@ class CouncilRunner {
     CursorAgent? cursorAgent,
     ClaudeAgent? claudeAgent,
   }) : _storage = storage ?? CouncilStorage(),
-       _geminiAgent = geminiAgent ?? GeminiAgent(),
-       _codexAgent = codexAgent ?? CodexAgent(),
-       _cursorAgent = cursorAgent ?? CursorAgent(),
-       _claudeAgent = claudeAgent ?? ClaudeAgent();
+       _agentRegistry = AgentRegistry(
+         geminiAgent: geminiAgent,
+         codexAgent: codexAgent,
+         cursorAgent: cursorAgent,
+         claudeAgent: claudeAgent,
+       );
 
   final CouncilStorage _storage;
-  final GeminiAgent _geminiAgent;
-  final CodexAgent _codexAgent;
-  final CursorAgent _cursorAgent;
-  final ClaudeAgent _claudeAgent;
+  final AgentRegistry _agentRegistry;
 
   static const _uuid = Uuid();
 
@@ -69,16 +68,6 @@ class CouncilRunner {
     return run;
   }
 
-  BaseAgent _getAgent(String agentName) {
-    return switch (agentName) {
-      'gemini' => _geminiAgent,
-      'codex' => _codexAgent,
-      'cursor' => _cursorAgent,
-      'claude' => _claudeAgent,
-      _ => throw ArgumentError('Unknown agent: $agentName'),
-    };
-  }
-
   Future<List<CouncilParticipantResult>> _runStage1(
     String prompt,
     List<CouncilMember> participants,
@@ -94,7 +83,7 @@ class CouncilRunner {
     CouncilMember participant,
   ) async {
     try {
-      final agent = _getAgent(participant.agent);
+      final agent = _agentRegistry.get(participant.agent);
       final response = await agent.execute(
         prompt: prompt,
         model: participant.resolvedModel,
@@ -133,7 +122,9 @@ class CouncilRunner {
 
     final futures = <Future<CouncilReviewResult>>[];
     for (var index = 0; index < participants.length; index++) {
-      futures.add(_runReview(prompt, participants[index], stage1Results, index));
+      futures.add(
+        _runReview(prompt, participants[index], stage1Results, index),
+      );
     }
     return Future.wait(futures);
   }
@@ -157,10 +148,13 @@ class CouncilRunner {
     }
 
     try {
-      final agent = _getAgent(participant.agent);
+      final agent = _agentRegistry.get(participant.agent);
       final reviewPrompt = buildCouncilReviewPrompt(
         question: prompt,
-        answers: _buildAnswersForReview(stage1Results, excludeIndex: excludeIndex),
+        answers: _buildAnswersForReview(
+          stage1Results,
+          excludeIndex: excludeIndex,
+        ),
       );
       final response = await agent.execute(
         prompt: reviewPrompt,
@@ -193,7 +187,7 @@ class CouncilRunner {
     required List<CouncilReview> reviews,
   }) async {
     try {
-      final agent = _getAgent(chairman.agent);
+      final agent = _agentRegistry.get(chairman.agent);
       final chairmanPrompt = buildCouncilChairmanPrompt(
         question: prompt,
         answers: answers,
