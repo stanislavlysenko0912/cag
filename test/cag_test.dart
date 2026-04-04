@@ -31,10 +31,7 @@ void main() {
     });
 
     test('throws ParserException on invalid JSON', () {
-      expect(
-        () => parser.parse(stdout: 'not json', stderr: ''),
-        throwsA(isA<ParserException>()),
-      );
+      expect(() => parser.parse(stdout: 'not json', stderr: ''), throwsA(isA<ParserException>()));
     });
   });
 
@@ -60,34 +57,25 @@ void main() {
       expect(result.metadata['duration_ms'], equals(200));
     });
 
-    test(
-      'parse extracts content from assistant message if result field is missing',
-      () {
-        final mockResponse = [
-          {
-            'type': 'assistant',
-            'message': {
-              'content': [
-                {'type': 'text', 'text': 'Content from message'},
-              ],
-            },
+    test('parse extracts content from assistant message if result field is missing', () {
+      final mockResponse = [
+        {
+          'type': 'assistant',
+          'message': {
+            'content': [
+              {'type': 'text', 'text': 'Content from message'},
+            ],
           },
-          {'type': 'result', 'is_error': false},
-        ];
+        },
+        {'type': 'result', 'is_error': false},
+      ];
 
-        final result = parser.parse(
-          stdout: jsonEncode(mockResponse),
-          stderr: '',
-        );
-        expect(result.content, equals('Content from message'));
-      },
-    );
+      final result = parser.parse(stdout: jsonEncode(mockResponse), stderr: '');
+      expect(result.content, equals('Content from message'));
+    });
 
     test('throws ParserException on empty stdout', () {
-      expect(
-        () => parser.parse(stdout: '', stderr: ''),
-        throwsA(isA<ParserException>()),
-      );
+      expect(() => parser.parse(stdout: '', stderr: ''), throwsA(isA<ParserException>()));
     });
   });
 
@@ -118,10 +106,7 @@ void main() {
       final lines = [
         jsonEncode({'type': 'thread.started', 'thread_id': 'codex-thread'}),
       ];
-      expect(
-        () => parser.parse(stdout: lines.join('\n'), stderr: ''),
-        throwsA(isA<ParserException>()),
-      );
+      expect(() => parser.parse(stdout: lines.join('\n'), stderr: ''), throwsA(isA<ParserException>()));
     });
 
     test('returns error content when only error events are present', () {
@@ -160,39 +145,18 @@ void main() {
     });
 
     test('throws ParserException on empty stdout', () {
-      expect(
-        () => parser.parse(stdout: '', stderr: ''),
-        throwsA(isA<ParserException>()),
-      );
+      expect(() => parser.parse(stdout: '', stderr: ''), throwsA(isA<ParserException>()));
     });
   });
 
   group('AgentModelRegistry', () {
     test('resolves model aliases to canonical names', () {
-      expect(
-        AgentModelRegistry.findModel('claude', 'sonnet')?.name,
-        equals('claude-sonnet-4-6'),
-      );
-      expect(
-        AgentModelRegistry.findModel('claude', 'haiku')?.name,
-        equals('claude-haiku-4-5'),
-      );
-      expect(
-        AgentModelRegistry.findModel('gemini', 'pro')?.name,
-        equals('gemini-3.1-pro-preview'),
-      );
-      expect(
-        AgentModelRegistry.findModel('gemini', 'flash')?.name,
-        equals('gemini-3-flash-preview'),
-      );
-      expect(
-        AgentModelRegistry.findModel('codex', 'gpt')?.name,
-        equals('gpt-5.4'),
-      );
-      expect(
-        AgentModelRegistry.findModel('codex', 'mini')?.name,
-        equals('gpt-5.4-mini'),
-      );
+      expect(AgentModelRegistry.findModel('claude', 'sonnet')?.name, equals('claude-sonnet-4-6'));
+      expect(AgentModelRegistry.findModel('claude', 'haiku')?.name, equals('claude-haiku-4-5'));
+      expect(AgentModelRegistry.findModel('gemini', 'pro')?.name, equals('gemini-3.1-pro-preview'));
+      expect(AgentModelRegistry.findModel('gemini', 'flash')?.name, equals('gemini-3-flash-preview'));
+      expect(AgentModelRegistry.findModel('codex', 'gpt')?.name, equals('gpt-5.4'));
+      expect(AgentModelRegistry.findModel('codex', 'mini')?.name, equals('gpt-5.4-mini'));
       expect(AgentModelRegistry.findModel('cursor', 'auto'), isNull);
     });
   });
@@ -206,38 +170,22 @@ void main() {
     });
 
     test('parse throws ArgumentError on invalid format', () {
-      expect(
-        () => ConsensusParticipant.parse('gemini:pro'),
-        throwsArgumentError,
-      );
-      expect(
-        () => ConsensusParticipant.parse('gemini:pro:for:extra'),
-        throwsArgumentError,
-      );
+      expect(() => ConsensusParticipant.parse('gemini:pro'), throwsArgumentError);
+      expect(() => ConsensusParticipant.parse('gemini:pro:for:extra'), throwsArgumentError);
     });
 
     test('parse throws ArgumentError on invalid agent', () {
-      expect(
-        () => ConsensusParticipant.parse('unknown:pro:for'),
-        throwsArgumentError,
-      );
+      expect(() => ConsensusParticipant.parse('unknown:pro:for'), throwsArgumentError);
     });
 
     test('parse throws ArgumentError on invalid stance', () {
-      expect(
-        () => ConsensusParticipant.parse('gemini:pro:unknown'),
-        throwsArgumentError,
-      );
+      expect(() => ConsensusParticipant.parse('gemini:pro:unknown'), throwsArgumentError);
     });
   });
 
   group('AgentConfig', () {
     test('AgentConfig creates with default values', () {
-      const config = AgentConfig(
-        name: 'test',
-        executable: 'test-cli',
-        parser: 'json',
-      );
+      const config = AgentConfig(name: 'test', executable: 'test-cli', parser: 'json');
 
       expect(config.name, equals('test'));
 
@@ -257,17 +205,11 @@ void main() {
 
     test('parse throws ArgumentError on invalid format', () {
       expect(() => CompareParticipant.parse('gemini'), throwsArgumentError);
-      expect(
-        () => CompareParticipant.parse('gemini:pro:extra'),
-        throwsArgumentError,
-      );
+      expect(() => CompareParticipant.parse('gemini:pro:extra'), throwsArgumentError);
     });
 
     test('parse throws ArgumentError on invalid agent', () {
-      expect(
-        () => CompareParticipant.parse('unknown:pro'),
-        throwsArgumentError,
-      );
+      expect(() => CompareParticipant.parse('unknown:pro'), throwsArgumentError);
     });
   });
 
@@ -293,12 +235,11 @@ void main() {
       expect(result.stdout.trim(), equals('hello'));
     });
 
-    test('run with shellConfig executes via shell', () async {
+    test('run executes a shell command when invoked via shell executable', () async {
       final runner = CLIRunner();
       final result = await runner.run(
-        executable: 'echo',
-        args: ['hello'],
-        shellConfig: ShellConfig(commandPrefix: 'echo prefix &&'),
+        executable: '/bin/sh',
+        args: ['-c', 'echo prefix && echo hello'],
       );
 
       expect(result.exitCode, equals(0));
@@ -315,21 +256,13 @@ void main() {
         const CommandMetadata(
           name: 'test-agent',
           description: 'A test agent',
-          models: [
-            ModelConfig(name: 'm1', description: 'Model 1', isDefault: true),
-          ],
+          models: [ModelConfig(name: 'm1', description: 'Model 1', isDefault: true)],
         ),
       ];
 
       final output = generator.generate(
         commands,
-        agentConfigs: {
-          'test-agent': const AgentConfig(
-            name: 'test-agent',
-            executable: 'test',
-            parser: 'test',
-          ),
-        },
+        agentConfigs: {'test-agent': const AgentConfig(name: 'test-agent', executable: 'test', parser: 'test')},
       );
 
       expect(output, contains('# CLI Agents'));
@@ -348,26 +281,14 @@ void main() {
         const CommandMetadata(
           name: 'claude',
           description: 'Claude agent',
-          models: [
-            ModelConfig(
-              name: 'sonnet',
-              description: 'Default',
-              isDefault: true,
-            ),
-          ],
+          models: [ModelConfig(name: 'sonnet', description: 'Default', isDefault: true)],
         ),
         const CommandMetadata(name: 'compare', description: 'Compare command'),
       ];
 
       final output = generator.generate(
         commands,
-        agentConfigs: {
-          'claude': const AgentConfig(
-            name: 'claude',
-            executable: 'claude',
-            parser: 'claude',
-          ),
-        },
+        agentConfigs: {'claude': const AgentConfig(name: 'claude', executable: 'claude', parser: 'claude')},
       );
 
       expect(output, contains('## Compare'));
@@ -381,9 +302,7 @@ void main() {
         const CommandMetadata(
           name: 'claude',
           description: 'Claude agent',
-          models: [
-            ModelConfig(name: 'sonnet', description: 'Base', isDefault: true),
-          ],
+          models: [ModelConfig(name: 'sonnet', description: 'Base', isDefault: true)],
         ),
       ];
 
@@ -394,13 +313,7 @@ void main() {
             name: 'claude',
             executable: 'claude',
             parser: 'claude',
-            availableModels: [
-              ModelConfig(
-                name: 'custom-model',
-                description: 'Custom model',
-                isDefault: true,
-              ),
-            ],
+            availableModels: [ModelConfig(name: 'custom-model', description: 'Custom model', isDefault: true)],
           ),
         },
       );
@@ -431,12 +344,7 @@ void main() {
     });
 
     test('save and loadAll', () async {
-      final session = ConsensusSession(
-        consensusId: 'c1',
-        prompt: 'test prompt',
-        participants: [],
-        createdAt: DateTime.now(),
-      );
+      final session = ConsensusSession(consensusId: 'c1', prompt: 'test prompt', participants: [], createdAt: DateTime.now());
 
       await storage.save(session);
 
@@ -450,12 +358,7 @@ void main() {
     });
 
     test('load by ID', () async {
-      final session = ConsensusSession(
-        consensusId: 'c2',
-        prompt: 'test prompt 2',
-        participants: [],
-        createdAt: DateTime.now(),
-      );
+      final session = ConsensusSession(consensusId: 'c2', prompt: 'test prompt 2', participants: [], createdAt: DateTime.now());
 
       await storage.save(session);
 
@@ -467,12 +370,7 @@ void main() {
     });
 
     test('delete session', () async {
-      final session = ConsensusSession(
-        consensusId: 'c3',
-        prompt: 'test prompt 3',
-        participants: [],
-        createdAt: DateTime.now(),
-      );
+      final session = ConsensusSession(consensusId: 'c3', prompt: 'test prompt 3', participants: [], createdAt: DateTime.now());
 
       await storage.save(session);
 
@@ -507,15 +405,8 @@ void main() {
         participants: [CompareParticipant(agent: 'gemini', model: 'pro')],
         results: [
           CompareParticipantResult(
-            participant: CompareParticipant(
-              agent: 'gemini',
-              model: 'pro',
-              sessionId: 's1',
-            ),
-            response: ParsedResponse(
-              content: 'hello',
-              metadata: {'session_id': 's1'},
-            ),
+            participant: CompareParticipant(agent: 'gemini', model: 'pro', sessionId: 's1'),
+            response: ParsedResponse(content: 'hello', metadata: {'session_id': 's1'}),
           ),
         ],
         createdAt: DateTime.now(),
@@ -566,16 +457,10 @@ void main() {
       final runner = CompareRunner(
         storage: storage,
         geminiAgent: _FakeGeminiAgent(
-          response: ParsedResponse(
-            content: 'Gemini answer',
-            metadata: {'session_id': 'gemini-session'},
-          ),
+          response: ParsedResponse(content: 'Gemini answer', metadata: {'session_id': 'gemini-session'}),
         ),
         codexAgent: _FakeCodexAgent(
-          response: ParsedResponse(
-            content: 'Codex answer',
-            metadata: {'session_id': 'codex-session'},
-          ),
+          response: ParsedResponse(content: 'Codex answer', metadata: {'session_id': 'codex-session'}),
         ),
       );
 
@@ -601,10 +486,7 @@ void main() {
       final runner = CompareRunner(
         storage: storage,
         geminiAgent: _FakeGeminiAgent(
-          response: ParsedResponse(
-            content: 'Gemini answer',
-            metadata: {'session_id': 'gemini-session'},
-          ),
+          response: ParsedResponse(content: 'Gemini answer', metadata: {'session_id': 'gemini-session'}),
         ),
         codexAgent: _FakeCodexAgent(error: Exception('codex failed')),
       );
@@ -663,10 +545,7 @@ void main() {
 
     test('save overwrites existing run by id', () async {
       final original = _buildCouncilRun(councilId: 'council_3');
-      final updated = _buildCouncilRun(
-        councilId: 'council_3',
-        title: 'Updated title',
-      );
+      final updated = _buildCouncilRun(councilId: 'council_3', title: 'Updated title');
 
       await storage.save(original);
       await storage.save(updated);
@@ -689,18 +568,12 @@ void main() {
     });
 
     test('status is partial_failure when some stages fail', () {
-      final run = _buildCouncilRun(
-        councilId: 'council_partial',
-        answerError: 'answer failed',
-      );
+      final run = _buildCouncilRun(councilId: 'council_partial', answerError: 'answer failed');
       expect(run.status, equals('partial_failure'));
     });
 
     test('status is failed when no stage succeeds', () {
-      final participants = [
-        CouncilMember(agent: 'gemini', model: 'pro'),
-        CouncilMember(agent: 'codex', model: 'gpt'),
-      ];
+      final participants = [CouncilMember(agent: 'gemini', model: 'pro'), CouncilMember(agent: 'codex', model: 'gpt')];
       final chairman = CouncilMember(agent: 'claude', model: 'sonnet');
       final run = CouncilRun(
         councilId: 'council_failed',
@@ -713,10 +586,7 @@ void main() {
               (participant) => CouncilParticipantResult(
                 participant: participant,
                 response: null,
-                failure: AgentFailure(
-                  reason: AgentExitReason.crash,
-                  message: 'failed',
-                ),
+                failure: AgentFailure(reason: AgentExitReason.crash, message: 'failed'),
               ),
             )
             .toList(),
@@ -725,20 +595,14 @@ void main() {
               (participant) => CouncilReviewResult(
                 participant: participant,
                 response: null,
-                failure: AgentFailure(
-                  reason: AgentExitReason.crash,
-                  message: 'failed',
-                ),
+                failure: AgentFailure(reason: AgentExitReason.crash, message: 'failed'),
               ),
             )
             .toList(),
         chairmanResult: CouncilChairmanResult(
           chairman: chairman,
           response: null,
-          failure: AgentFailure(
-            reason: AgentExitReason.crash,
-            message: 'failed',
-          ),
+          failure: AgentFailure(reason: AgentExitReason.crash, message: 'failed'),
         ),
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
@@ -765,20 +629,12 @@ void main() {
       final runner = CouncilRunner(
         storage: storage,
         geminiAgent: _FakeGeminiAgent(
-          response: ParsedResponse(
-            content: 'Gemini answer',
-            metadata: {'session_id': 'gemini-session'},
-          ),
+          response: ParsedResponse(content: 'Gemini answer', metadata: {'session_id': 'gemini-session'}),
         ),
         codexAgent: _FakeCodexAgent(
-          response: ParsedResponse(
-            content: 'Codex answer',
-            metadata: {'session_id': 'codex-session'},
-          ),
+          response: ParsedResponse(content: 'Codex answer', metadata: {'session_id': 'codex-session'}),
         ),
-        claudeAgent: _FakeClaudeAgent(
-          response: ParsedResponse(content: 'Chairman summary'),
-        ),
+        claudeAgent: _FakeClaudeAgent(response: ParsedResponse(content: 'Chairman summary')),
       );
 
       final run = await runner.run(
@@ -804,15 +660,10 @@ void main() {
       final runner = CouncilRunner(
         storage: storage,
         geminiAgent: _FakeGeminiAgent(
-          response: ParsedResponse(
-            content: 'Gemini answer',
-            metadata: {'session_id': 'gemini-session'},
-          ),
+          response: ParsedResponse(content: 'Gemini answer', metadata: {'session_id': 'gemini-session'}),
         ),
         codexAgent: _FakeCodexAgent(error: Exception('codex failed')),
-        claudeAgent: _FakeClaudeAgent(
-          response: ParsedResponse(content: 'Chairman summary'),
-        ),
+        claudeAgent: _FakeClaudeAgent(response: ParsedResponse(content: 'Chairman summary')),
       );
 
       final run = await runner.run(
@@ -827,10 +678,7 @@ void main() {
 
       expect(run.status, equals('partial_failure'));
       expect(run.answers.last.failure?.message, contains('codex failed'));
-      expect(
-        run.reviews.last.failure?.message,
-        contains('Stage 1 response missing'),
-      );
+      expect(run.reviews.last.failure?.message, contains('Stage 1 response missing'));
     });
   });
 
@@ -865,16 +713,8 @@ void main() {
   });
 }
 
-CouncilRun _buildCouncilRun({
-  required String councilId,
-  String title = 'Council run',
-  String? answerError,
-}) {
-  final firstParticipant = CouncilMember(
-    agent: 'gemini',
-    model: 'pro',
-    sessionId: answerError == null ? 's1' : null,
-  );
+CouncilRun _buildCouncilRun({required String councilId, String title = 'Council run', String? answerError}) {
+  final firstParticipant = CouncilMember(agent: 'gemini', model: 'pro', sessionId: answerError == null ? 's1' : null);
   final secondParticipant = CouncilMember(agent: 'codex', model: 'gpt');
   final chairman = CouncilMember(agent: 'claude', model: 'sonnet');
 
@@ -887,18 +727,8 @@ CouncilRun _buildCouncilRun({
     answers: [
       CouncilParticipantResult(
         participant: firstParticipant,
-        response: answerError == null
-            ? ParsedResponse(
-                content: 'answer 1',
-                metadata: {'session_id': 's1'},
-              )
-            : null,
-        failure: answerError == null
-            ? null
-            : AgentFailure(
-                reason: AgentExitReason.crash,
-                message: answerError,
-              ),
+        response: answerError == null ? ParsedResponse(content: 'answer 1', metadata: {'session_id': 's1'}) : null,
+        failure: answerError == null ? null : AgentFailure(reason: AgentExitReason.crash, message: answerError),
       ),
       CouncilParticipantResult(
         participant: secondParticipant,

@@ -63,7 +63,8 @@ class ConfigService {
         defaultModel: base.defaultModel,
         additionalArgs: base.additionalArgs,
         env: base.env,
-        timeoutSeconds: base.timeoutSeconds,
+        hardTimeoutSeconds: base.hardTimeoutSeconds,
+        idleTimeoutSeconds: base.idleTimeoutSeconds,
         shellExecutable: base.shellExecutable,
         shellArgs: base.shellArgs,
         shellCommandPrefix: base.shellCommandPrefix,
@@ -71,10 +72,7 @@ class ConfigService {
       );
     }
 
-    final models = _mergeModels(
-      AgentModelRegistry.modelsFor(base.name),
-      overrides.models,
-    );
+    final models = _mergeModels(AgentModelRegistry.modelsFor(base.name), overrides.models);
 
     return AgentConfig(
       name: base.name,
@@ -84,22 +82,16 @@ class ConfigService {
       defaultModel: overrides.defaultModel ?? base.defaultModel,
       additionalArgs: overrides.additionalArgs ?? base.additionalArgs,
       env: overrides.env ?? base.env,
-      hardTimeoutSeconds:
-          overrides.hardTimeoutSeconds ?? base.hardTimeoutSeconds,
-      idleTimeoutSeconds:
-          overrides.idleTimeoutSeconds ?? base.idleTimeoutSeconds,
+      hardTimeoutSeconds: overrides.hardTimeoutSeconds ?? base.hardTimeoutSeconds,
+      idleTimeoutSeconds: overrides.idleTimeoutSeconds ?? base.idleTimeoutSeconds,
       shellExecutable: overrides.shellExecutable ?? base.shellExecutable,
       shellArgs: overrides.shellArgs ?? base.shellArgs,
-      shellCommandPrefix:
-          overrides.shellCommandPrefix ?? base.shellCommandPrefix,
+      shellCommandPrefix: overrides.shellCommandPrefix ?? base.shellCommandPrefix,
       availableModels: models,
     );
   }
 
-  List<ModelConfig> _mergeModels(
-    List<ModelConfig> base,
-    List<ModelConfig>? overrides,
-  ) {
+  List<ModelConfig> _mergeModels(List<ModelConfig> base, List<ModelConfig>? overrides) {
     if (overrides == null || overrides.isEmpty) return base;
 
     final map = {for (final m in base) m.name: m};
