@@ -109,7 +109,7 @@ This command runs the specified models in parallel with stance-based prompts.'''
     }
 
     final prompt = rest.join(' ');
-    final runner = ConsensusRunner();
+    final runner = ConsensusRunner(agentConfigs: _agentConfigs);
 
     try {
       final ConsensusResult result;

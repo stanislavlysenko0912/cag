@@ -404,9 +404,30 @@ Future<McpServer> _buildServer() async {
     if (cursorConfig.enabled) 'cursor': CursorAgent(config: cursorConfig),
   };
 
-  final compareRunner = CompareRunner();
-  final consensusRunner = ConsensusRunner();
-  final councilRunner = CouncilRunner();
+  final compareRunner = CompareRunner(
+    agentConfigs: {
+      'claude': claudeConfig,
+      'gemini': geminiConfig,
+      'codex': codexConfig,
+      'cursor': cursorConfig,
+    },
+  );
+  final consensusRunner = ConsensusRunner(
+    agentConfigs: {
+      'claude': claudeConfig,
+      'gemini': geminiConfig,
+      'codex': codexConfig,
+      'cursor': cursorConfig,
+    },
+  );
+  final councilRunner = CouncilRunner(
+    agentConfigs: {
+      'claude': claudeConfig,
+      'gemini': geminiConfig,
+      'codex': codexConfig,
+      'cursor': cursorConfig,
+    },
+  );
 
   final modelsSection = _buildModelsSection(enabledAgents);
   final server = McpServer(

@@ -769,6 +769,59 @@ void main() {
       final registry = AgentRegistry();
       expect(() => registry.get('unknown'), throwsArgumentError);
     });
+
+    test('get uses configured agent instances built from agent configs', () {
+      final registry = AgentRegistry(
+        agentConfigs: {
+          'claude': const AgentConfig(
+            name: 'claude',
+            executable: '/tmp/custom-claude',
+            parser: 'claude_json',
+          ),
+        },
+      );
+
+      final agent = registry.get('claude');
+
+      expect(agent, isA<ClaudeAgent>());
+      expect(agent.config.executable, equals('/tmp/custom-claude'));
+    });
+  });
+
+  group('Agent buildArgs', () {
+    test('ClaudeAgent uses config additionalArgs as the base arguments', () {
+      final agent = ClaudeAgent(
+        config: const AgentConfig(
+          name: 'claude',
+          executable: 'claude',
+          parser: 'claude_json',
+          additionalArgs: ['--custom-flag', '1'],
+        ),
+      );
+
+      final args = agent.buildArgs(prompt: 'hello', model: 'sonnet');
+
+      expect(args.take(2).toList(), equals(['--custom-flag', '1']));
+      expect(args, contains('hello'));
+      expect(args, contains('--model'));
+    });
+
+    test('GeminiAgent uses config additionalArgs as the base arguments', () {
+      final agent = GeminiAgent(
+        config: const AgentConfig(
+          name: 'gemini',
+          executable: 'gemini',
+          parser: 'gemini_json',
+          additionalArgs: ['--custom-output', 'json'],
+        ),
+      );
+
+      final args = agent.buildArgs(prompt: 'hello', model: 'pro');
+
+      expect(args.take(2).toList(), equals(['--custom-output', 'json']));
+      expect(args, contains('-m'));
+      expect(args, contains('hello'));
+    });
   });
 
   group('CouncilRun', () {

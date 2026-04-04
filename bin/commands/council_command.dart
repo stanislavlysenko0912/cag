@@ -128,7 +128,7 @@ Council runs are persisted for inspection and follow-up.''';
     _resolveModels(participants);
     _resolveModels([chairman]);
 
-    final runner = CouncilRunner();
+    final runner = CouncilRunner(agentConfigs: _agentConfigs);
 
     try {
       final result = await runner.run(

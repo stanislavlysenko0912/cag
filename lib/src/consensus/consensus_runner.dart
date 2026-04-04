@@ -45,12 +45,14 @@ class ConsensusRunner {
     CodexAgent? codexAgent,
     CursorAgent? cursorAgent,
     ClaudeAgent? claudeAgent,
+    Map<String, AgentConfig> agentConfigs = const {},
   }) : _storage = storage ?? ConsensusStorage(),
        _agentRegistry = AgentRegistry(
          geminiAgent: geminiAgent,
          codexAgent: codexAgent,
          cursorAgent: cursorAgent,
          claudeAgent: claudeAgent,
+         agentConfigs: agentConfigs,
        );
 
   final ConsensusStorage _storage;

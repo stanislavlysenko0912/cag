@@ -32,7 +32,7 @@ class GeminiAgent extends BaseAgent {
     String? resume,
     Map<String, String>? extraArgs,
   }) {
-    final args = <String>['-o', 'json', '--yolo'];
+    final args = <String>[...config.additionalArgs];
 
     if (model != null) {
       args.addAll(['-m', model]);

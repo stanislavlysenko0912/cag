@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:uuid/uuid.dart';
 
 import '../agents/agents.dart';
-import '../models/agent_execution.dart';
 import '../models/models.dart';
 import 'compare_model.dart';
 import 'compare_storage.dart';
@@ -17,12 +16,14 @@ class CompareRunner {
     CodexAgent? codexAgent,
     CursorAgent? cursorAgent,
     ClaudeAgent? claudeAgent,
+    Map<String, AgentConfig> agentConfigs = const {},
   }) : _storage = storage ?? CompareStorage(),
        _agentRegistry = AgentRegistry(
          geminiAgent: geminiAgent,
          codexAgent: codexAgent,
          cursorAgent: cursorAgent,
          claudeAgent: claudeAgent,
+         agentConfigs: agentConfigs,
        );
 
   final CompareStorage _storage;

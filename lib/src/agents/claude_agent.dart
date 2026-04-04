@@ -34,13 +34,7 @@ class ClaudeAgent extends BaseAgent {
     String? resume,
     Map<String, String>? extraArgs,
   }) {
-    final args = <String>[
-      '-p',
-      '--output-format',
-      'json',
-      '--permission-mode',
-      'acceptEdits',
-    ];
+    final args = <String>[...config.additionalArgs];
 
     if (model != null) {
       args.addAll(['--model', model]);

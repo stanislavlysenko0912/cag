@@ -101,7 +101,7 @@ class CompareCommand extends Command<void> {
 
     final resolvedParticipants = _resolveModels(participants);
 
-    final runner = CompareRunner();
+    final runner = CompareRunner(agentConfigs: _agentConfigs);
 
     try {
       final result = await runner.run(
