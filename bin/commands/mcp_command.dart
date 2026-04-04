@@ -884,6 +884,25 @@ Future<McpServer> _buildServer() async {
     },
   );
 
+  server.registerPrompt(
+    'cag_discuss',
+    title: 'Discuss with AI agent',
+    description:
+        'Start an iterative dialogue with another AI agent via cag. '
+        'You and the agent are colleagues solving a task together.',
+    callback: (args, extra) {
+      return GetPromptResult(
+        description: 'Iterative dialogue with AI agent via cag',
+        messages: [
+          PromptMessage(
+            role: PromptMessageRole.user,
+            content: TextContent(text: discussPrompt),
+          ),
+        ],
+      );
+    },
+  );
+
   return server;
 }
 

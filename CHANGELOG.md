@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Added MCP prompts support — `cag_discuss` prompt for iterative dialogue with AI agents.
 - Added `cag compare` for parallel multi-agent runs with persisted compare IDs and per-agent session IDs.
 - Added `cag compare --list` and `cag compare --inspect` for browsing saved compare runs.
 - Added persisted `cag council` runs with `council_id`, `--list`, and `--inspect`.
