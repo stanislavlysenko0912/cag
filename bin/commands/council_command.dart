@@ -6,11 +6,21 @@ import 'package:cag/cag.dart';
 
 import 'output_formatter.dart';
 
+/// Runs multi-stage council flows and inspects saved runs.
 class CouncilCommand extends Command<void> {
-  CouncilCommand({required Set<String> enabledAgents})
-    : _enabledAgents = enabledAgents {
+  /// Creates a council command.
+  CouncilCommand({required Map<String, AgentConfig> agentConfigs})
+    : _agentConfigs = agentConfigs {
     argParser
       ..addMultiOption('add', abbr: 'a', help: 'Add participant: agent:model')
+      ..addOption('title', help: 'Optional title override for the council run')
+      ..addFlag(
+        'list',
+        abbr: 'l',
+        negatable: false,
+        help: 'List saved council runs',
+      )
+      ..addOption('inspect', help: 'Inspect a saved council run by council_id')
       ..addOption(
         'chairman',
         abbr: 'c',
@@ -29,7 +39,12 @@ class CouncilCommand extends Command<void> {
       );
   }
 
-  final Set<String> _enabledAgents;
+  final Map<String, AgentConfig> _agentConfigs;
+
+  Set<String> get _enabledAgents => _agentConfigs.entries
+      .where((entry) => entry.value.enabled)
+      .map((entry) => entry.key)
+      .toSet();
 
   @override
   String get name => 'council';
@@ -43,7 +58,7 @@ Stage 3: chairman synthesis.
 
 Chairman tip: choose the strongest reasoning model available for best synthesis.
 
-Council runs are stateless (no resume).''';
+Council runs are persisted for inspection and follow-up.''';
 
   @override
   String get invocation =>
@@ -51,6 +66,20 @@ Council runs are stateless (no resume).''';
 
   @override
   Future<void> run() async {
+    final listRuns = argResults!['list'] as bool;
+    final inspectId = argResults!['inspect'] as String?;
+    if (listRuns && inspectId != null) {
+      throw UsageException('Cannot use --list and --inspect together', usage);
+    }
+    if (listRuns) {
+      await _listRuns(argResults!['json'] as bool);
+      return;
+    }
+    if (inspectId != null) {
+      await _inspectRun(inspectId, argResults!['json'] as bool);
+      return;
+    }
+
     if (_enabledAgents.isEmpty) {
       stderr.writeln(
         'No agents are enabled. Enable at least one agent in config.',
@@ -59,6 +88,7 @@ Council runs are stateless (no resume).''';
     }
 
     final addOptions = argResults!['add'] as List<String>;
+    final title = argResults!['title'] as String?;
     final chairmanRaw = argResults!['chairman'] as String?;
     final includeAnswers = argResults!['include-answers'] as bool;
     final outputJson = argResults!['json'] as bool;
@@ -67,68 +97,64 @@ Council runs are stateless (no resume).''';
     if (rest.isEmpty) {
       throw UsageException('Missing prompt', usage);
     }
+    if (addOptions.length < 2) {
+      throw UsageException('Council requires at least 2 participants (-a)', usage);
+    }
+    if (chairmanRaw == null || chairmanRaw.trim().isEmpty) {
+      throw UsageException('Chairman is required (-c)', usage);
+    }
 
     final prompt = rest.join(' ');
+    final participants = addOptions
+        .map((input) => CouncilMember.parse(input, allowedAgents: _enabledAgents))
+        .toList();
+    final chairman = CouncilMember.parse(
+      chairmanRaw,
+      allowedAgents: _enabledAgents,
+    );
+
+    _resolveModels(participants);
+    _resolveModels([chairman]);
+
     final runner = CouncilRunner();
 
     try {
-      final CouncilResult result;
-
-      if (addOptions.length < 2) {
-        throw UsageException(
-          'Council requires at least 2 participants (-a)',
-          usage,
-        );
-      }
-      if (chairmanRaw == null || chairmanRaw.trim().isEmpty) {
-        throw UsageException('Chairman is required (-c)', usage);
-      }
-
-      final participants = addOptions
-          .map(
-            (input) =>
-                CouncilMember.parse(input, allowedAgents: _enabledAgents),
-          )
-          .toList();
-      final chairman = CouncilMember.parse(
-        chairmanRaw,
-        allowedAgents: _enabledAgents,
-      );
-
-      _resolveModels(participants);
-      _resolveModels([chairman]);
-
-      result = await runner.run(
+      final result = await runner.run(
         prompt: prompt,
+        title: title ?? buildCompareTitle(prompt),
         participants: participants,
         chairman: chairman,
       );
 
       if (outputJson) {
-        _printJsonOutput(result, includeAnswers);
-      } else {
-        _printFormattedOutput(result, includeAnswers);
+        print(const JsonEncoder.withIndent('  ').convert(result.toJson()));
+        return;
       }
-    } on ArgumentError catch (e) {
-      stderr.writeln('Error: ${e.message}');
+      _printFormattedOutput(result, includeAnswers);
+    } on ArgumentError catch (error) {
+      stderr.writeln('Error: ${error.message}');
       exit(1);
-    } on ParserException catch (e) {
-      stderr.writeln('Parse error: $e');
-      exit(1);
-    } on CLIRunnerException catch (e) {
-      stderr.writeln('Execution error: $e');
+    } on AgentExecutionException catch (error) {
+      stderr.writeln(
+        'Execution error [${error.failure.summary}]: ${error.failure.message}',
+      );
       exit(1);
     }
   }
 
   void _resolveModels(List<CouncilMember> members) {
     for (final member in members) {
-      final cmdDef = CommandDefinitions.find(member.agent);
-      if (cmdDef == null || cmdDef.models.isEmpty) continue;
+      final config = _agentConfigs[member.agent];
+      if (config == null || config.availableModels.isEmpty) {
+        continue;
+      }
 
-      final modelConfig = cmdDef.findModel(member.model);
+      final modelConfig = config.availableModels
+          .where((m) => m.matches(member.model))
+          .firstOrNull;
       if (modelConfig == null) {
-        final available = cmdDef.models.map((m) => m.name).join(', ');
+        final available =
+            config.availableModels.map((model) => model.name).join(', ');
         throw UsageException(
           'Unknown model "${member.model}" for ${member.agent}. Available: $available',
           usage,
@@ -138,107 +164,121 @@ Council runs are stateless (no resume).''';
     }
   }
 
-  void _printJsonOutput(CouncilResult result, bool includeAnswers) {
-    final output = {
-      'prompt': result.prompt,
-      if (includeAnswers)
-        'answers': result.answers.asMap().entries.map((entry) {
-          final index = entry.key;
-          final r = entry.value;
-          return {
-            'answer_id': 'ans_${index + 1}',
-            if (r.response != null) 'content': r.response!.content,
-            if (includeAnswers && r.response?.sessionId != null)
-              'session_id': r.response!.sessionId,
-            if (r.error != null) 'error': r.error,
-          };
-        }).toList(),
-      'reviews': result.reviews.map((r) {
-        return {
-          'reviewer':
-              '${r.participant.agent.toUpperCase()} (${r.participant.model})',
-          if (r.response != null) 'content': r.response!.content,
-          if (r.error != null) 'error': r.error,
-        };
-      }).toList(),
-      'chairman_result': {
-        if (result.chairman.response != null)
-          'content': result.chairman.response!.content,
-        if (result.chairman.error != null) 'error': result.chairman.error,
-      },
-      'answer_map': result.answers.asMap().entries.map((entry) {
-        final index = entry.key;
-        final r = entry.value;
-        return {
-          'answer_id': 'ans_${index + 1}',
-          'label':
-              '${r.participant.agent.toUpperCase()} (${r.participant.model})',
-        };
-      }).toList(),
-    };
-    print(const JsonEncoder.withIndent('  ').convert(output));
-  }
+  void _printFormattedOutput(CouncilRun result, bool includeAnswers) {
+    OutputFormatter.printCouncilStart(result.councilId, result.title);
 
-  void _printFormattedOutput(CouncilResult result, bool includeAnswers) {
     if (includeAnswers) {
       OutputFormatter.printStageHeader('Stage 1: Answers');
-      for (final r in result.answers) {
-        final p = r.participant;
-        OutputFormatter.printParticipantHeader(
-          agent: p.agent,
-          model: p.model,
-          stance: 'answer',
-        );
-        if (r.success) {
-          if (r.response != null) {
-            if (r.response!.sessionId != null) {
-              OutputFormatter.printSessionStart(r.response!.sessionId!);
-            }
-            print(r.response!.content);
-          }
-        } else {
-          print('ERROR: ${r.error}');
-        }
-        print('');
+      for (final answer in result.answers) {
+        _printAnswer(answer);
       }
     }
 
     OutputFormatter.printStageHeader('Stage 2: Reviews');
-    for (final r in result.reviews) {
-      final p = r.participant;
-      OutputFormatter.printParticipantHeader(
-        agent: p.agent,
-        model: p.model,
-        stance: 'review',
-      );
-      if (r.success) {
-        print(r.response!.content);
-      } else {
-        print('ERROR: ${r.error}');
-      }
-      print('');
+    for (final review in result.reviews) {
+      _printReview(review);
     }
 
     OutputFormatter.printStageHeader('Stage 3: Chairman');
-    final chairman = result.chairman;
-    OutputFormatter.printParticipantHeader(
-      agent: chairman.chairman.agent,
-      model: chairman.chairman.model,
-      stance: 'chairman',
-    );
-    if (chairman.success) {
-      print(chairman.response!.content);
-    } else {
-      print('ERROR: ${chairman.error}');
-    }
-    print('');
+    _printChairman(result.chairmanResult);
 
     OutputFormatter.printStageHeader('Answer Map');
-    for (var i = 0; i < result.answers.length; i++) {
-      final participant = result.answers[i].participant;
+    for (var index = 0; index < result.answers.length; index++) {
+      final participant = result.answers[index].participant;
       final label = '${participant.agent.toUpperCase()} (${participant.model})';
-      print('ans_${i + 1}: $label');
+      print('ans_${index + 1}: $label');
     }
     print('');
+  }
+
+  void _printAnswer(CouncilParticipantResult result) {
+    final participant = result.participant;
+    OutputFormatter.printParticipantHeader(
+      agent: participant.agent,
+      model: participant.model,
+      stance: 'answer',
+    );
+    if (result.success && result.response != null) {
+      if (participant.sessionId != null) {
+        OutputFormatter.printSessionStart(participant.sessionId!);
+      }
+      print(result.response!.content);
+    } else {
+      OutputFormatter.printFailure(result.failure!);
+    }
+    print('');
+  }
+
+  void _printReview(CouncilReviewResult result) {
+    final participant = result.participant;
+    OutputFormatter.printParticipantHeader(
+      agent: participant.agent,
+      model: participant.model,
+      stance: 'review',
+    );
+    if (result.success && result.response != null) {
+      print(result.response!.content);
+    } else {
+      OutputFormatter.printFailure(result.failure!);
+    }
+    print('');
+  }
+
+  void _printChairman(CouncilChairmanResult result) {
+    OutputFormatter.printParticipantHeader(
+      agent: result.chairman.agent,
+      model: result.chairman.model,
+      stance: 'chairman',
+    );
+    if (result.success && result.response != null) {
+      print(result.response!.content);
+    } else {
+      OutputFormatter.printFailure(result.failure!);
+    }
+    print('');
+  }
+
+  Future<void> _listRuns(bool outputJson) async {
+    final storage = CouncilStorage();
+    final runs = await storage.loadAll();
+    runs.sort((left, right) => right.createdAt.compareTo(left.createdAt));
+
+    if (outputJson) {
+      final output = {'runs': runs.map((run) => run.toSummaryJson()).toList()};
+      print(const JsonEncoder.withIndent('  ').convert(output));
+      return;
+    }
+
+    if (runs.isEmpty) {
+      print('No council runs found.');
+      return;
+    }
+
+    for (final run in runs.take(25)) {
+      final participants = run.participants
+          .map((participant) => participant.toString())
+          .join(', ');
+      print(
+        '${run.councilId}  ${OutputFormatter.formatLocalDate(run.createdAt)}  ${run.status}  $participants',
+      );
+      print('  Chairman: ${run.chairman}');
+      print('  Title: ${run.title}');
+    }
+  }
+
+  Future<void> _inspectRun(String councilId, bool outputJson) async {
+    final storage = CouncilStorage();
+    final run = await storage.load(councilId);
+    if (run == null) {
+      stderr.writeln('Council run not found: $councilId');
+      exit(1);
+    }
+
+    if (outputJson) {
+      print(const JsonEncoder.withIndent('  ').convert(run.toJson()));
+      return;
+    }
+
+    _printFormattedOutput(run, true);
   }
 }

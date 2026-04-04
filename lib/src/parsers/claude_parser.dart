@@ -12,7 +12,10 @@ class ClaudeParser extends BaseParser {
   ParsedResponse parse({required String stdout, required String stderr}) {
     final trimmed = stdout.trim();
     if (trimmed.isEmpty) {
-      throw ParserException('Claude CLI returned empty stdout');
+      throw ParserException(
+        'Claude CLI returned empty stdout',
+        reason: AgentExitReason.emptyResponse,
+      );
     }
 
     final dynamic decoded;
@@ -32,7 +35,10 @@ class ClaudeParser extends BaseParser {
     }
 
     if (events.isEmpty) {
-      throw ParserException('Claude CLI JSON array is empty');
+      throw ParserException(
+        'Claude CLI JSON array is empty',
+        reason: AgentExitReason.emptyResponse,
+      );
     }
 
     final resultEvent = events.firstWhere(
@@ -62,7 +68,10 @@ class ClaudeParser extends BaseParser {
           metadata: {...metadata, 'stderr': stderrText},
         );
       }
-      throw ParserException('Claude CLI response has no textual result');
+      throw ParserException(
+        'Claude CLI response has no textual result',
+        reason: AgentExitReason.emptyResponse,
+      );
     }
 
     return ParsedResponse(content: content, metadata: metadata);

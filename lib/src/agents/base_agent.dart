@@ -49,26 +49,55 @@ abstract class BaseAgent {
 
     if (!result.success) {
       final recovered = recoverFromError(result);
-      if (recovered != null) return recovered;
-
-      throw CLIRunnerException(
-        '${config.name} CLI failed',
-        exitCode: result.exitCode,
-        stderr: result.stderr,
-      );
+      if (recovered != null) {
+        return _attachExecutionMetadata(recovered, result);
+      }
+      throw AgentExecutionException(result.failure!);
     }
 
-    return parser.parse(stdout: result.stdout, stderr: result.stderr);
+    try {
+      final response = parser.parse(stdout: result.stdout, stderr: result.stderr);
+      if (response.content.trim().isEmpty) {
+        throw AgentExecutionException(
+          AgentFailure(
+            reason: AgentExitReason.emptyResponse,
+            message: '${config.name} returned an empty response.',
+            exitCode: result.exitCode,
+            stdoutSnippet: _snippet(result.stdout),
+            stderrSnippet: _snippet(result.stderr),
+            durationMs: result.durationMs,
+            hadPartialOutput:
+                result.stdout.trim().isNotEmpty || result.stderr.trim().isNotEmpty,
+          ),
+        );
+      }
+      return _attachExecutionMetadata(response, result);
+    } on ParserException catch (error) {
+      throw AgentExecutionException(
+        AgentFailure(
+          reason: error.reason,
+          message: error.message,
+          exitCode: result.exitCode,
+          stdoutSnippet: _snippet(result.stdout),
+          stderrSnippet: _snippet(result.stderr),
+          durationMs: result.durationMs,
+          hadPartialOutput:
+              result.stdout.trim().isNotEmpty || result.stderr.trim().isNotEmpty,
+        ),
+      );
+    }
   }
 
   Future<CLIResult> _runCommand(List<String> args) {
-    final timeout = Duration(seconds: config.timeoutSeconds);
+    final hardTimeout = Duration(seconds: config.hardTimeoutSeconds);
+    final idleTimeout = Duration(seconds: config.idleTimeoutSeconds);
     if (config.shellCommandPrefix == null) {
       return runner.run(
         executable: config.executable,
         args: args,
         env: config.env.isNotEmpty ? config.env : null,
-        timeout: timeout,
+        hardTimeout: hardTimeout,
+        idleTimeout: idleTimeout,
       );
     }
 
@@ -86,7 +115,18 @@ abstract class BaseAgent {
       executable: shellExecutable,
       args: [...shellArgs, command],
       env: config.env.isNotEmpty ? config.env : null,
-      timeout: timeout,
+      hardTimeout: hardTimeout,
+      idleTimeout: idleTimeout,
+    );
+  }
+
+  ParsedResponse _attachExecutionMetadata(
+    ParsedResponse response,
+    CLIResult result,
+  ) {
+    return ParsedResponse(
+      content: response.content,
+      metadata: {...response.metadata, 'duration_ms': result.durationMs},
     );
   }
 
@@ -122,5 +162,16 @@ abstract class BaseAgent {
     final lower = shellExecutable.toLowerCase();
     if (lower.contains('cmd')) return ['/c'];
     return ['-c'];
+  }
+
+  String? _snippet(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) {
+      return null;
+    }
+    if (trimmed.length <= 400) {
+      return trimmed;
+    }
+    return '${trimmed.substring(0, 400)}...';
   }
 }

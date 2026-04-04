@@ -1,6 +1,6 @@
 # CAG - CLI Agents Wrapper
 
-CLI wrapper for multiple AI agent CLIs (Claude, Gemini, Codex, Cursor) with consensus/council modes and session resume.
+CLI wrapper for multiple AI agent CLIs (Claude, Gemini, Codex, Cursor) with compare/consensus/council modes and session resume.
 
 <img src="docs/images/consensus-demo.png" width="700" alt="CAG - CLI Agents Wrapper">
 
@@ -8,6 +8,7 @@ CLI wrapper for multiple AI agent CLIs (Claude, Gemini, Codex, Cursor) with cons
 
 - **Unified interface** — single CLI for Claude, Gemini, Codex, and Cursor with consistent flags and output
 - **Session resume** — continue conversations with `-r <session_id>`
+- **Compare mode** — run multiple agents in parallel and keep each answer as a resumable branch
 - **Consensus mode** — run multiple models in parallel with stance-based prompts (for/against/neutral)
 - **Council mode** — multi-stage deliberation: independent answers → peer review → chairman synthesis
 - **MCP server** — integrate with Cursor, Claude Code, and other MCP-compatible tools
@@ -80,7 +81,7 @@ irm https://raw.githubusercontent.com/stanislavlysenko0912/cag/main/install.ps1 
 cag claude -m sonnet "Review this function"
 cag gemini -m pro "Find issues in this parser"
 cag codex -m gpt "Explain this architecture"
-cag cursor -m composer-1 "Summarize this architecture"
+cag cursor -m composer-2 "Summarize this architecture"
 ```
 
 Common flags:
@@ -93,10 +94,10 @@ Common flags:
 
 Models and aliases:
 
-- **claude**: `sonnet` (default), `opus`, `haiku`
-- **gemini**: `gemini-3-flash-preview` (alias `flash`, default), `gemini-3-pro-preview` (alias `pro`)
-- **codex**: `gpt-5.2` (alias `gpt`, default), `gpt-5.2-codex` (alias `codex`), `gpt-5.1-codex-mini` (alias `mini`)
-- **cursor**: `composer-1` (default), `auto`, `grok`
+- **claude**: `claude-sonnet-4-6` (alias `sonnet`, default), `claude-opus-4-6` (alias `opus`), `claude-haiku-4-5` (alias `haiku`)
+- **gemini**: `gemini-3-flash-preview` (alias `flash`, default), `gemini-3.1-pro-preview` (alias `pro`), `gemini-3.1-flash-lite-preview` (alias `flash-lite`)
+- **codex**: `gpt-5.4` (alias `gpt`, default), `gpt-5.3-codex` (alias `codex`), `gpt-5.4-mini` (alias `mini`)
+- **cursor**: `composer-2-fast` (default), `composer-2`
 
 > [!CAUTION]
 > **⚠️ Permission Note:** Agents run with elevated permissions for non-interactive execution:
@@ -122,6 +123,25 @@ cag consensus \
   "Should we add caching for user profiles, 10k RPM, data changes hourly?"
 ```
 
+### compare
+
+Run multiple agents in parallel. Each successful answer includes its own `session_id`, so you can continue later with the existing agent command.
+
+```bash
+cag compare \
+  -a "claude:sonnet" \
+  -a "codex:gpt" \
+  "How should we cache profiles for 10k RPM?"
+
+cag compare --title "Profile caching options" \
+  -a "claude:sonnet" \
+  -a "gemini:pro" \
+  "Longer prompt..."
+
+cag compare --list
+cag compare --inspect cmp_12345678
+```
+
 ### council
 
 Multi-stage council: independent answers, peer reviews with ranking, then chairman synthesis.
@@ -135,6 +155,15 @@ cag council \
   -a "codex:gpt" \
   -c "claude:sonnet" \
   "Design a caching strategy for 10k RPM API"
+
+cag council --title "Caching council" \
+  -a "gemini:pro" \
+  -a "codex:gpt" \
+  -c "claude:sonnet" \
+  "Design a caching strategy for 10k RPM API"
+
+cag council --list
+cag council --inspect council_12345678
 ```
 
 ### prime
@@ -194,6 +223,7 @@ cag mcp --transport http --host 127.0.0.1 --port 7331
 Available MCP tools:
 
 - `cag_agent` – run a single agent
+- `cag_compare` – run parallel independent answers with per-branch `session_id`
 - `cag_consensus` – run consensus across multiple agents
 - `cag_council` – run multi-stage council (answers, reviews, chairman)
 - `cag_models` – list supported models
@@ -211,8 +241,20 @@ cag codex "How should I cache profiles?"
 cag codex -r abc-123 "What if data changes hourly?"
 ```
 
+Compare runs print `compare_id` and keep the per-agent `session_id` values for branch follow-up.
 Consensus sessions print `consensus_id` and can be resumed with `-r`.
-Council runs are stateless (no resume).
+Council runs print `council_id` and are persisted for inspection and follow-up. The deliberation itself is not resumable.
+
+Example compare follow-up:
+
+```bash
+cag compare -a "claude:sonnet" -a "codex:gpt" "How should we cache profiles?"
+# compare_id: cmp_12345678
+# session_id: claude-session
+# session_id: codex-session
+
+cag codex -r codex-session "Continue this direction"
+```
 
 ### detect
 
@@ -246,7 +288,7 @@ If you want to use a different binary than the default one, or `cag` cannot find
     "codex": {
       "enabled": true, // if false, agent will be hidden from help/prime/models output and cannot be invoked
       "executable": "codex",
-      "default_model": "gpt-5.2",
+      "default_model": "gpt-5.4",
       "additional_args": ["--search", "exec", "--json", "--skip-git-repo-check"]
     }
   }

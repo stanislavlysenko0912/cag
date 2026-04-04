@@ -4,6 +4,7 @@ import 'package:args/command_runner.dart';
 import 'package:cag/cag.dart';
 
 import 'commands/agent_command.dart';
+import 'commands/compare_command.dart';
 import 'commands/consensus_command.dart';
 import 'commands/council_command.dart';
 import 'commands/detect_command.dart';
@@ -37,17 +38,14 @@ void main(List<String> args) async {
     'codex': codexConfig,
     'cursor': cursorConfig,
   };
-  final enabledAgents = agentConfigs.entries
-      .where((entry) => entry.value.enabled)
-      .map((entry) => entry.key)
-      .toSet();
 
   final runner = CommandRunner<void>('cag', 'CLI wrapper for AI agents')
-    ..addCommand(ConsensusCommand(enabledAgents: enabledAgents))
-    ..addCommand(CouncilCommand(enabledAgents: enabledAgents))
+    ..addCommand(ConsensusCommand(agentConfigs: agentConfigs))
+    ..addCommand(CompareCommand(agentConfigs: agentConfigs))
+    ..addCommand(CouncilCommand(agentConfigs: agentConfigs))
     ..addCommand(DetectCommand())
     ..addCommand(McpCommand())
-    ..addCommand(PrimeCommand(enabledAgents: enabledAgents))
+    ..addCommand(PrimeCommand(agentConfigs: agentConfigs))
     ..argParser.addFlag(
       'version',
       abbr: 'v',
@@ -93,7 +91,7 @@ void main(List<String> args) async {
         descriptionText: 'Run Codex CLI agent',
         defaultModel:
             codexConfig.defaultModel ??
-            (AgentModelRegistry.defaultModelName('codex') ?? 'gpt-5.2'),
+            (AgentModelRegistry.defaultModelName('codex') ?? 'gpt-5.4'),
         agent: CodexAgent(config: codexConfig),
         metaPrinter: printCodexMeta,
         systemHelp: 'System prompt',
@@ -108,7 +106,8 @@ void main(List<String> args) async {
         descriptionText: 'Run Cursor Agent CLI',
         defaultModel:
             cursorConfig.defaultModel ??
-            (AgentModelRegistry.defaultModelName('cursor') ?? 'composer-1'),
+            (AgentModelRegistry.defaultModelName('cursor') ??
+                'composer-2-fast'),
         agent: CursorAgent(config: cursorConfig),
         metaPrinter: printCursorMeta,
         systemHelp: 'System prompt (prepended to prompt)',

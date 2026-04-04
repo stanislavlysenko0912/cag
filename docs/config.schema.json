@@ -60,9 +60,14 @@
               "type": "string"
             }
           },
-          "timeout_seconds": {
+          "hard_timeout_seconds": {
             "type": "integer",
-            "description": "Process timeout in seconds.",
+            "description": "Hard process timeout in seconds.",
+            "minimum": 1
+          },
+          "idle_timeout_seconds": {
+            "type": "integer",
+            "description": "Idle timeout in seconds based on no stdout/stderr activity.",
             "minimum": 1
           }
         }

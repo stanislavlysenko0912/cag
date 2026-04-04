@@ -1,38 +1,11 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
+import '../models/models.dart';
+
 /// Result of running a CLI command.
-class CLIResult {
-  CLIResult({
-    required this.exitCode,
-    required this.stdout,
-    required this.stderr,
-  });
-
-  final int exitCode;
-  final String stdout;
-  final String stderr;
-
-  bool get success => exitCode == 0;
-}
-
-/// Exception thrown when CLI execution fails.
-class CLIRunnerException implements Exception {
-  CLIRunnerException(this.message, {this.exitCode, this.stderr});
-
-  final String message;
-  final int? exitCode;
-  final String? stderr;
-
-  @override
-  String toString() {
-    final buffer = StringBuffer('CLIRunnerException: $message');
-    if (exitCode != null) buffer.write(' (exit code: $exitCode)');
-    if (stderr != null && stderr!.isNotEmpty) {
-      buffer.write('\nstderr: $stderr');
-    }
-    return buffer.toString();
-  }
-}
+typedef CLIResult = AgentExecutionResult;
 
 /// Runs external CLI commands.
 class CLIRunner {
@@ -41,52 +14,225 @@ class CLIRunner {
     required String executable,
     required List<String> args,
     Map<String, String>? env,
-    Duration? timeout,
+    Duration? hardTimeout,
+    Duration? idleTimeout,
     String? workingDirectory,
   }) async {
     final resolvedExecutable = _resolveExecutable(executable);
-    final result = await _runProcess(
-      executable: resolvedExecutable,
-      args: args,
-      env: env,
-      timeout: timeout,
-      workingDirectory: workingDirectory,
-      originalExecutable: executable,
-    );
-
-    return CLIResult(
-      exitCode: result.exitCode,
-      stdout: result.stdout as String,
-      stderr: result.stderr as String,
-    );
+    try {
+      return await _runProcess(
+        executable: resolvedExecutable,
+        args: args,
+        env: env,
+        hardTimeout: hardTimeout,
+        idleTimeout: idleTimeout,
+        workingDirectory: workingDirectory,
+      );
+    } on ProcessException catch (error) {
+      return CLIResult(
+        exitCode: null,
+        stdout: '',
+        stderr: '',
+        durationMs: 0,
+        failure: AgentFailure(
+          reason: AgentExitReason.crash,
+          message: _friendlyProcessExceptionMessage(
+            error,
+            executable,
+            resolvedExecutable,
+          ),
+        ),
+      );
+    }
   }
 
-  Future<ProcessResult> _runProcess({
+  Future<CLIResult> _runProcess({
     required String executable,
     required List<String> args,
     Map<String, String>? env,
-    Duration? timeout,
+    Duration? hardTimeout,
+    Duration? idleTimeout,
     String? workingDirectory,
-    required String originalExecutable,
   }) async {
-    try {
-      return await Process.run(
-        executable,
-        args,
-        environment: env != null ? {...Platform.environment, ...env} : null,
-        workingDirectory: workingDirectory,
-        runInShell: false,
-      ).timeout(
-        timeout ?? const Duration(minutes: 30),
-        onTimeout: () => throw CLIRunnerException(
-          'Process timed out after ${timeout?.inSeconds ?? 1800}s',
+    final stopwatch = Stopwatch()..start();
+    final process = await Process.start(
+      executable,
+      args,
+      environment: env != null ? {...Platform.environment, ...env} : null,
+      workingDirectory: workingDirectory,
+      runInShell: false,
+    );
+    await process.stdin.close();
+
+    final stdoutBuffer = StringBuffer();
+    final stderrBuffer = StringBuffer();
+    final stdoutDone = Completer<void>();
+    final stderrDone = Completer<void>();
+    var lastActivityAt = DateTime.now();
+
+    final stdoutSub = _listen(
+      stream: process.stdout,
+      buffer: stdoutBuffer,
+      done: stdoutDone,
+      onActivity: () => lastActivityAt = DateTime.now(),
+    );
+    final stderrSub = _listen(
+      stream: process.stderr,
+      buffer: stderrBuffer,
+      done: stderrDone,
+      onActivity: () => lastActivityAt = DateTime.now(),
+    );
+
+    final timeoutReason = Completer<AgentExitReason>();
+    final monitor = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (timeoutReason.isCompleted) {
+        return;
+      }
+      if (hardTimeout != null && stopwatch.elapsed >= hardTimeout) {
+        timeoutReason.complete(AgentExitReason.timeoutHard);
+        return;
+      }
+      if (idleTimeout == null) {
+        return;
+      }
+      if (DateTime.now().difference(lastActivityAt) >= idleTimeout) {
+        timeoutReason.complete(AgentExitReason.timeoutIdle);
+      }
+    });
+
+    final outcome = await Future.any<Object>([
+      process.exitCode,
+      timeoutReason.future,
+    ]);
+    monitor.cancel();
+
+    final exitCode = outcome is int
+        ? outcome
+        : await _killAndCollectExitCode(process);
+    await Future.wait([stdoutDone.future, stderrDone.future]);
+    await stdoutSub.cancel();
+    await stderrSub.cancel();
+    stopwatch.stop();
+
+    final stdout = stdoutBuffer.toString();
+    final stderr = stderrBuffer.toString();
+    if (outcome is AgentExitReason) {
+      return CLIResult(
+        exitCode: exitCode,
+        stdout: stdout,
+        stderr: stderr,
+        durationMs: stopwatch.elapsedMilliseconds,
+        failure: _buildTimeoutFailure(
+          reason: outcome,
+          hardTimeout: hardTimeout,
+          idleTimeout: idleTimeout,
+          stdout: stdout,
+          stderr: stderr,
+          durationMs: stopwatch.elapsedMilliseconds,
+          exitCode: exitCode,
         ),
       );
-    } on ProcessException catch (error) {
-      throw CLIRunnerException(
-        _friendlyProcessExceptionMessage(error, originalExecutable, executable),
+    }
+
+    if (exitCode == 0) {
+      return CLIResult(
+        exitCode: exitCode,
+        stdout: stdout,
+        stderr: stderr,
+        durationMs: stopwatch.elapsedMilliseconds,
       );
     }
+
+    return CLIResult(
+      exitCode: exitCode,
+      stdout: stdout,
+      stderr: stderr,
+      durationMs: stopwatch.elapsedMilliseconds,
+      failure: AgentFailure(
+        reason: AgentExitReason.cliError,
+        message: 'Process exited with code $exitCode.',
+        exitCode: exitCode,
+        stdoutSnippet: _snippet(stdout),
+        stderrSnippet: _snippet(stderr),
+        durationMs: stopwatch.elapsedMilliseconds,
+        hadPartialOutput: _hasPartialOutput(stdout, stderr),
+      ),
+    );
+  }
+
+  StreamSubscription<String> _listen({
+    required Stream<List<int>> stream,
+    required StringBuffer buffer,
+    required Completer<void> done,
+    required void Function() onActivity,
+  }) {
+    return stream.transform(utf8.decoder).listen(
+      (chunk) {
+        if (chunk.isEmpty) {
+          return;
+        }
+        buffer.write(chunk);
+        onActivity();
+      },
+      onDone: done.complete,
+    );
+  }
+
+  Future<int?> _killAndCollectExitCode(Process process) async {
+    process.kill();
+    final exited = await Future.any<bool>([
+      process.exitCode.then((_) => true),
+      Future<bool>.delayed(const Duration(seconds: 2), () => false),
+    ]);
+    if (!exited) {
+      process.kill(ProcessSignal.sigkill);
+    }
+    return process.exitCode.timeout(
+      const Duration(seconds: 2),
+      onTimeout: () => -1,
+    ).then((code) => code == -1 ? null : code);
+  }
+
+  AgentFailure _buildTimeoutFailure({
+    required AgentExitReason reason,
+    required Duration? hardTimeout,
+    required Duration? idleTimeout,
+    required String stdout,
+    required String stderr,
+    required int durationMs,
+    required int? exitCode,
+  }) {
+    final timeout = reason == AgentExitReason.timeoutHard
+        ? hardTimeout?.inSeconds
+        : idleTimeout?.inSeconds;
+    final message = reason == AgentExitReason.timeoutHard
+        ? 'Process exceeded hard timeout of ${timeout ?? 0}s.'
+        : 'Process produced no output for ${timeout ?? 0}s.';
+    return AgentFailure(
+      reason: reason,
+      message: message,
+      exitCode: exitCode,
+      timedOutAfter: timeout,
+      stdoutSnippet: _snippet(stdout),
+      stderrSnippet: _snippet(stderr),
+      durationMs: durationMs,
+      hadPartialOutput: _hasPartialOutput(stdout, stderr),
+    );
+  }
+
+  bool _hasPartialOutput(String stdout, String stderr) {
+    return stdout.trim().isNotEmpty || stderr.trim().isNotEmpty;
+  }
+
+  String? _snippet(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) {
+      return null;
+    }
+    if (trimmed.length <= 400) {
+      return trimmed;
+    }
+    return '${trimmed.substring(0, 400)}...';
   }
 
   String _friendlyProcessExceptionMessage(

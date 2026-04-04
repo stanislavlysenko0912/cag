@@ -62,6 +62,7 @@ class CodexParser extends BaseParser {
     if (agentMessages.isEmpty) {
       throw ParserException(
         'Codex CLI JSONL output did not include an agent_message item',
+        reason: AgentExitReason.emptyResponse,
       );
     }
 

@@ -1,148 +1,41 @@
 import 'dart:async';
 
+import 'package:uuid/uuid.dart';
+
 import '../agents/agents.dart';
+import '../models/agent_execution.dart';
 import '../models/models.dart';
 import 'council_model.dart';
 import 'council_prompt.dart';
-
-/// Result from a single participant response.
-///
-/// Captures the answer stage output per participant.
-class CouncilParticipantResult {
-  /// Creates a participant result.
-  ///
-  /// Provide response or error.
-  CouncilParticipantResult({
-    required this.participant,
-    required this.response,
-    this.error,
-  });
-
-  /// Participant details.
-  final CouncilMember participant;
-
-  /// Parsed response.
-  final ParsedResponse? response;
-
-  /// Error message when execution failed.
-  final String? error;
-
-  /// Whether the participant succeeded.
-  bool get success => error == null && response != null;
-}
-
-/// Result from a single participant review.
-///
-/// Captures the review stage output per participant.
-class CouncilReviewResult {
-  /// Creates a review result.
-  ///
-  /// Provide response or error.
-  CouncilReviewResult({
-    required this.participant,
-    required this.response,
-    this.error,
-  });
-
-  /// Participant details.
-  final CouncilMember participant;
-
-  /// Parsed response.
-  final ParsedResponse? response;
-
-  /// Error message when execution failed.
-  final String? error;
-
-  /// Whether the participant succeeded.
-  bool get success => error == null && response != null;
-}
-
-/// Result from the chairman synthesis.
-///
-/// Captures the final stage output.
-class CouncilChairmanResult {
-  /// Creates a chairman result.
-  ///
-  /// Provide response or error.
-  CouncilChairmanResult({
-    required this.chairman,
-    required this.response,
-    this.error,
-  });
-
-  /// Chairman member.
-  final CouncilMember chairman;
-
-  /// Parsed response.
-  final ParsedResponse? response;
-
-  /// Error message when execution failed.
-  final String? error;
-
-  /// Whether the chairman succeeded.
-  bool get success => error == null && response != null;
-}
-
-/// Aggregated result from a council run.
-///
-/// Groups stage outputs into a single result.
-class CouncilResult {
-  /// Creates a council result payload.
-  ///
-  /// Includes stage outputs and request context.
-  CouncilResult({
-    required this.prompt,
-    required this.participants,
-    required this.chairmanMember,
-    required this.answers,
-    required this.reviews,
-    required this.chairman,
-  });
-
-  /// Original prompt for the council run.
-  final String prompt;
-
-  /// Participants for the run.
-  final List<CouncilMember> participants;
-
-  /// Chairman for the run.
-  final CouncilMember chairmanMember;
-
-  /// Stage 1 answers.
-  final List<CouncilParticipantResult> answers;
-
-  /// Stage 2 reviews.
-  final List<CouncilReviewResult> reviews;
-
-  /// Stage 3 chairman response.
-  final CouncilChairmanResult chairman;
-}
+import 'council_storage.dart';
 
 /// Runs council stages: answers, reviews, chairman synthesis.
-///
-/// Uses separate sessions for the chairman stage.
 class CouncilRunner {
   /// Creates a council runner with optional dependencies.
-  ///
-  /// Provide agents to customize behavior.
   CouncilRunner({
+    CouncilStorage? storage,
     GeminiAgent? geminiAgent,
     CodexAgent? codexAgent,
     CursorAgent? cursorAgent,
     ClaudeAgent? claudeAgent,
-  }) : _geminiAgent = geminiAgent ?? GeminiAgent(),
+  }) : _storage = storage ?? CouncilStorage(),
+       _geminiAgent = geminiAgent ?? GeminiAgent(),
        _codexAgent = codexAgent ?? CodexAgent(),
        _cursorAgent = cursorAgent ?? CursorAgent(),
        _claudeAgent = claudeAgent ?? ClaudeAgent();
 
+  final CouncilStorage _storage;
   final GeminiAgent _geminiAgent;
   final CodexAgent _codexAgent;
   final CursorAgent _cursorAgent;
   final ClaudeAgent _claudeAgent;
 
-  /// Run a new council request.
-  Future<CouncilResult> run({
+  static const _uuid = Uuid();
+
+  /// Runs a new council request and persists the result.
+  Future<CouncilRun> run({
     required String prompt,
+    required String title,
     required List<CouncilMember> participants,
     required CouncilMember chairman,
   }) async {
@@ -150,31 +43,30 @@ class CouncilRunner {
       throw ArgumentError('Council requires at least 2 participants');
     }
 
-    final answers = await _runStage1(
-      prompt: prompt,
-      participants: participants,
-    );
-    final reviews = await _runStage2(
-      prompt: prompt,
-      participants: participants,
-      stage1Results: answers,
-    );
-    final chairmanAnswers = _buildAnswersForChairman(answers);
+    final answers = await _runStage1(prompt, participants);
+    final reviews = await _runStage2(prompt, participants, answers);
     final chairmanResult = await _runStage3(
       prompt: prompt,
       chairman: chairman,
-      answers: chairmanAnswers,
+      answers: _buildAnswersForChairman(answers),
       reviews: _buildReviewsForChairman(reviews),
     );
 
-    return CouncilResult(
+    final now = DateTime.now();
+    final run = CouncilRun(
+      councilId: 'council_${_uuid.v4().substring(0, 8)}',
+      title: title,
       prompt: prompt,
       participants: participants,
-      chairmanMember: chairman,
+      chairman: chairman,
       answers: answers,
       reviews: reviews,
-      chairman: chairmanResult,
+      chairmanResult: chairmanResult,
+      createdAt: now,
+      updatedAt: now,
     );
+    await _storage.save(run);
+    return run;
   }
 
   BaseAgent _getAgent(String agentName) {
@@ -187,84 +79,111 @@ class CouncilRunner {
     };
   }
 
-  Future<List<CouncilParticipantResult>> _runStage1({
-    required String prompt,
-    required List<CouncilMember> participants,
-  }) async {
-    final futures = participants.map((p) async {
-      try {
-        final agent = _getAgent(p.agent);
-        final response = await agent.execute(
-          prompt: prompt,
-          model: p.resolvedModel,
-          resume: null,
-        );
-        return CouncilParticipantResult(participant: p, response: response);
-      } catch (e) {
-        return CouncilParticipantResult(
-          participant: p,
-          response: null,
-          error: e.toString(),
-        );
-      }
-    });
-
+  Future<List<CouncilParticipantResult>> _runStage1(
+    String prompt,
+    List<CouncilMember> participants,
+  ) {
+    final futures = participants.map(
+      (participant) => _runAnswer(prompt, participant),
+    );
     return Future.wait(futures);
   }
 
-  Future<List<CouncilReviewResult>> _runStage2({
-    required String prompt,
-    required List<CouncilMember> participants,
-    required List<CouncilParticipantResult> stage1Results,
-  }) async {
+  Future<CouncilParticipantResult> _runAnswer(
+    String prompt,
+    CouncilMember participant,
+  ) async {
+    try {
+      final agent = _getAgent(participant.agent);
+      final response = await agent.execute(
+        prompt: prompt,
+        model: participant.resolvedModel,
+        resume: null,
+      );
+      return CouncilParticipantResult(
+        participant: participant.copyWith(sessionId: response.sessionId),
+        response: response,
+      );
+    } on AgentExecutionException catch (error) {
+      return CouncilParticipantResult(
+        participant: participant,
+        response: null,
+        failure: error.failure,
+      );
+    } catch (error) {
+      return CouncilParticipantResult(
+        participant: participant,
+        response: null,
+        failure: AgentFailure(
+          reason: AgentExitReason.crash,
+          message: error.toString(),
+        ),
+      );
+    }
+  }
+
+  Future<List<CouncilReviewResult>> _runStage2(
+    String prompt,
+    List<CouncilMember> participants,
+    List<CouncilParticipantResult> stage1Results,
+  ) {
     if (participants.length != stage1Results.length) {
       throw StateError('Stage 1 results mismatch participants length.');
     }
-    final futures = <Future<CouncilReviewResult>>[];
-    for (var i = 0; i < participants.length; i++) {
-      final p = participants[i];
-      final stage1 = stage1Results[i];
-      if (!stage1.success) {
-        futures.add(
-          Future.value(
-            CouncilReviewResult(
-              participant: p,
-              response: null,
-              error: 'Stage 1 response missing for ${p.agent}',
-            ),
-          ),
-        );
-        continue;
-      }
 
-      futures.add(() async {
-        try {
-          final agent = _getAgent(p.agent);
-          final reviewAnswers = _buildAnswersForReview(
-            stage1Results,
-            excludeIndex: i,
-          );
-          final reviewPrompt = buildCouncilReviewPrompt(
-            question: prompt,
-            answers: reviewAnswers,
-          );
-          final response = await agent.execute(
-            prompt: reviewPrompt,
-            model: p.resolvedModel,
-            resume: null,
-          );
-          return CouncilReviewResult(participant: p, response: response);
-        } catch (e) {
-          return CouncilReviewResult(
-            participant: p,
-            response: null,
-            error: e.toString(),
-          );
-        }
-      }());
+    final futures = <Future<CouncilReviewResult>>[];
+    for (var index = 0; index < participants.length; index++) {
+      futures.add(_runReview(prompt, participants[index], stage1Results, index));
+    }
+    return Future.wait(futures);
+  }
+
+  Future<CouncilReviewResult> _runReview(
+    String prompt,
+    CouncilMember participant,
+    List<CouncilParticipantResult> stage1Results,
+    int excludeIndex,
+  ) async {
+    final stage1 = stage1Results[excludeIndex];
+    if (!stage1.success) {
+      return CouncilReviewResult(
+        participant: participant,
+        response: null,
+        failure: AgentFailure(
+          reason: AgentExitReason.crash,
+          message: 'Stage 1 response missing for ${participant.agent}',
+        ),
+      );
     }
 
-    return Future.wait(futures);
+    try {
+      final agent = _getAgent(participant.agent);
+      final reviewPrompt = buildCouncilReviewPrompt(
+        question: prompt,
+        answers: _buildAnswersForReview(stage1Results, excludeIndex: excludeIndex),
+      );
+      final response = await agent.execute(
+        prompt: reviewPrompt,
+        model: participant.resolvedModel,
+        resume: null,
+      );
+      return CouncilReviewResult(participant: participant, response: response);
+    } on AgentExecutionException catch (error) {
+      return CouncilReviewResult(
+        participant: participant,
+        response: null,
+        failure: error.failure,
+      );
+    } catch (error) {
+      return CouncilReviewResult(
+        participant: participant,
+        response: null,
+        failure: AgentFailure(
+          reason: AgentExitReason.crash,
+          message: error.toString(),
+        ),
+      );
+    }
   }
 
   Future<CouncilChairmanResult> _runStage3({
@@ -283,74 +202,94 @@ class CouncilRunner {
       final response = await agent.execute(
         prompt: chairmanPrompt,
         model: chairman.resolvedModel,
+        resume: null,
       );
       return CouncilChairmanResult(chairman: chairman, response: response);
-    } catch (e) {
+    } on AgentExecutionException catch (error) {
       return CouncilChairmanResult(
         chairman: chairman,
         response: null,
-        error: e.toString(),
+        failure: error.failure,
+      );
+    } catch (error) {
+      return CouncilChairmanResult(
+        chairman: chairman,
+        response: null,
+        failure: AgentFailure(
+          reason: AgentExitReason.crash,
+          message: error.toString(),
+        ),
       );
     }
   }
 
   List<CouncilAnswer> _buildAnswersForReview(
-    List<CouncilParticipantResult> results, {
-    int? excludeIndex,
+    List<CouncilParticipantResult> stage1Results, {
+    required int excludeIndex,
   }) {
     final answers = <CouncilAnswer>[];
-    var labelIndex = 0;
-    for (var i = 0; i < results.length; i++) {
-      if (excludeIndex != null && i == excludeIndex) {
+    var answerNumber = 1;
+
+    for (var index = 0; index < stage1Results.length; index++) {
+      if (index == excludeIndex) {
         continue;
       }
-      final answerId = 'ans_${labelIndex + 1}';
-      final label = 'Answer ${labelIndex + 1}';
-      labelIndex += 1;
-      final result = results[i];
-      final content = result.success
-          ? result.response!.content
-          : 'ERROR: ${result.error ?? 'Unknown error'}';
+
+      final result = stage1Results[index];
+      if (!result.success || result.response == null) {
+        continue;
+      }
       answers.add(
-        CouncilAnswer(answerId: answerId, label: label, content: content),
+        CouncilAnswer(
+          answerId: 'ans_$answerNumber',
+          label: 'Answer $answerNumber',
+          content: result.response!.content.trim(),
+        ),
       );
+      answerNumber++;
     }
+
     return answers;
   }
 
   List<CouncilAnswer> _buildAnswersForChairman(
-    List<CouncilParticipantResult> results,
+    List<CouncilParticipantResult> answers,
   ) {
-    final answers = <CouncilAnswer>[];
-    for (var i = 0; i < results.length; i++) {
-      final answerId = 'ans_${i + 1}';
-      final participant = results[i].participant;
-      final label = '${participant.agent.toUpperCase()} (${participant.model})';
-      final result = results[i];
-      final content = result.success
-          ? result.response!.content
-          : 'ERROR: ${result.error ?? 'Unknown error'}';
-      answers.add(
-        CouncilAnswer(answerId: answerId, label: label, content: content),
+    final chairmanAnswers = <CouncilAnswer>[];
+    for (var index = 0; index < answers.length; index++) {
+      final result = answers[index];
+      final label = 'ans_${index + 1}';
+      final content = result.success && result.response != null
+          ? result.response!.content.trim()
+          : 'ERROR: ${result.failure}';
+      chairmanAnswers.add(
+        CouncilAnswer(
+          answerId: label,
+          label:
+              '${result.participant.agent.toUpperCase()} (${result.participant.model})',
+          content: content,
+        ),
       );
     }
-    return answers;
+    return chairmanAnswers;
   }
 
   List<CouncilReview> _buildReviewsForChairman(
-    List<CouncilReviewResult> results,
+    List<CouncilReviewResult> reviews,
   ) {
-    final reviews = <CouncilReview>[];
-    for (final result in results) {
-      final reviewerLabel =
-          '${result.participant.agent.toUpperCase()} (${result.participant.model})';
-      final content = result.success
-          ? result.response!.content
-          : 'ERROR: ${result.error ?? 'Unknown error'}';
-      reviews.add(
-        CouncilReview(reviewerLabel: reviewerLabel, content: content),
+    final chairmanReviews = <CouncilReview>[];
+    for (final review in reviews) {
+      final content = review.success && review.response != null
+          ? review.response!.content.trim()
+          : 'ERROR: ${review.failure}';
+      chairmanReviews.add(
+        CouncilReview(
+          reviewerLabel:
+              '${review.participant.agent.toUpperCase()} (${review.participant.model})',
+          content: content,
+        ),
       );
     }
-    return reviews;
+    return chairmanReviews;
   }
 }

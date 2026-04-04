@@ -6,73 +6,79 @@ class AgentModelRegistry {
 
   static const claudeModels = [
     ModelConfig(
-      name: 'sonnet',
+      name: 'claude-sonnet-4-6',
       description:
-          'Balanced speed/quality. Use for: general tasks, code review, discussions',
+          'Top-tier, fast all-rounder. Use for: general tasks, code review, discussions',
       isDefault: true,
+      aliases: ['sonnet'],
     ),
     ModelConfig(
-      name: 'opus',
+      name: 'claude-opus-4-6',
       description:
-          'Most capable, slower. Use for: complex reasoning, architecture decisions',
+          'Top-tier, strongest reasoning. Use for: architecture, complex debugging, deep code review',
+      aliases: ['opus'],
     ),
     ModelConfig(
-      name: 'haiku',
+      name: 'claude-haiku-4-5',
       description:
-          'Fastest, cheapest. Use for: simple questions, quick lookups',
+          'Light-tier, fastest. Use for: quick lookups, simple questions',
+      aliases: ['haiku'],
     ),
   ];
 
   static const geminiModels = [
     ModelConfig(
       name: 'gemini-3-flash-preview',
-      description: 'Fast responses. Use for: quick search, simple analysis',
+      description: 'Mid-tier, fast. Use for: general search, code analysis',
       isDefault: true,
       aliases: ['flash'],
     ),
     ModelConfig(
-      name: 'gemini-3-pro-preview',
+      name: 'gemini-3.1-pro-preview',
       description:
-          'More capable. Use for: complex analysis, architectural questions',
+          'Top-tier, strong analysis. Use for: complex analysis, architecture, deep code review',
       aliases: ['pro'],
+    ),
+    ModelConfig(
+      name: 'gemini-3.1-flash-lite-preview',
+      description: 'Light-tier, fastest. Use for: quick search, simple lookups',
+      aliases: ['flash-lite'],
     ),
   ];
 
   static const codexModels = [
     ModelConfig(
-      name: 'gpt-5.2',
-      description: 'Balanced. Use for: general tasks, discussions',
+      name: 'gpt-5.4',
+      description:
+          'Top-tier, versatile frontier model. Use for: general tasks, discussions, broad coding',
       isDefault: true,
       aliases: ['gpt'],
     ),
     ModelConfig(
       name: 'gpt-5.3-codex',
-      description: 'Code-specialized. Use for: complex coding, hard debugging',
+      description:
+          'Top-tier, thorough code reviewer. Use for: code review, finding subtle bugs, detailed analysis',
       aliases: ['codex'],
     ),
     ModelConfig(
-      name: 'gpt-5.1-codex-mini',
+      name: 'gpt-5.4-mini',
       description:
-          'Lighter code model. Use for: quick code questions, simple fixes',
+          'Mid-tier, fast. Use for: quick code questions, simple fixes',
       aliases: ['mini'],
     ),
   ];
 
   static const cursorModels = [
     ModelConfig(
-      name: 'composer-1.5',
-      description: 'Cursor`s fastest model, use for research and quick tasks',
+      name: 'composer-2-fast',
+      description:
+          'Mid-tier, fast variant (higher cost). Use for: foreground tasks, quick research',
       isDefault: true,
     ),
     ModelConfig(
-      name: 'composer-1',
+      name: 'composer-2',
       description:
-          'Cursor`s fast model, use simple research and quick small tasks',
-    ),
-    ModelConfig(
-      name: 'auto',
-      description:
-          'Cursor will automatically select the best model for the task.',
+          'Mid-tier, standard variant (lower cost). Use for: background tasks, longer sessions',
     ),
   ];
 

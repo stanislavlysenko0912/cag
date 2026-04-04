@@ -3,11 +3,11 @@ import 'dart:io';
 
 import 'package:json_schema/json_schema.dart';
 
+import '../../gen/config_schema.dart';
 import '../models/models.dart';
 import '../utils/app_paths.dart';
 import 'agent_config_override.dart';
 import 'app_config.dart';
-import 'package:cag/gen/config_schema.dart';
 
 class ConfigService {
   Future<AppConfig> loadOrCreate() async {
@@ -33,6 +33,13 @@ class ConfigService {
       return AppConfig.defaults();
     }
 
+    final migrated = _migrateLegacyConfig(json);
+    if (migrated) {
+      await file.parent.create(recursive: true);
+      final normalized = const JsonEncoder.withIndent('  ').convert(json);
+      await file.writeAsString('$normalized\n');
+    }
+
     final isValid = await _validateConfig(json);
     if (!isValid) {
       return AppConfig.defaults();
@@ -47,7 +54,25 @@ class ConfigService {
   }
 
   AgentConfig applyOverrides(AgentConfig base, AgentConfigOverride? overrides) {
-    if (overrides == null) return base;
+    if (overrides == null) {
+      return AgentConfig(
+        name: base.name,
+        executable: base.executable,
+        parser: base.parser,
+        enabled: base.enabled,
+        defaultModel: base.defaultModel,
+        additionalArgs: base.additionalArgs,
+        env: base.env,
+        hardTimeoutSeconds: base.hardTimeoutSeconds,
+        idleTimeoutSeconds: base.idleTimeoutSeconds,
+        shellExecutable: base.shellExecutable,
+        shellArgs: base.shellArgs,
+        shellCommandPrefix: base.shellCommandPrefix,
+        availableModels: AgentModelRegistry.modelsFor(base.name),
+      );
+    }
+
+    final models = _mergeModels(AgentModelRegistry.modelsFor(base.name), overrides.models);
 
     return AgentConfig(
       name: base.name,
@@ -57,12 +82,23 @@ class ConfigService {
       defaultModel: overrides.defaultModel ?? base.defaultModel,
       additionalArgs: overrides.additionalArgs ?? base.additionalArgs,
       env: overrides.env ?? base.env,
-      timeoutSeconds: overrides.timeoutSeconds ?? base.timeoutSeconds,
+      hardTimeoutSeconds: overrides.hardTimeoutSeconds ?? base.hardTimeoutSeconds,
+      idleTimeoutSeconds: overrides.idleTimeoutSeconds ?? base.idleTimeoutSeconds,
       shellExecutable: overrides.shellExecutable ?? base.shellExecutable,
       shellArgs: overrides.shellArgs ?? base.shellArgs,
-      shellCommandPrefix:
-          overrides.shellCommandPrefix ?? base.shellCommandPrefix,
+      shellCommandPrefix: overrides.shellCommandPrefix ?? base.shellCommandPrefix,
+      availableModels: models,
     );
+  }
+
+  List<ModelConfig> _mergeModels(List<ModelConfig> base, List<ModelConfig>? overrides) {
+    if (overrides == null || overrides.isEmpty) return base;
+
+    final map = {for (final m in base) m.name: m};
+    for (final override in overrides) {
+      map[override.name] = override;
+    }
+    return map.values.toList();
   }
 
   AgentConfigOverride? overridesFor(AppConfig config, String agentName) {
@@ -91,5 +127,31 @@ class ConfigService {
     await file.parent.create(recursive: true);
     final json = const JsonEncoder.withIndent('  ').convert(config.toJson());
     await file.writeAsString('$json\n');
+  }
+
+  bool _migrateLegacyConfig(Map<String, dynamic> json) {
+    final rawAgents = json['agents'];
+    if (rawAgents is! Map<String, dynamic>) {
+      return false;
+    }
+
+    var changed = false;
+    for (final entry in rawAgents.entries) {
+      final value = entry.value;
+      if (value is! Map<String, dynamic>) {
+        continue;
+      }
+
+      final legacyTimeout = value.remove('timeout_seconds');
+      if (legacyTimeout is! int) {
+        continue;
+      }
+
+      value.putIfAbsent('hard_timeout_seconds', () => legacyTimeout);
+      value.putIfAbsent('idle_timeout_seconds', () => legacyTimeout);
+      changed = true;
+    }
+
+    return changed;
   }
 }

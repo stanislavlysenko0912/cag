@@ -1,6 +1,6 @@
 name: cag
-description: CLI wrapper for AI agents (gemini, claude, etc.)
-version: 0.2.1
+description: CLI wrapper for AI coding agents
+version: 0.3.0
 
 environment:
   sdk: ^3.10.1
@@ -8,7 +8,7 @@ environment:
 dependencies:
   args: ^2.6.0
   json_schema: ^5.2.2
-  mcp_dart: ^1.1.2
+  mcp_dart: ^2.1.0
   path: ^1.9.0
   uuid: ^4.5.1
 

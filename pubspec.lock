@@ -181,10 +181,10 @@ packages:
     dependency: "direct main"
     description:
       name: mcp_dart
-      sha256: "436566d733fd1b9cfaeda148756596cd3e77b755f75df2d576128b55bdbc61e0"
+      sha256: "30ab03147fec3fd72e98172475cd720cd4e3aec7d5f8944ef36dbfabc75a353c"
       url: "https://pub.dev"
     source: hosted
-    version: "1.1.2"
+    version: "2.1.0"
   meta:
     dependency: transitive
     description:

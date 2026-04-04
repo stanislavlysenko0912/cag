@@ -5,6 +5,8 @@ import 'package:args/command_runner.dart';
 import 'package:cag/cag.dart';
 import 'package:mcp_dart/mcp_dart.dart';
 
+import 'output_formatter.dart';
+
 const String _appVersion = String.fromEnvironment(
   'APP_VERSION',
   defaultValue: 'unknown',
@@ -31,6 +33,10 @@ ToolInputSchema _buildAgentInputSchema(List<String> enabledAgents) {
       'resume': JsonSchema.string(
         description: 'Optional session/thread ID to resume.',
       ),
+      'verbose': JsonSchema.boolean(
+        description:
+            'Optional expanded output. Avoid unless raw metadata or a full structured payload is specifically needed.',
+      ),
     },
     required: ['agent', 'prompt'],
     additionalProperties: false,
@@ -39,14 +45,14 @@ ToolInputSchema _buildAgentInputSchema(List<String> enabledAgents) {
 
 final ToolOutputSchema _agentOutputSchema = JsonSchema.object(
   properties: {
-    'content': JsonSchema.string(
-      description: 'Primary text response from the agent.',
-    ),
-    'metadata': JsonSchema.object(
-      description: 'Session metadata (currently only session_id).',
+    'result': JsonSchema.string(description: 'CLI-like output string.'),
+    'session_id': JsonSchema.string(description: 'Session ID, if available.'),
+    'verbose_data': JsonSchema.object(
+      description:
+          'Expanded structured payload returned only when verbose=true.',
     ),
   },
-  required: ['content', 'metadata'],
+  required: ['result'],
   additionalProperties: false,
 );
 
@@ -95,6 +101,10 @@ ToolInputSchema _buildConsensusInputSchema(List<String> enabledAgents) {
         items: participantSchema,
         minItems: 2,
       ),
+      'verbose': JsonSchema.boolean(
+        description:
+            'Optional expanded output. Avoid unless per-participant payloads or metadata are specifically needed.',
+      ),
     },
     required: ['prompt'],
     additionalProperties: false,
@@ -103,31 +113,14 @@ ToolInputSchema _buildConsensusInputSchema(List<String> enabledAgents) {
 
 final ToolOutputSchema _consensusOutputSchema = JsonSchema.object(
   properties: {
+    'result': JsonSchema.string(description: 'CLI-like output string.'),
     'consensus_id': JsonSchema.string(description: 'Consensus session ID.'),
-    'prompt': JsonSchema.string(
-      description: 'Original prompt for the session.',
-    ),
-    'results': JsonSchema.array(
-      description: 'Per-participant results.',
-      items: JsonSchema.object(
-        properties: {
-          'participant': JsonSchema.object(
-            description: 'Participant details (agent, model, stance).',
-          ),
-          'success': JsonSchema.boolean(
-            description: 'Whether the participant succeeded.',
-          ),
-          'response': JsonSchema.object(
-            description:
-                'Parsed response from the participant (if successful).',
-          ),
-          'error': JsonSchema.string(description: 'Error message (if failed).'),
-        },
-        additionalProperties: true,
-      ),
+    'verbose_data': JsonSchema.object(
+      description:
+          'Expanded structured payload returned only when verbose=true.',
     ),
   },
-  required: ['consensus_id', 'prompt', 'results'],
+  required: ['result', 'consensus_id'],
   additionalProperties: false,
 );
 
@@ -164,93 +157,86 @@ ToolInputSchema _buildCouncilInputSchema(List<String> enabledAgents) {
       'include_answers': JsonSchema.boolean(
         description: 'Include participant answers and session IDs in output.',
       ),
+      'verbose': JsonSchema.boolean(
+        description:
+            'Optional expanded output. Avoid unless stage-level structured data is specifically needed.',
+      ),
     },
     required: ['prompt'],
     additionalProperties: false,
   );
 }
 
+ToolInputSchema _buildCompareInputSchema(List<String> enabledAgents) {
+  final memberSchema = _buildCouncilMemberSchema(enabledAgents);
+  return JsonSchema.object(
+    properties: {
+      'prompt': JsonSchema.string(
+        description:
+            'Prompt/question for the compare run. Provide full context, constraints, and desired output.',
+      ),
+      'title': JsonSchema.string(
+        description: 'Optional title override for the compare run.',
+      ),
+      'participants': JsonSchema.array(
+        description: 'Participants to include in the compare run.',
+        items: memberSchema,
+        minItems: 2,
+      ),
+      'verbose': JsonSchema.boolean(
+        description:
+            'Optional expanded output. Avoid unless per-participant payloads or metadata are specifically needed.',
+      ),
+    },
+    required: ['prompt', 'participants'],
+    additionalProperties: false,
+  );
+}
+
 final ToolOutputSchema _councilOutputSchema = JsonSchema.object(
   properties: {
-    'prompt': JsonSchema.string(
-      description: 'Original prompt for the session.',
-    ),
-    'answers': JsonSchema.array(
-      description: 'Stage 1 answers.',
-      items: JsonSchema.object(
-        properties: {
-          'answer_id': JsonSchema.string(description: 'Answer identifier.'),
-          'content': JsonSchema.string(description: 'Answer content.'),
-          'session_id': JsonSchema.string(
-            description: 'Session ID for answer (optional).',
-          ),
-          'error': JsonSchema.string(description: 'Error message (if failed).'),
-        },
-        additionalProperties: false,
-      ),
-    ),
-    'reviews': JsonSchema.array(
-      description: 'Stage 2 reviews.',
-      items: JsonSchema.object(
-        properties: {
-          'reviewer': JsonSchema.string(description: 'Reviewer label.'),
-          'content': JsonSchema.string(description: 'Review content.'),
-          'error': JsonSchema.string(description: 'Error message (if failed).'),
-        },
-        additionalProperties: false,
-      ),
-    ),
-    'chairman_result': JsonSchema.object(
-      description: 'Stage 3 chairman result.',
-      properties: {
-        'content': JsonSchema.string(description: 'Final synthesized answer.'),
-        'error': JsonSchema.string(description: 'Error message (if failed).'),
-      },
-      additionalProperties: false,
-    ),
-    'answer_map': JsonSchema.array(
-      description: 'Mapping of answer_id to participants.',
+    'result': JsonSchema.string(description: 'CLI-like output string.'),
+    'verbose_data': JsonSchema.object(
+      description:
+          'Expanded structured payload returned only when verbose=true.',
     ),
   },
-  required: ['prompt', 'reviews', 'chairman_result', 'answer_map'],
+  required: ['result'],
+  additionalProperties: false,
+);
+
+final ToolOutputSchema _compareOutputSchema = JsonSchema.object(
+  properties: {
+    'result': JsonSchema.string(description: 'CLI-like output string.'),
+    'compare_id': JsonSchema.string(description: 'Compare run ID.'),
+    'verbose_data': JsonSchema.object(
+      description:
+          'Expanded structured payload returned only when verbose=true.',
+    ),
+  },
+  required: ['result', 'compare_id'],
   additionalProperties: false,
 );
 
 final ToolOutputSchema _modelsOutputSchema = JsonSchema.object(
   properties: {
-    'agents': JsonSchema.array(
-      description: 'Agents and their supported models.',
-      items: JsonSchema.object(
-        properties: {
-          'agent': JsonSchema.string(description: 'Agent name.'),
-          'default_model': JsonSchema.string(
-            description: 'Default model name.',
-          ),
-          'models': JsonSchema.array(
-            description: 'Supported models.',
-            items: JsonSchema.object(
-              properties: {
-                'name': JsonSchema.string(description: 'Model name.'),
-                'aliases': JsonSchema.array(
-                  description: 'Model aliases.',
-                  items: JsonSchema.string(),
-                ),
-                'description': JsonSchema.string(
-                  description: 'Model description.',
-                ),
-                'is_default': JsonSchema.boolean(
-                  description: 'Whether model is default.',
-                ),
-              },
-              additionalProperties: false,
-            ),
-          ),
-        },
-        additionalProperties: false,
-      ),
+    'result': JsonSchema.string(description: 'Compact model summary.'),
+    'verbose_data': JsonSchema.object(
+      description:
+          'Expanded structured payload returned only when verbose=true.',
     ),
   },
-  required: ['agents'],
+  required: ['result'],
+  additionalProperties: false,
+);
+
+final ToolInputSchema _modelsInputSchema = JsonSchema.object(
+  properties: {
+    'verbose': JsonSchema.boolean(
+      description:
+          'Optional expanded output. Avoid unless the full per-model metadata is specifically needed.',
+    ),
+  },
   additionalProperties: false,
 );
 
@@ -404,11 +390,11 @@ Future<McpServer> _buildServer() async {
     if (codexConfig.enabled)
       'codex':
           codexConfig.defaultModel ??
-          (AgentModelRegistry.defaultModelName('codex') ?? 'gpt-5.2'),
+          (AgentModelRegistry.defaultModelName('codex') ?? 'gpt-5.4'),
     if (cursorConfig.enabled)
       'cursor':
           cursorConfig.defaultModel ??
-          (AgentModelRegistry.defaultModelName('cursor') ?? 'composer-1'),
+          (AgentModelRegistry.defaultModelName('cursor') ?? 'composer-2-fast'),
   };
 
   final agents = <String, BaseAgent>{
@@ -418,14 +404,24 @@ Future<McpServer> _buildServer() async {
     if (cursorConfig.enabled) 'cursor': CursorAgent(config: cursorConfig),
   };
 
+  final compareRunner = CompareRunner();
   final consensusRunner = ConsensusRunner();
   final councilRunner = CouncilRunner();
 
+  final modelsSection = _buildModelsSection(enabledAgents);
   final server = McpServer(
     Implementation(name: 'cag', version: _appVersion),
-    options: const ServerOptions(
+    options: McpServerOptions(
       instructions:
-          'cag MCP server exposing agent, consensus, and council tools.',
+          'cag is a multi-agent gateway that lets you query external AI agents '
+          'from within your current session. '
+          'Use it to get a second opinion, validate architectural decisions, brainstorm ideas, '
+          'or leverage multiple models for deeper analysis.\n\n'
+          'Regular agent conversations use a universal session_id. If a tool returns session_id, that conversation can be continued later through the matching agent tool with resume/session_id. '
+          'Any other returned ID belongs to a CAG wrapper flow and is not interchangeable with session_id. '
+          'Provide detailed prompts with full context, constraints, and goals — short prompts produce weak results.\n\n'
+          'Agent conversations are not just question-answer — use multi-turn dialogue (resume via session_id) to iterate, challenge ideas, and reach better solutions together.\n\n'
+          'Available models:\n$modelsSection',
     ),
   );
 
@@ -446,6 +442,7 @@ Future<McpServer> _buildServer() async {
       final modelInput = _readStringArg(args, 'model', errors);
       final systemPrompt = _readStringArg(args, 'system', errors);
       final resume = _readStringArg(args, 'resume', errors);
+      final verbose = args['verbose'] == true;
 
       if (errors.isNotEmpty) {
         return _errorResult(errors.join(' '));
@@ -486,18 +483,105 @@ Future<McpServer> _buildServer() async {
           resume: resume,
         );
 
-        return CallToolResult.fromStructuredContent(_minimalResponse(response));
-      } on ParserException catch (e) {
-        return _errorResult('Parse error: $e');
-      } on CLIRunnerException catch (e) {
-        return _errorResult('Execution error: $e');
+        final output = {
+          'result': response.content,
+          if (response.sessionId != null) 'session_id': response.sessionId,
+          if (verbose) 'verbose_data': _minimalResponse(response),
+        };
+        return CallToolResult.fromStructuredContent(output);
+      } on AgentExecutionException catch (e) {
+        return _errorResult(
+          'Execution error [${e.failure.summary}]: ${e.failure.message}',
+        );
+      }
+    },
+  );
+
+  server.registerTool(
+    'cag_compare',
+    description:
+        'Run multiple agents in parallel without synthesis and return per-branch session_id values plus compare_id for inspection.',
+    inputSchema: _buildCompareInputSchema(enabledAgents),
+    outputSchema: _compareOutputSchema,
+    callback: (args, extra) async {
+      final errors = <String>[];
+      final prompt = _readStringArg(args, 'prompt', errors, required: true);
+      final title = _readStringArg(args, 'title', errors);
+      final participantsRaw = args['participants'];
+      final verbose = args['verbose'] == true;
+
+      if (errors.isNotEmpty) {
+        return _errorResult(errors.join(' '));
+      }
+      if (participantsRaw is! List) {
+        return _errorResult('participants must be an array of objects.');
+      }
+      if (participantsRaw.length < 2) {
+        return _errorResult('participants must include at least 2 entries.');
+      }
+
+      final participants = <CompareParticipant>[];
+      for (final entry in participantsRaw) {
+        if (entry is! Map) {
+          return _errorResult('participants entries must be objects.');
+        }
+
+        final agentName = _readMapString(
+          entry,
+          'agent',
+          errors,
+          required: true,
+        )?.toLowerCase();
+        final model = _readMapString(entry, 'model', errors, required: true);
+
+        if (errors.isNotEmpty) {
+          return _errorResult(errors.join(' '));
+        }
+        if (!_knownAgents.contains(agentName)) {
+          return _errorResult(_agentUnknownMessage(agentName!, enabledAgents));
+        }
+        if (!enabledAgents.contains(agentName)) {
+          return _errorResult(_agentDisabledMessage(agentName!, enabledAgents));
+        }
+
+        final participant = CompareParticipant(
+          agent: agentName!,
+          model: model!,
+        ).copyWith(resolvedModel: _resolveModel(agentName, model, errors));
+        if (errors.isNotEmpty) {
+          return _errorResult(errors.join(' '));
+        }
+        participants.add(participant);
+      }
+
+      try {
+        final result = await compareRunner.run(
+          prompt: prompt!,
+          title: title?.trim().isNotEmpty == true
+              ? title!
+              : buildCompareTitle(prompt),
+          participants: participants,
+        );
+        final output = {
+          'result': _formatCompareOutput(result),
+          'compare_id': result.compareId,
+          if (verbose) 'verbose_data': result.toJson(),
+        };
+        return CallToolResult.fromStructuredContent(output);
+      } on ArgumentError catch (e) {
+        return _errorResult(e.message ?? e.toString());
+      } on AgentExecutionException catch (e) {
+        return _errorResult(
+          'Execution error [${e.failure.summary}]: ${e.failure.message}',
+        );
       }
     },
   );
 
   server.registerTool(
     'cag_consensus',
-    description: 'Run consensus across multiple agents.',
+    description:
+        'Run consensus across multiple agents. Resume uses consensus_id because this is a CAG-managed flow.',
     inputSchema: _buildConsensusInputSchema(enabledAgents),
     outputSchema: _consensusOutputSchema,
     callback: (args, extra) async {
@@ -506,6 +590,7 @@ Future<McpServer> _buildServer() async {
       final proposal = _readStringArg(args, 'proposal', errors);
       final resume = _readStringArg(args, 'resume', errors);
       final participantsRaw = args['participants'];
+      final verbose = args['verbose'] == true;
 
       if (errors.isNotEmpty) {
         return _errorResult(errors.join(' '));
@@ -609,7 +694,7 @@ Future<McpServer> _buildServer() async {
           );
         }
 
-        final output = {
+        final verboseData = {
           'consensus_id': result.session.consensusId,
           'prompt': result.session.prompt,
           'results': result.results.map((r) {
@@ -617,31 +702,37 @@ Future<McpServer> _buildServer() async {
               'participant': r.participant.toJson(),
               'success': r.success,
               if (r.response != null) 'response': _minimalResponse(r.response!),
-              if (r.error != null) 'error': r.error,
+              if (r.failure != null) 'failure': r.failure!.toJson(),
             };
           }).toList(),
         };
 
-        return CallToolResult.fromStructuredContent(output);
+        return CallToolResult.fromStructuredContent({
+          'result': _formatConsensusOutput(result),
+          'consensus_id': result.session.consensusId,
+          if (verbose) 'verbose_data': verboseData,
+        });
       } on ArgumentError catch (e) {
         return _errorResult(e.message ?? e.toString());
-      } on ParserException catch (e) {
-        return _errorResult('Parse error: $e');
-      } on CLIRunnerException catch (e) {
-        return _errorResult('Execution error: $e');
+      } on AgentExecutionException catch (e) {
+        return _errorResult(
+          'Execution error [${e.failure.summary}]: ${e.failure.message}',
+        );
       }
     },
   );
 
   server.registerTool(
     'cag_council',
-    description: 'Run multi-stage council (answers, reviews, chairman).',
+    description:
+        'Run multi-stage council (answers, reviews, chairman). Returns council_id for inspection and may include answer session_id values for branch follow-up.',
     inputSchema: _buildCouncilInputSchema(enabledAgents),
     outputSchema: _councilOutputSchema,
     callback: (args, extra) async {
       final errors = <String>[];
       final prompt = _readStringArg(args, 'prompt', errors, required: true);
       final includeAnswers = args['include_answers'] == true;
+      final verbose = args['verbose'] == true;
       final participantsRaw = args['participants'];
       final chairmanRaw = args['chairman'];
 
@@ -741,55 +832,24 @@ Future<McpServer> _buildServer() async {
       try {
         final result = await councilRunner.run(
           prompt: prompt!,
+          title: buildCompareTitle(prompt),
           participants: participants,
           chairman: chairman,
         );
 
-        final output = {
-          'prompt': result.prompt,
-          if (includeAnswers)
-            'answers': result.answers.asMap().entries.map((entry) {
-              final index = entry.key;
-              final r = entry.value;
-              return {
-                'answer_id': 'ans_${index + 1}',
-                if (r.response != null) 'content': r.response!.content,
-                if (includeAnswers && r.response?.sessionId != null)
-                  'session_id': r.response!.sessionId,
-                if (r.error != null) 'error': r.error,
-              };
-            }).toList(),
-          'reviews': result.reviews.map((r) {
-            return {
-              'reviewer':
-                  '${r.participant.agent.toUpperCase()} (${r.participant.model})',
-              if (r.response != null) 'content': r.response!.content,
-              if (r.error != null) 'error': r.error,
-            };
-          }).toList(),
-          'chairman_result': {
-            if (result.chairman.response != null)
-              'content': result.chairman.response!.content,
-            if (result.chairman.error != null) 'error': result.chairman.error,
-          },
-          'answer_map': result.answers.asMap().entries.map((entry) {
-            final index = entry.key;
-            final r = entry.value;
-            return {
-              'answer_id': 'ans_${index + 1}',
-              'label':
-                  '${r.participant.agent.toUpperCase()} (${r.participant.model})',
-            };
-          }).toList(),
-        };
-
-        return CallToolResult.fromStructuredContent(output);
+        return CallToolResult.fromStructuredContent({
+          'result': _formatCouncilOutput(
+            result,
+            includeAnswers: includeAnswers,
+          ),
+          if (verbose) 'verbose_data': result.toJson(),
+        });
       } on ArgumentError catch (e) {
         return _errorResult(e.message ?? e.toString());
-      } on ParserException catch (e) {
-        return _errorResult('Parse error: $e');
-      } on CLIRunnerException catch (e) {
-        return _errorResult('Execution error: $e');
+      } on AgentExecutionException catch (e) {
+        return _errorResult(
+          'Execution error [${e.failure.summary}]: ${e.failure.message}',
+        );
       }
     },
   );
@@ -797,8 +857,10 @@ Future<McpServer> _buildServer() async {
   server.registerTool(
     'cag_models',
     description: 'List supported models for each agent.',
+    inputSchema: _modelsInputSchema,
     outputSchema: _modelsOutputSchema,
     callback: (args, extra) async {
+      final verbose = args['verbose'] == true;
       final agentsInfo = CommandDefinitions.all
           .where((c) => c.models.isNotEmpty)
           .where((c) => enabledAgents.contains(c.name))
@@ -818,7 +880,29 @@ Future<McpServer> _buildServer() async {
           })
           .toList();
 
-      return CallToolResult.fromStructuredContent({'agents': agentsInfo});
+      return CallToolResult.fromStructuredContent({
+        'result': _formatModelsOutput(agentsInfo),
+        if (verbose) 'verbose_data': {'agents': agentsInfo},
+      });
+    },
+  );
+
+  server.registerPrompt(
+    'cag_discuss',
+    title: 'Discuss with AI agent',
+    description:
+        'Start an iterative dialogue with another AI agent via cag. '
+        'You and the agent are colleagues solving a task together.',
+    callback: (args, extra) {
+      return GetPromptResult(
+        description: 'Iterative dialogue with AI agent via cag',
+        messages: [
+          PromptMessage(
+            role: PromptMessageRole.user,
+            content: TextContent(text: discussPrompt),
+          ),
+        ],
+      );
     },
   );
 
@@ -830,12 +914,209 @@ CallToolResult _errorResult(String message) {
 }
 
 Map<String, dynamic> _minimalResponse(ParsedResponse response) {
-  return {
-    'content': response.content,
-    'metadata': {
-      if (response.sessionId != null) 'session_id': response.sessionId,
-    },
-  };
+  final metadata = <String, dynamic>{};
+  final modelUsed = response.metadata['model_used'];
+  final durationMs = response.metadata['duration_ms'];
+  final usage = response.metadata['usage'];
+
+  if (response.sessionId != null) {
+    metadata['session_id'] = response.sessionId;
+  }
+  if (modelUsed is String && modelUsed.isNotEmpty) {
+    metadata['model_used'] = modelUsed;
+  }
+  if (durationMs is num) {
+    metadata['duration_ms'] = durationMs;
+  }
+  if (usage is Map) {
+    metadata['usage'] = usage;
+  }
+
+  return {'content': response.content, 'metadata': metadata};
+}
+
+String _formatCompareOutput(CompareRun run) {
+  final buffer = StringBuffer();
+  buffer.writeln('compare_id: ${run.compareId}');
+  buffer.writeln('title: ${run.title}');
+  buffer.writeln('====');
+  buffer.writeln();
+
+  for (final result in run.results) {
+    final participant = result.participant;
+    buffer.writeln(
+      '=== ${participant.agent.toUpperCase()} (${participant.model}) ===',
+    );
+    if (result.success) {
+      if (participant.sessionId != null) {
+        buffer.writeln('session_id: ${participant.sessionId}');
+        buffer.writeln('----');
+      }
+      if (result.response != null) {
+        buffer.writeln(result.response!.content);
+      }
+    } else {
+      buffer.writeln('ERROR [${result.failure!.summary}]');
+      buffer.writeln(result.failure!.message);
+    }
+    buffer.writeln();
+  }
+
+  return buffer.toString().trimRight();
+}
+
+String _formatModelsOutput(List<Map<String, Object?>> agentsInfo) {
+  final lines = <String>[];
+  for (final agentInfo in agentsInfo) {
+    final agent = agentInfo['agent'] as String;
+    final models = (agentInfo['models'] as List).cast<Map<String, Object?>>();
+    final aliases = models
+        .map((model) {
+          final name = model['name'] as String;
+          final modelAliases = (model['aliases'] as List).cast<String>();
+          final description = model['description'] as String? ?? '';
+          final parts = <String>[name];
+          if (modelAliases.isEmpty) {
+            if (description.isNotEmpty) {
+              parts.add('- $description');
+            }
+            return parts.join(' ');
+          }
+          parts.add('(${modelAliases.join(', ')})');
+          if (description.isNotEmpty) {
+            parts.add('- $description');
+          }
+          return parts.join(' ');
+        })
+        .join(', ');
+
+    lines.add('$agent: $aliases');
+  }
+  return lines.join(' | ');
+}
+
+String _formatConsensusOutput(ConsensusResult result) {
+  final buffer = StringBuffer();
+  buffer.writeln('consensus_id: ${result.session.consensusId}');
+  buffer.writeln('====');
+  buffer.writeln();
+
+  for (final entry in result.results) {
+    final participant = entry.participant;
+    buffer.writeln(
+      '=== ${participant.agent.toUpperCase()} (${participant.model}) [${participant.stance.value.toUpperCase()}] ===',
+    );
+    if (entry.success) {
+      final sessionId = entry.response?.sessionId ?? participant.sessionId;
+      if (sessionId != null) {
+        buffer.writeln('session_id: $sessionId');
+        buffer.writeln('----');
+      }
+      buffer.writeln(entry.response!.content);
+    } else {
+      buffer.writeln('ERROR [${entry.failure!.summary}]');
+      buffer.writeln(entry.failure!.message);
+    }
+    buffer.writeln();
+  }
+
+  buffer.writeln('==== SUMMARY ====');
+  buffer.writeln('Total: ${result.results.length}');
+  buffer.writeln('Succeeded: ${result.successful.length}');
+    if (result.failed.isNotEmpty) {
+      buffer.writeln('Failed: ${result.failed.length}');
+      for (final failed in result.failed) {
+        buffer.writeln(
+          '  - ${failed.participant.agent}: ${OutputFormatter.formatFailure(failed.failure!)}',
+        );
+      }
+    }
+
+  return buffer.toString().trimRight();
+}
+
+String _formatCouncilOutput(
+  CouncilRun result, {
+  required bool includeAnswers,
+}) {
+  final buffer = StringBuffer();
+  buffer.writeln('council_id: ${result.councilId}');
+  buffer.writeln('title: ${result.title}');
+  buffer.writeln('====');
+  buffer.writeln();
+
+  if (includeAnswers) {
+    buffer.writeln('==== Stage 1: Answers ====');
+    for (final answer in result.answers) {
+      final participant = answer.participant;
+      buffer.writeln(
+        '=== ${participant.agent.toUpperCase()} (${participant.model}) [ANSWER] ===',
+      );
+      if (answer.success) {
+        if (participant.sessionId != null) {
+          buffer.writeln('session_id: ${participant.sessionId}');
+          buffer.writeln('----');
+        }
+        buffer.writeln(answer.response!.content);
+      } else {
+        buffer.writeln('ERROR [${answer.failure!.summary}]');
+        buffer.writeln(answer.failure!.message);
+      }
+      buffer.writeln();
+    }
+  }
+
+  buffer.writeln('==== Stage 2: Reviews ====');
+  for (final review in result.reviews) {
+    final participant = review.participant;
+    buffer.writeln(
+      '=== ${participant.agent.toUpperCase()} (${participant.model}) [REVIEW] ===',
+    );
+    if (review.success) {
+      buffer.writeln(review.response!.content);
+    } else {
+      buffer.writeln('ERROR [${review.failure!.summary}]');
+      buffer.writeln(review.failure!.message);
+    }
+    buffer.writeln();
+  }
+
+  buffer.writeln('==== Stage 3: Chairman ====');
+  buffer.writeln(
+    '=== ${result.chairmanResult.chairman.agent.toUpperCase()} (${result.chairmanResult.chairman.model}) [CHAIRMAN] ===',
+  );
+  if (result.chairmanResult.success) {
+    buffer.writeln(result.chairmanResult.response!.content);
+  } else {
+    buffer.writeln('ERROR [${result.chairmanResult.failure!.summary}]');
+    buffer.writeln(result.chairmanResult.failure!.message);
+  }
+  buffer.writeln();
+
+  buffer.writeln('==== Answer Map ====');
+  for (var index = 0; index < result.answers.length; index++) {
+    final participant = result.answers[index].participant;
+    buffer.writeln(
+      'ans_${index + 1}: ${participant.agent.toUpperCase()} (${participant.model})',
+    );
+  }
+
+  return buffer.toString().trimRight();
+}
+
+String _buildModelsSection(List<String> enabledAgents) {
+  final buffer = StringBuffer();
+  for (final agentName in enabledAgents) {
+    final cmdDef = CommandDefinitions.find(agentName);
+    if (cmdDef == null || cmdDef.models.isEmpty) continue;
+    buffer.writeln('$agentName:');
+    for (final m in cmdDef.models) {
+      final alias = m.aliases.isNotEmpty ? ' (${m.aliases.join(', ')})' : '';
+      final desc = m.description.isNotEmpty ? ' - ${m.description}' : '';
+      buffer.writeln('  ${m.name}$alias$desc');
+    }
+  }
+  return buffer.toString().trimRight();
 }
 
 String _normalizePath(String value) {

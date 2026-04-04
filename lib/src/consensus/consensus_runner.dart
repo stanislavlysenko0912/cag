@@ -13,14 +13,14 @@ class ParticipantResult {
   ParticipantResult({
     required this.participant,
     required this.response,
-    this.error,
+    this.failure,
   });
 
   final ConsensusParticipant participant;
   final ParsedResponse? response;
-  final String? error;
+  final AgentFailure? failure;
 
-  bool get success => error == null && response != null;
+  bool get success => failure == null && response != null;
 }
 
 /// Result from consensus run.
@@ -178,11 +178,20 @@ class ConsensusRunner {
         );
 
         return ParticipantResult(participant: p, response: response);
-      } catch (e) {
+      } on AgentExecutionException catch (error) {
         return ParticipantResult(
           participant: p,
           response: null,
-          error: e.toString(),
+          failure: error.failure,
+        );
+      } catch (error) {
+        return ParticipantResult(
+          participant: p,
+          response: null,
+          failure: AgentFailure(
+            reason: AgentExitReason.crash,
+            message: error.toString(),
+          ),
         );
       }
     });

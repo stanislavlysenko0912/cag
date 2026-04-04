@@ -12,7 +12,7 @@ class CodexAgent extends BaseAgent {
     name: 'codex',
     executable: 'codex',
     parser: 'codex_jsonl',
-    defaultModel: AgentModelRegistry.defaultModelName('codex') ?? 'gpt-5.2',
+    defaultModel: AgentModelRegistry.defaultModelName('codex') ?? 'gpt-5.4',
     additionalArgs: [
       '--dangerously-bypass-approvals-and-sandbox',
       '--search',
@@ -20,7 +20,8 @@ class CodexAgent extends BaseAgent {
       '--json',
       '--skip-git-repo-check',
     ],
-    timeoutSeconds: 1800,
+    hardTimeoutSeconds: 1800,
+    idleTimeoutSeconds: 900,
   );
 
   static final _defaultConfig = defaultConfig;

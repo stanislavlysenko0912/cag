@@ -6,9 +6,10 @@ import 'package:cag/cag.dart';
 
 import 'output_formatter.dart';
 
+/// Runs multi-model consensus sessions.
 class ConsensusCommand extends Command<void> {
-  ConsensusCommand({required Set<String> enabledAgents})
-    : _enabledAgents = enabledAgents {
+  ConsensusCommand({required Map<String, AgentConfig> agentConfigs})
+    : _agentConfigs = agentConfigs {
     argParser
       ..addMultiOption(
         'add',
@@ -39,7 +40,12 @@ class ConsensusCommand extends Command<void> {
       );
   }
 
-  final Set<String> _enabledAgents;
+  final Map<String, AgentConfig> _agentConfigs;
+
+  Set<String> get _enabledAgents => _agentConfigs.entries
+      .where((entry) => entry.value.enabled)
+      .map((entry) => entry.key)
+      .toSet();
 
   @override
   String get name => 'consensus';
@@ -110,12 +116,14 @@ This command runs the specified models in parallel with stance-based prompts.'''
 
         // Validate and resolve model aliases
         for (final p in participants) {
-          final cmdDef = CommandDefinitions.find(p.agent);
-          if (cmdDef == null || cmdDef.models.isEmpty) continue;
+          final config = _agentConfigs[p.agent];
+          if (config == null || config.availableModels.isEmpty) continue;
 
-          final modelConfig = cmdDef.findModel(p.model);
+          final modelConfig = config.availableModels
+              .where((m) => m.matches(p.model))
+              .firstOrNull;
           if (modelConfig == null) {
-            final available = cmdDef.models.map((m) => m.name).join(', ');
+            final available = config.availableModels.map((m) => m.name).join(', ');
             throw UsageException(
               'Unknown model "${p.model}" for ${p.agent}. Available: $available',
               usage,
@@ -140,11 +148,10 @@ This command runs the specified models in parallel with stance-based prompts.'''
     } on ArgumentError catch (e) {
       stderr.writeln('Error: ${e.message}');
       exit(1);
-    } on ParserException catch (e) {
-      stderr.writeln('Parse error: $e');
-      exit(1);
-    } on CLIRunnerException catch (e) {
-      stderr.writeln('Execution error: $e');
+    } on AgentExecutionException catch (e) {
+      stderr.writeln(
+        'Execution error [${e.failure.summary}]: ${e.failure.message}',
+      );
       exit(1);
     }
   }
@@ -211,7 +218,7 @@ This command runs the specified models in parallel with stance-based prompts.'''
           'participant': r.participant.toJson(),
           'success': r.success,
           if (r.response != null) 'response': r.response!.toJson(),
-          if (r.error != null) 'error': r.error,
+          if (r.failure != null) 'failure': r.failure!.toJson(),
         };
       }).toList(),
     };
@@ -233,7 +240,7 @@ This command runs the specified models in parallel with stance-based prompts.'''
         OutputFormatter.printSessionStart(r.response!.sessionId ?? 'unknown');
         print(r.response!.content);
       } else {
-        print('ERROR: ${r.error}');
+        OutputFormatter.printFailure(r.failure!);
       }
       print('');
     }
@@ -245,7 +252,7 @@ This command runs the specified models in parallel with stance-based prompts.'''
     if (result.failed.isNotEmpty) {
       print('Failed: ${result.failed.length}');
       for (final f in result.failed) {
-        print('  - ${f.participant.agent}: ${f.error}');
+        print('  - ${f.participant.agent}: ${OutputFormatter.formatFailure(f.failure!)}');
       }
     }
   }

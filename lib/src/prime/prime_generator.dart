@@ -1,3 +1,4 @@
+import '../models/models.dart';
 import 'command_metadata.dart';
 
 /// Generates markdown documentation from command metadata.
@@ -7,10 +8,23 @@ class PrimeGenerator {
   /// Generate full onboarding markdown.
   String generate(
     List<CommandMetadata> commands, {
-    Set<String>? enabledAgents,
+    required Map<String, AgentConfig> agentConfigs,
   }) {
     final buffer = StringBuffer();
-    final agentCommands = _agentCommands(commands, enabledAgents);
+    final enabledAgents = agentConfigs.entries
+        .where((entry) => entry.value.enabled)
+        .map((entry) => entry.key)
+        .toSet();
+
+    final agentCommands = commands
+        .where((c) => enabledAgents.contains(c.name))
+        .map((c) {
+          final config = agentConfigs[c.name];
+          if (config == null || config.availableModels.isEmpty) return c;
+          return c.copyWith(models: config.availableModels);
+        })
+        .toList();
+
     final agentExamples = _agentExamples(agentCommands);
     final sessionExample = agentExamples.isNotEmpty
         ? agentExamples.first
@@ -36,7 +50,11 @@ class PrimeGenerator {
     }
 
     // Consensus section - separate and detailed
+    final compare = commands.where((c) => c.name == 'compare').firstOrNull;
     final consensus = commands.where((c) => c.name == 'consensus').firstOrNull;
+    if (compare != null) {
+      _writeCompare(buffer, agentCommands, agentExamples);
+    }
     if (consensus != null) {
       _writeConsensus(buffer, agentCommands, agentExamples);
     }
@@ -50,7 +68,11 @@ class PrimeGenerator {
     buffer.writeln('## How Sessions Work');
     buffer.writeln();
     buffer.writeln(
-      'Every agent call returns a `session_id`. Pass it with `-r` to continue the conversation with full context preserved.',
+      'Every regular agent conversation uses a universal `session_id`. If a tool returns `session_id`, that conversation can be continued later with the matching agent command and `-r <session_id>`.',
+    );
+    buffer.writeln();
+    buffer.writeln(
+      'Any other returned ID is an internal CAG wrapper ID for its own flow and is not interchangeable with `session_id`.',
     );
     buffer.writeln();
     buffer.writeln('```bash');
@@ -88,6 +110,9 @@ class PrimeGenerator {
     buffer.writeln(
       "- Don't delegate code writing — ask for direction/validation",
     );
+    buffer.writeln(
+      '- Conversations are not just question-answer — use multi-turn dialogue (resume via session_id) to iterate, challenge ideas, and reach better solutions',
+    );
     buffer.writeln('- Provide your proposal in consensus mode');
     buffer.writeln();
 
@@ -95,7 +120,10 @@ class PrimeGenerator {
     buffer.writeln('## Required');
     buffer.writeln();
     buffer.writeln(
-      '- You **MUST ALLWAYS** pass the `session_id` with `-r` flag, or `consensus_id` if you are using consensus mode, to continue the conversation with the agent on same task/subject',
+      '- If a tool returns `session_id`, treat it as a reusable agent conversation handle.',
+    );
+    buffer.writeln(
+      '- Any non-`session_id` returned by CAG belongs to that wrapper flow and should not be treated as a regular agent session handle.',
     );
     buffer.writeln(
       '- At the start of a conversation, you **MUST** provide maximum useful information: background, constraints, goals, current state, and desired output format.',
@@ -207,6 +235,64 @@ class PrimeGenerator {
     buffer.writeln();
   }
 
+  void _writeCompare(
+    StringBuffer buffer,
+    List<CommandMetadata> agentCommands,
+    List<({String agent, String model})> agentExamples,
+  ) {
+    final first = agentExamples.isNotEmpty
+        ? agentExamples.first
+        : (agent: 'agent', model: 'model');
+    final second = agentExamples.length > 1 ? agentExamples[1] : first;
+    final agentList = _formatAgentList(agentCommands);
+
+    buffer.writeln('## Compare');
+    buffer.writeln();
+    buffer.writeln(
+      'Parallel multi-agent compare without synthesis. Use it when you want independent answers first and decide yourself which branch to continue.',
+    );
+    buffer.writeln();
+
+    buffer.writeln('### How It Works');
+    buffer.writeln();
+    buffer.writeln('1. Sends the same prompt to multiple agents in parallel');
+    buffer.writeln('2. Stores the run under `compare_id`');
+    buffer.writeln(
+      '3. Returns per-agent answer `session_id` values for branch follow-up with the underlying agent command',
+    );
+    buffer.writeln();
+
+    buffer.writeln('### Usage');
+    buffer.writeln();
+    buffer.writeln('```bash');
+    buffer.writeln(
+      'cag compare -a "${first.agent}:${first.model}" -a "${second.agent}:${second.model}" "How should we cache profiles?"',
+    );
+    buffer.writeln('# Output: compare_id: cmp-abc123');
+    buffer.writeln('# Each answer also includes its own session_id');
+    buffer.writeln();
+    buffer.writeln('# Continue one branch with its session_id using the same agent command');
+    buffer.writeln(
+      'cag ${first.agent} -r abc-123 "Continue this direction with concrete implementation details"',
+    );
+    buffer.writeln();
+    buffer.writeln('# List saved compare runs');
+    buffer.writeln('cag compare --list');
+    buffer.writeln();
+    buffer.writeln('# Inspect a saved run');
+    buffer.writeln('cag compare --inspect cmp-abc123');
+    buffer.writeln('```');
+    buffer.writeln();
+
+    buffer.writeln('### Participant Format');
+    buffer.writeln();
+    buffer.writeln('`-a "agent:model"`');
+    buffer.writeln();
+    buffer.writeln('- **agent**: $agentList');
+    buffer.writeln('- **model**: full name or alias (see agent tables above)');
+    buffer.writeln();
+  }
+
   void _writeCouncil(
     StringBuffer buffer,
     List<CommandMetadata> agentCommands,
@@ -225,7 +311,9 @@ class PrimeGenerator {
       'Multi-stage council: independent answers, peer reviews with ranking, and chairman synthesis.',
     );
     buffer.writeln();
-    buffer.writeln('Council runs are stateless (no resume).');
+    buffer.writeln(
+      'Council stores a `council_id` for inspection and may expose answer `session_id` values for branch follow-up. `council_id` is not a regular agent session handle.',
+    );
     buffer.writeln();
 
     buffer.writeln('### How It Works');
@@ -245,6 +333,8 @@ class PrimeGenerator {
     buffer.writeln(
       'cag council -a "${first.agent}:${first.model}" -a "${second.agent}:${second.model}" -c "${third.agent}:${third.model}" "Design a caching strategy"',
     );
+    buffer.writeln('# Output: council_id: council_abc123');
+    buffer.writeln('# Use --include-answers to see answer session_id values');
     buffer.writeln('```');
     buffer.writeln();
 
@@ -255,17 +345,6 @@ class PrimeGenerator {
     buffer.writeln('- **agent**: $agentList');
     buffer.writeln('- **model**: full name or alias (see agent tables above)');
     buffer.writeln();
-  }
-
-  List<CommandMetadata> _agentCommands(
-    List<CommandMetadata> commands,
-    Set<String>? enabledAgents,
-  ) {
-    final agentCommands = commands.where((c) => c.models.isNotEmpty);
-    if (enabledAgents == null) {
-      return agentCommands.toList();
-    }
-    return agentCommands.where((c) => enabledAgents.contains(c.name)).toList();
   }
 
   List<({String agent, String model})> _agentExamples(

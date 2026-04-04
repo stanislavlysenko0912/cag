@@ -87,31 +87,30 @@ class AgentCommand extends Command<void> {
       } else {
         _printTextResponse(response, includeMeta: includeMeta);
       }
-    } on ParserException catch (e) {
-      stderr.writeln('Parse error: $e');
-      exit(1);
-    } on CLIRunnerException catch (e) {
-      stderr.writeln('Execution error: $e');
+    } on AgentExecutionException catch (e) {
+      stderr.writeln(
+        'Execution error [${e.failure.summary}]: ${e.failure.message}',
+      );
       exit(1);
     }
   }
 
   String _resolveModel(String modelInput) {
-    final cmdDef = CommandDefinitions.find(agentName);
-    if (cmdDef == null || cmdDef.models.isEmpty) {
+    final availableModels = agent.config.availableModels;
+    if (availableModels.isEmpty) {
       return modelInput;
     }
 
-    final modelConfig = cmdDef.findModel(modelInput);
-    if (modelConfig == null) {
-      final available = cmdDef.models.map((m) => m.name).join(', ');
+    final matched = availableModels.where((m) => m.matches(modelInput)).firstOrNull;
+    if (matched == null) {
+      final available = availableModels.map((m) => m.name).join(', ');
       throw UsageException(
         'Unknown model "$modelInput". Available: $available',
         usage,
       );
     }
 
-    return modelConfig.name;
+    return matched.name;
   }
 
   void _printTextResponse(

@@ -1,4 +1,4 @@
-.PHONY: build run install uninstall clean gen fmt hooks
+.PHONY: build run install uninstall clean gen fmt hooks mcp-inspect
 
 NAME := cag
 UNAME_S := $(shell uname -s)
@@ -36,6 +36,9 @@ install:
 uninstall:
 	@rm -f $(BIN_DIR)/$(NAME)
 	@echo "Removed $(BIN_DIR)/$(NAME)"
+
+mcp-inspect:
+	npx -y @modelcontextprotocol/inspector fvm dart run bin/$(NAME).dart mcp
 
 clean:
 	@rm -rf $(BUILD_DIR)
