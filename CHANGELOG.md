@@ -21,6 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changed Claude model resolution to use explicit canonical model IDs with short aliases (`sonnet`, `opus`, `haiku`).
 - Upgraded `mcp_dart` from 1.1.2 to 2.1.0 (MCP protocol `2025-11-25` support, fixes Inspector compatibility).
 
+### Fixed
+- Fixed Gemini agent using `-s` (sandbox flag) instead of system prompt — Gemini CLI has no system prompt flag, now embeds instructions via XML tags in user prompt.
+- Fixed Gemini agent missing `-p` flag for headless mode — without it, CLI could enter interactive mode instead of returning output.
+
 ## [0.2.1] - 2026-02-11
 
 ### Changed

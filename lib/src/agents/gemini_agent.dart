@@ -31,14 +31,10 @@ class GeminiAgent extends BaseAgent {
     String? resume,
     Map<String, String>? extraArgs,
   }) {
-    final args = <String>[...config.additionalArgs];
+    final args = <String>['-o', 'json', '--yolo'];
 
     if (model != null) {
       args.addAll(['-m', model]);
-    }
-
-    if (systemPrompt != null) {
-      args.addAll(['-s', systemPrompt]);
     }
 
     if (resume != null) {
@@ -51,9 +47,31 @@ class GeminiAgent extends BaseAgent {
       }
     }
 
-    args.add(prompt);
+    final combinedPrompt = _applySystemPrompt(
+      prompt: prompt,
+      systemPrompt: systemPrompt,
+      hasResume: resume != null,
+    );
+    args.addAll(['-p', combinedPrompt]);
 
     return args;
+  }
+
+  /// Embeds system prompt into the user prompt via XML tags.
+  ///
+  /// Gemini CLI has no dedicated system prompt flag, so instructions
+  /// are inlined as structured context within the user prompt.
+  String _applySystemPrompt({
+    required String prompt,
+    required String? systemPrompt,
+    required bool hasResume,
+  }) {
+    if (systemPrompt == null || systemPrompt.trim().isEmpty || hasResume) {
+      return prompt;
+    }
+
+    return '<system_instructions>\n$systemPrompt\n</system_instructions>\n\n'
+        '$prompt';
   }
 
   @override
