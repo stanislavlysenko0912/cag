@@ -31,7 +31,7 @@ class AgentModelRegistry {
       aliases: ['flash'],
     ),
     ModelConfig(
-      name: 'gemini-3.1-pro-preview ',
+      name: 'gemini-3.1-pro-preview',
       description:
           'Top-tier, strong analysis. Use for: complex analysis, architecture, deep code review',
       aliases: ['pro'],

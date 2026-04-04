@@ -1,5 +1,6 @@
 export 'src/agents/agents.dart';
 export 'src/config/config_service.dart';
+export 'src/compare/compare.dart';
 export 'src/consensus/consensus.dart';
 export 'src/council/council.dart';
 export 'src/models/models.dart';

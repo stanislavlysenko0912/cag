@@ -170,6 +170,28 @@ ToolInputSchema _buildCouncilInputSchema(List<String> enabledAgents) {
   );
 }
 
+ToolInputSchema _buildCompareInputSchema(List<String> enabledAgents) {
+  final memberSchema = _buildCouncilMemberSchema(enabledAgents);
+  return JsonSchema.object(
+    properties: {
+      'prompt': JsonSchema.string(
+        description:
+            'Prompt/question for the compare run. Provide full context, constraints, and desired output.',
+      ),
+      'title': JsonSchema.string(
+        description: 'Optional title override for the compare run.',
+      ),
+      'participants': JsonSchema.array(
+        description: 'Participants to include in the compare run.',
+        items: memberSchema,
+        minItems: 2,
+      ),
+    },
+    required: ['prompt', 'participants'],
+    additionalProperties: false,
+  );
+}
+
 final ToolOutputSchema _councilOutputSchema = JsonSchema.object(
   properties: {
     'prompt': JsonSchema.string(
@@ -213,6 +235,53 @@ final ToolOutputSchema _councilOutputSchema = JsonSchema.object(
     ),
   },
   required: ['prompt', 'reviews', 'chairman_result', 'answer_map'],
+  additionalProperties: false,
+);
+
+final ToolOutputSchema _compareOutputSchema = JsonSchema.object(
+  properties: {
+    'id': JsonSchema.string(description: 'Compare run ID.'),
+    'kind': JsonSchema.string(description: 'Run type identifier.'),
+    'status': JsonSchema.string(description: 'Run status.'),
+    'title': JsonSchema.string(description: 'Compare run title.'),
+    'prompt': JsonSchema.string(description: 'Original prompt for the run.'),
+    'participants': JsonSchema.array(
+      description: 'Participants included in the compare run.',
+      items: JsonSchema.object(description: 'Participant details.'),
+    ),
+    'results': JsonSchema.array(
+      description: 'Per-participant results.',
+      items: JsonSchema.object(
+        properties: {
+          'participant': JsonSchema.object(description: 'Participant details.'),
+          'success': JsonSchema.boolean(
+            description: 'Whether the participant succeeded.',
+          ),
+          'response': JsonSchema.object(
+            description: 'Parsed response from the participant.',
+          ),
+          'session_id': JsonSchema.string(
+            description: 'Session ID for later follow-up.',
+          ),
+          'error': JsonSchema.string(description: 'Error message (if failed).'),
+        },
+        additionalProperties: true,
+      ),
+    ),
+    'created_at': JsonSchema.string(description: 'Creation timestamp.'),
+    'updated_at': JsonSchema.string(description: 'Update timestamp.'),
+  },
+  required: [
+    'id',
+    'kind',
+    'status',
+    'title',
+    'prompt',
+    'participants',
+    'results',
+    'created_at',
+    'updated_at',
+  ],
   additionalProperties: false,
 );
 
@@ -418,6 +487,7 @@ Future<McpServer> _buildServer() async {
     if (cursorConfig.enabled) 'cursor': CursorAgent(config: cursorConfig),
   };
 
+  final compareRunner = CompareRunner();
   final consensusRunner = ConsensusRunner();
   final councilRunner = CouncilRunner();
 
@@ -425,7 +495,7 @@ Future<McpServer> _buildServer() async {
     Implementation(name: 'cag', version: _appVersion),
     options: const ServerOptions(
       instructions:
-          'cag MCP server exposing agent, consensus, and council tools.',
+          'cag MCP server exposing agent, compare, consensus, and council tools.',
     ),
   );
 
@@ -487,6 +557,83 @@ Future<McpServer> _buildServer() async {
         );
 
         return CallToolResult.fromStructuredContent(_minimalResponse(response));
+      } on ParserException catch (e) {
+        return _errorResult('Parse error: $e');
+      } on CLIRunnerException catch (e) {
+        return _errorResult('Execution error: $e');
+      }
+    },
+  );
+
+  server.registerTool(
+    'cag_compare',
+    description:
+        'Run multiple agents in parallel without synthesis and return per-branch session IDs.',
+    inputSchema: _buildCompareInputSchema(enabledAgents),
+    outputSchema: _compareOutputSchema,
+    callback: (args, extra) async {
+      final errors = <String>[];
+      final prompt = _readStringArg(args, 'prompt', errors, required: true);
+      final title = _readStringArg(args, 'title', errors);
+      final participantsRaw = args['participants'];
+
+      if (errors.isNotEmpty) {
+        return _errorResult(errors.join(' '));
+      }
+      if (participantsRaw is! List) {
+        return _errorResult('participants must be an array of objects.');
+      }
+      if (participantsRaw.length < 2) {
+        return _errorResult('participants must include at least 2 entries.');
+      }
+
+      final participants = <CompareParticipant>[];
+      for (final entry in participantsRaw) {
+        if (entry is! Map) {
+          return _errorResult('participants entries must be objects.');
+        }
+
+        final agentName = _readMapString(
+          entry,
+          'agent',
+          errors,
+          required: true,
+        )?.toLowerCase();
+        final model = _readMapString(entry, 'model', errors, required: true);
+
+        if (errors.isNotEmpty) {
+          return _errorResult(errors.join(' '));
+        }
+        if (!_knownAgents.contains(agentName)) {
+          return _errorResult(_agentUnknownMessage(agentName!, enabledAgents));
+        }
+        if (!enabledAgents.contains(agentName)) {
+          return _errorResult(_agentDisabledMessage(agentName!, enabledAgents));
+        }
+
+        final participant = CompareParticipant(
+          agent: agentName!,
+          model: model!,
+        ).copyWith(
+          resolvedModel: _resolveModel(agentName, model, errors),
+        );
+        if (errors.isNotEmpty) {
+          return _errorResult(errors.join(' '));
+        }
+        participants.add(participant);
+      }
+
+      try {
+        final result = await compareRunner.run(
+          prompt: prompt!,
+          title: title?.trim().isNotEmpty == true
+              ? title!
+              : buildCompareTitle(prompt),
+          participants: participants,
+        );
+        return CallToolResult.fromStructuredContent(result.toJson());
+      } on ArgumentError catch (e) {
+        return _errorResult(e.message ?? e.toString());
       } on ParserException catch (e) {
         return _errorResult('Parse error: $e');
       } on CLIRunnerException catch (e) {

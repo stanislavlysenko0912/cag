@@ -43,6 +43,10 @@ class AppPaths {
     return p.join(appDataDir(), 'consensus.jsonl');
   }
 
+  static String comparePath() {
+    return p.join(appDataDir(), 'compare.jsonl');
+  }
+
   static String configPath() {
     return p.join(appDataDir(), 'config.json');
   }

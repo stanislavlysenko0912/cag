@@ -114,6 +114,64 @@ cag consensus -p "<your proposal>" -a "agent:model:stance" ... "<task context>"
         'Stances: `for` (find benefits), `against` (find risks), `neutral` (balanced)',
   );
 
+  static const compare = CommandMetadata(
+    name: 'compare',
+    description: '''Run multiple agents in parallel without synthesis.
+Use the returned branch `session_id` with the underlying agent command for follow-up.
+
+**Arguments:**
+- `<prompt>` — Task or question sent to every participant
+- `-a/--add` — Participants (agent:model)
+- `--title` — Optional run title override
+
+**Usage pattern:**
+```
+cag compare -a "agent:model" -a "..." "<prompt>"
+```''',
+    examples: [
+      CommandExample(
+        command:
+            'cag compare -a "claude:sonnet" -a "codex:gpt" "How should we cache profiles?"',
+        description: 'run parallel independent answers',
+      ),
+      CommandExample(
+        command:
+            'cag compare --title "Profile caching" -a "claude:sonnet" -a "gemini:pro" "Long prompt..."',
+        description: 'override compare title',
+      ),
+      CommandExample(
+        command: 'cag compare --list',
+        description: 'list saved compare runs',
+      ),
+      CommandExample(
+        command: 'cag compare --inspect cmp_abc123',
+        description: 'inspect a saved compare run',
+      ),
+    ],
+    flags: [
+      CommandFlag(
+        flag: '--add',
+        shortFlag: '-a',
+        description: 'Add participant: agent:model',
+      ),
+      CommandFlag(
+        flag: '--title',
+        description: 'Optional title override for the compare run',
+      ),
+      CommandFlag(
+        flag: '--list',
+        shortFlag: '-l',
+        description: 'List saved compare runs',
+      ),
+      CommandFlag(
+        flag: '--inspect',
+        description: 'Inspect a saved compare run by compare_id',
+      ),
+    ],
+    notes:
+        'Creates regular agent sessions and stores their session IDs for later follow-up.',
+  );
+
   static const council = CommandMetadata(
     name: 'council',
     description: '''Multi-stage council with ranking and chairman synthesis.
@@ -155,7 +213,15 @@ cag council -a "agent:model" -a "..." -c "agent:model" "<prompt>"
   );
 
   /// All commands for iteration.
-  static const all = [claude, gemini, codex, cursor, consensus, council];
+  static const all = [
+    claude,
+    gemini,
+    codex,
+    cursor,
+    consensus,
+    compare,
+    council,
+  ];
 
   /// Find command by name.
   static CommandMetadata? find(String name) {

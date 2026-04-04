@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Added `cag compare` for parallel multi-agent runs with persisted compare IDs and per-agent session IDs.
+- Added `cag compare --list` and `cag compare --inspect` for browsing saved compare runs.
+
+### Changed
+- Updated documentation to describe compare mode and compare follow-up flows.
+
 ## [0.2.1] - 2026-02-11
 
 ### Changed

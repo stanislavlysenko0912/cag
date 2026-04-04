@@ -1,6 +1,6 @@
 # CAG - CLI Agents Wrapper
 
-CLI wrapper for multiple AI agent CLIs (Claude, Gemini, Codex, Cursor) with consensus/council modes and session resume.
+CLI wrapper for multiple AI agent CLIs (Claude, Gemini, Codex, Cursor) with compare/consensus/council modes and session resume.
 
 <img src="docs/images/consensus-demo.png" width="700" alt="CAG - CLI Agents Wrapper">
 
@@ -8,6 +8,7 @@ CLI wrapper for multiple AI agent CLIs (Claude, Gemini, Codex, Cursor) with cons
 
 - **Unified interface** — single CLI for Claude, Gemini, Codex, and Cursor with consistent flags and output
 - **Session resume** — continue conversations with `-r <session_id>`
+- **Compare mode** — run multiple agents in parallel and keep each answer as a resumable branch
 - **Consensus mode** — run multiple models in parallel with stance-based prompts (for/against/neutral)
 - **Council mode** — multi-stage deliberation: independent answers → peer review → chairman synthesis
 - **MCP server** — integrate with Cursor, Claude Code, and other MCP-compatible tools
@@ -122,6 +123,25 @@ cag consensus \
   "Should we add caching for user profiles, 10k RPM, data changes hourly?"
 ```
 
+### compare
+
+Run multiple agents in parallel. Each successful answer includes its own `session_id`, so you can continue later with the existing agent command.
+
+```bash
+cag compare \
+  -a "claude:sonnet" \
+  -a "codex:gpt" \
+  "How should we cache profiles for 10k RPM?"
+
+cag compare --title "Profile caching options" \
+  -a "claude:sonnet" \
+  -a "gemini:pro" \
+  "Longer prompt..."
+
+cag compare --list
+cag compare --inspect cmp_12345678
+```
+
 ### council
 
 Multi-stage council: independent answers, peer reviews with ranking, then chairman synthesis.
@@ -194,6 +214,7 @@ cag mcp --transport http --host 127.0.0.1 --port 7331
 Available MCP tools:
 
 - `cag_agent` – run a single agent
+- `cag_compare` – run parallel independent answers with per-branch `session_id`
 - `cag_consensus` – run consensus across multiple agents
 - `cag_council` – run multi-stage council (answers, reviews, chairman)
 - `cag_models` – list supported models
@@ -211,8 +232,20 @@ cag codex "How should I cache profiles?"
 cag codex -r abc-123 "What if data changes hourly?"
 ```
 
+Compare runs print `compare_id` and keep the per-agent `session_id` values for branch follow-up.
 Consensus sessions print `consensus_id` and can be resumed with `-r`.
 Council runs are stateless (no resume).
+
+Example compare follow-up:
+
+```bash
+cag compare -a "claude:sonnet" -a "codex:gpt" "How should we cache profiles?"
+# compare_id: cmp_12345678
+# session_id: claude-session
+# session_id: codex-session
+
+cag codex -r codex-session "Continue this direction"
+```
 
 ### detect
 

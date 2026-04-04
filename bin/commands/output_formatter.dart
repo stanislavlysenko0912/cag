@@ -13,6 +13,12 @@ class OutputFormatter {
     print('====\n');
   }
 
+  static void printCompareStart(String compareId, String title) {
+    print('compare_id: $compareId');
+    print('title: $title');
+    print('====\n');
+  }
+
   static void printStageHeader(String title) {
     print('==== $title ====');
   }
@@ -25,5 +31,21 @@ class OutputFormatter {
     final header =
         '=== ${agent.toUpperCase()} ($model) [${stance.toUpperCase()}] ===';
     print(header);
+  }
+
+  static void printCompareParticipantHeader({
+    required String agent,
+    required String model,
+  }) {
+    print('=== ${agent.toUpperCase()} ($model) ===');
+  }
+
+  static String formatLocalDate(DateTime value) {
+    final local = value.toLocal();
+    final month = local.month.toString().padLeft(2, '0');
+    final day = local.day.toString().padLeft(2, '0');
+    final hour = local.hour.toString().padLeft(2, '0');
+    final minute = local.minute.toString().padLeft(2, '0');
+    return '${local.year}-$month-$day $hour:$minute';
   }
 }

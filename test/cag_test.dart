@@ -171,7 +171,7 @@ void main() {
     test('resolves model aliases to canonical names', () {
       expect(
         AgentModelRegistry.findModel('gemini', 'pro')?.name,
-        equals('gemini-3-pro-preview'),
+        equals('gemini-3.1-pro-preview'),
       );
       expect(
         AgentModelRegistry.findModel('gemini', 'flash')?.name,
@@ -179,16 +179,13 @@ void main() {
       );
       expect(
         AgentModelRegistry.findModel('codex', 'gpt')?.name,
-        equals('gpt-5.2'),
+        equals('gpt-5.4'),
       );
       expect(
         AgentModelRegistry.findModel('codex', 'mini')?.name,
-        equals('gpt-5.1-codex-mini'),
+        equals('gpt-5.4-mini'),
       );
-      expect(
-        AgentModelRegistry.findModel('cursor', 'auto')?.name,
-        equals('auto'),
-      );
+      expect(AgentModelRegistry.findModel('cursor', 'auto'), isNull);
     });
   });
 
@@ -242,6 +239,42 @@ void main() {
     });
   });
 
+  group('CompareParticipant', () {
+    test('parse correctly parses valid input', () {
+      final participant = CompareParticipant.parse('gemini:pro');
+      expect(participant.agent, equals('gemini'));
+      expect(participant.model, equals('pro'));
+    });
+
+    test('parse throws ArgumentError on invalid format', () {
+      expect(() => CompareParticipant.parse('gemini'), throwsArgumentError);
+      expect(
+        () => CompareParticipant.parse('gemini:pro:extra'),
+        throwsArgumentError,
+      );
+    });
+
+    test('parse throws ArgumentError on invalid agent', () {
+      expect(
+        () => CompareParticipant.parse('unknown:pro'),
+        throwsArgumentError,
+      );
+    });
+  });
+
+  group('CompareTitle', () {
+    test('keeps short prompts unchanged after normalization', () {
+      final title = buildCompareTitle('  compare   this prompt  ');
+      expect(title, equals('compare this prompt'));
+    });
+
+    test('truncates long prompts with ellipsis', () {
+      final title = buildCompareTitle('a' * 90);
+      expect(title.length, equals(80));
+      expect(title.endsWith('...'), isTrue);
+    });
+  });
+
   group('PrimeGenerator', () {
     test('generate produces markdown with command info', () {
       const generator = PrimeGenerator();
@@ -267,6 +300,29 @@ void main() {
       expect(output, contains('A test agent'));
 
       expect(output, contains('`m1` ⭐'));
+    });
+
+    test('generate includes compare section when compare command exists', () {
+      const generator = PrimeGenerator();
+
+      final commands = [
+        const CommandMetadata(
+          name: 'claude',
+          description: 'Claude agent',
+          models: [
+            ModelConfig(name: 'sonnet', description: 'Default', isDefault: true),
+          ],
+        ),
+        const CommandMetadata(
+          name: 'compare',
+          description: 'Compare command',
+        ),
+      ];
+
+      final output = generator.generate(commands);
+
+      expect(output, contains('## Compare'));
+      expect(output, contains('cag compare --list'));
     });
   });
 
@@ -343,6 +399,148 @@ void main() {
     });
   });
 
+  group('CompareStorage', () {
+    late Directory tempDir;
+    late String storagePath;
+    late CompareStorage storage;
+
+    setUp(() async {
+      tempDir = await Directory.systemTemp.createTemp('cag_compare_test_');
+      storagePath = '${tempDir.path}/test_compare.jsonl';
+      storage = CompareStorage(storagePath: storagePath);
+    });
+
+    tearDown(() async {
+      await tempDir.delete(recursive: true);
+    });
+
+    test('save and loadAll', () async {
+      final run = CompareRun(
+        compareId: 'cmp_1',
+        title: 'Compare run',
+        prompt: 'test prompt',
+        participants: [CompareParticipant(agent: 'gemini', model: 'pro')],
+        results: [
+          CompareParticipantResult(
+            participant: CompareParticipant(
+              agent: 'gemini',
+              model: 'pro',
+              sessionId: 's1',
+            ),
+            success: true,
+            response: {
+              'content': 'hello',
+              'metadata': {'session_id': 's1'},
+            },
+          ),
+        ],
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      await storage.save(run);
+
+      final loaded = await storage.loadAll();
+      expect(loaded, hasLength(1));
+      expect(loaded.first.compareId, equals('cmp_1'));
+      expect(loaded.first.title, equals('Compare run'));
+    });
+
+    test('load by ID', () async {
+      final run = CompareRun(
+        compareId: 'cmp_2',
+        title: 'Compare run 2',
+        prompt: 'prompt',
+        participants: const [],
+        results: const [],
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      await storage.save(run);
+
+      final loaded = await storage.load('cmp_2');
+      expect(loaded, isNotNull);
+      expect(loaded?.compareId, equals('cmp_2'));
+    });
+  });
+
+  group('CompareRunner', () {
+    late Directory tempDir;
+    late CompareStorage storage;
+
+    setUp(() async {
+      tempDir = await Directory.systemTemp.createTemp('cag_compare_runner_');
+      storage = CompareStorage(storagePath: '${tempDir.path}/compare.jsonl');
+    });
+
+    tearDown(() async {
+      await tempDir.delete(recursive: true);
+    });
+
+    test('run saves successful results with session IDs', () async {
+      final runner = CompareRunner(
+        storage: storage,
+        geminiAgent: _FakeGeminiAgent(
+          response: ParsedResponse(
+            content: 'Gemini answer',
+            metadata: {'session_id': 'gemini-session'},
+          ),
+        ),
+        codexAgent: _FakeCodexAgent(
+          response: ParsedResponse(
+            content: 'Codex answer',
+            metadata: {'session_id': 'codex-session'},
+          ),
+        ),
+      );
+
+      final run = await runner.run(
+        prompt: 'Compare this',
+        title: 'Compare this',
+        participants: [
+          CompareParticipant(agent: 'gemini', model: 'pro'),
+          CompareParticipant(agent: 'codex', model: 'gpt'),
+        ],
+      );
+
+      expect(run.compareId, startsWith('cmp_'));
+      expect(run.successCount, equals(2));
+      expect(run.results.first.participant.sessionId, equals('gemini-session'));
+
+      final saved = await storage.load(run.compareId);
+      expect(saved, isNotNull);
+      expect(saved?.results.length, equals(2));
+    });
+
+    test('run keeps partial failure without throwing', () async {
+      final runner = CompareRunner(
+        storage: storage,
+        geminiAgent: _FakeGeminiAgent(
+          response: ParsedResponse(
+            content: 'Gemini answer',
+            metadata: {'session_id': 'gemini-session'},
+          ),
+        ),
+        codexAgent: _FakeCodexAgent(error: Exception('codex failed')),
+      );
+
+      final run = await runner.run(
+        prompt: 'Compare this',
+        title: 'Compare this',
+        participants: [
+          CompareParticipant(agent: 'gemini', model: 'pro'),
+          CompareParticipant(agent: 'codex', model: 'gpt'),
+        ],
+      );
+
+      expect(run.status, equals('partial_failure'));
+      expect(run.successCount, equals(1));
+      expect(run.failureCount, equals(1));
+      expect(run.results.last.error, contains('codex failed'));
+    });
+  });
+
   group('AppPaths', () {
     test('appDataDir uses platform-appropriate location', () {
       final dir = AppPaths.appDataDir();
@@ -361,5 +559,48 @@ void main() {
       final path = AppPaths.consensusPath();
       expect(path, endsWith('${Platform.pathSeparator}consensus.jsonl'));
     });
+
+    test('comparePath ends with compare.jsonl', () {
+      final path = AppPaths.comparePath();
+      expect(path, endsWith('${Platform.pathSeparator}compare.jsonl'));
+    });
   });
+}
+
+class _FakeGeminiAgent extends GeminiAgent {
+  _FakeGeminiAgent({this.response});
+
+  final ParsedResponse? response;
+
+  @override
+  Future<ParsedResponse> execute({
+    required String prompt,
+    String? model,
+    String? systemPrompt,
+    String? resume,
+    Map<String, String>? extraArgs,
+  }) async {
+    return response!;
+  }
+}
+
+class _FakeCodexAgent extends CodexAgent {
+  _FakeCodexAgent({this.response, this.error});
+
+  final ParsedResponse? response;
+  final Object? error;
+
+  @override
+  Future<ParsedResponse> execute({
+    required String prompt,
+    String? model,
+    String? systemPrompt,
+    String? resume,
+    Map<String, String>? extraArgs,
+  }) async {
+    if (error != null) {
+      throw error!;
+    }
+    return response!;
+  }
 }

@@ -36,7 +36,11 @@ class PrimeGenerator {
     }
 
     // Consensus section - separate and detailed
+    final compare = commands.where((c) => c.name == 'compare').firstOrNull;
     final consensus = commands.where((c) => c.name == 'consensus').firstOrNull;
+    if (compare != null) {
+      _writeCompare(buffer, agentCommands, agentExamples);
+    }
     if (consensus != null) {
       _writeConsensus(buffer, agentCommands, agentExamples);
     }
@@ -50,7 +54,7 @@ class PrimeGenerator {
     buffer.writeln('## How Sessions Work');
     buffer.writeln();
     buffer.writeln(
-      'Every agent call returns a `session_id`. Pass it with `-r` to continue the conversation with full context preserved.',
+      'Every agent call returns a `session_id`. `compare` returns one `session_id` per successful branch. Pass the chosen one with `-r` to continue the conversation with full context preserved.',
     );
     buffer.writeln();
     buffer.writeln('```bash');
@@ -95,7 +99,7 @@ class PrimeGenerator {
     buffer.writeln('## Required');
     buffer.writeln();
     buffer.writeln(
-      '- You **MUST ALLWAYS** pass the `session_id` with `-r` flag, or `consensus_id` if you are using consensus mode, to continue the conversation with the agent on same task/subject',
+      '- You **MUST ALLWAYS** pass the `session_id` with `-r` flag, or `consensus_id` if you are using consensus mode, to continue the conversation on the same task/subject',
     );
     buffer.writeln(
       '- At the start of a conversation, you **MUST** provide maximum useful information: background, constraints, goals, current state, and desired output format.',
@@ -204,6 +208,62 @@ class PrimeGenerator {
     buffer.writeln(
       '- **stance**: `for` (find benefits), `against` (find risks), `neutral` (balanced)',
     );
+    buffer.writeln();
+  }
+
+  void _writeCompare(
+    StringBuffer buffer,
+    List<CommandMetadata> agentCommands,
+    List<({String agent, String model})> agentExamples,
+  ) {
+    final first = agentExamples.isNotEmpty
+        ? agentExamples.first
+        : (agent: 'agent', model: 'model');
+    final second = agentExamples.length > 1 ? agentExamples[1] : first;
+    final agentList = _formatAgentList(agentCommands);
+
+    buffer.writeln('## Compare');
+    buffer.writeln();
+    buffer.writeln(
+      'Parallel multi-agent compare without synthesis. Use it when you want independent answers first and decide yourself which branch to continue.',
+    );
+    buffer.writeln();
+
+    buffer.writeln('### How It Works');
+    buffer.writeln();
+    buffer.writeln('1. Sends the same prompt to multiple agents in parallel');
+    buffer.writeln('2. Stores the run under `compare_id`');
+    buffer.writeln('3. Returns per-agent `session_id` values for branch follow-up');
+    buffer.writeln();
+
+    buffer.writeln('### Usage');
+    buffer.writeln();
+    buffer.writeln('```bash');
+    buffer.writeln(
+      'cag compare -a "${first.agent}:${first.model}" -a "${second.agent}:${second.model}" "How should we cache profiles?"',
+    );
+    buffer.writeln('# Output: compare_id: cmp-abc123');
+    buffer.writeln('# Each answer also includes session_id');
+    buffer.writeln();
+    buffer.writeln('# Continue one branch with its session_id');
+    buffer.writeln(
+      'cag ${first.agent} -r abc-123 "Continue this direction with concrete implementation details"',
+    );
+    buffer.writeln();
+    buffer.writeln('# List saved compare runs');
+    buffer.writeln('cag compare --list');
+    buffer.writeln();
+    buffer.writeln('# Inspect a saved run');
+    buffer.writeln('cag compare --inspect cmp-abc123');
+    buffer.writeln('```');
+    buffer.writeln();
+
+    buffer.writeln('### Participant Format');
+    buffer.writeln();
+    buffer.writeln('`-a "agent:model"`');
+    buffer.writeln();
+    buffer.writeln('- **agent**: $agentList');
+    buffer.writeln('- **model**: full name or alias (see agent tables above)');
     buffer.writeln();
   }
 
