@@ -31,6 +31,10 @@ ToolInputSchema _buildAgentInputSchema(List<String> enabledAgents) {
       'resume': JsonSchema.string(
         description: 'Optional session/thread ID to resume.',
       ),
+      'verbose': JsonSchema.boolean(
+        description:
+            'Optional expanded output. Avoid unless raw metadata or a full structured payload is specifically needed.',
+      ),
     },
     required: ['agent', 'prompt'],
     additionalProperties: false,
@@ -39,14 +43,15 @@ ToolInputSchema _buildAgentInputSchema(List<String> enabledAgents) {
 
 final ToolOutputSchema _agentOutputSchema = JsonSchema.object(
   properties: {
-    'content': JsonSchema.string(
-      description: 'Primary text response from the agent.',
+    'result': JsonSchema.string(
+      description: 'CLI-like output string.',
     ),
-    'metadata': JsonSchema.object(
-      description: 'Session metadata (currently only session_id).',
+    'session_id': JsonSchema.string(description: 'Session ID, if available.'),
+    'verbose_data': JsonSchema.object(
+      description: 'Expanded structured payload returned only when verbose=true.',
     ),
   },
-  required: ['content', 'metadata'],
+  required: ['result'],
   additionalProperties: false,
 );
 
@@ -95,6 +100,10 @@ ToolInputSchema _buildConsensusInputSchema(List<String> enabledAgents) {
         items: participantSchema,
         minItems: 2,
       ),
+      'verbose': JsonSchema.boolean(
+        description:
+            'Optional expanded output. Avoid unless per-participant payloads or metadata are specifically needed.',
+      ),
     },
     required: ['prompt'],
     additionalProperties: false,
@@ -103,31 +112,13 @@ ToolInputSchema _buildConsensusInputSchema(List<String> enabledAgents) {
 
 final ToolOutputSchema _consensusOutputSchema = JsonSchema.object(
   properties: {
+    'result': JsonSchema.string(description: 'CLI-like output string.'),
     'consensus_id': JsonSchema.string(description: 'Consensus session ID.'),
-    'prompt': JsonSchema.string(
-      description: 'Original prompt for the session.',
-    ),
-    'results': JsonSchema.array(
-      description: 'Per-participant results.',
-      items: JsonSchema.object(
-        properties: {
-          'participant': JsonSchema.object(
-            description: 'Participant details (agent, model, stance).',
-          ),
-          'success': JsonSchema.boolean(
-            description: 'Whether the participant succeeded.',
-          ),
-          'response': JsonSchema.object(
-            description:
-                'Parsed response from the participant (if successful).',
-          ),
-          'error': JsonSchema.string(description: 'Error message (if failed).'),
-        },
-        additionalProperties: true,
-      ),
+    'verbose_data': JsonSchema.object(
+      description: 'Expanded structured payload returned only when verbose=true.',
     ),
   },
-  required: ['consensus_id', 'prompt', 'results'],
+  required: ['result', 'consensus_id'],
   additionalProperties: false,
 );
 
@@ -164,6 +155,10 @@ ToolInputSchema _buildCouncilInputSchema(List<String> enabledAgents) {
       'include_answers': JsonSchema.boolean(
         description: 'Include participant answers and session IDs in output.',
       ),
+      'verbose': JsonSchema.boolean(
+        description:
+            'Optional expanded output. Avoid unless stage-level structured data is specifically needed.',
+      ),
     },
     required: ['prompt'],
     additionalProperties: false,
@@ -186,6 +181,10 @@ ToolInputSchema _buildCompareInputSchema(List<String> enabledAgents) {
         items: memberSchema,
         minItems: 2,
       ),
+      'verbose': JsonSchema.boolean(
+        description:
+            'Optional expanded output. Avoid unless per-participant payloads or metadata are specifically needed.',
+      ),
     },
     required: ['prompt', 'participants'],
     additionalProperties: false,
@@ -194,132 +193,45 @@ ToolInputSchema _buildCompareInputSchema(List<String> enabledAgents) {
 
 final ToolOutputSchema _councilOutputSchema = JsonSchema.object(
   properties: {
-    'prompt': JsonSchema.string(
-      description: 'Original prompt for the session.',
-    ),
-    'answers': JsonSchema.array(
-      description: 'Stage 1 answers.',
-      items: JsonSchema.object(
-        properties: {
-          'answer_id': JsonSchema.string(description: 'Answer identifier.'),
-          'content': JsonSchema.string(description: 'Answer content.'),
-          'session_id': JsonSchema.string(
-            description: 'Session ID for answer (optional).',
-          ),
-          'error': JsonSchema.string(description: 'Error message (if failed).'),
-        },
-        additionalProperties: false,
-      ),
-    ),
-    'reviews': JsonSchema.array(
-      description: 'Stage 2 reviews.',
-      items: JsonSchema.object(
-        properties: {
-          'reviewer': JsonSchema.string(description: 'Reviewer label.'),
-          'content': JsonSchema.string(description: 'Review content.'),
-          'error': JsonSchema.string(description: 'Error message (if failed).'),
-        },
-        additionalProperties: false,
-      ),
-    ),
-    'chairman_result': JsonSchema.object(
-      description: 'Stage 3 chairman result.',
-      properties: {
-        'content': JsonSchema.string(description: 'Final synthesized answer.'),
-        'error': JsonSchema.string(description: 'Error message (if failed).'),
-      },
-      additionalProperties: false,
-    ),
-    'answer_map': JsonSchema.array(
-      description: 'Mapping of answer_id to participants.',
+    'result': JsonSchema.string(description: 'CLI-like output string.'),
+    'verbose_data': JsonSchema.object(
+      description: 'Expanded structured payload returned only when verbose=true.',
     ),
   },
-  required: ['prompt', 'reviews', 'chairman_result', 'answer_map'],
+  required: ['result'],
   additionalProperties: false,
 );
 
 final ToolOutputSchema _compareOutputSchema = JsonSchema.object(
   properties: {
-    'id': JsonSchema.string(description: 'Compare run ID.'),
-    'kind': JsonSchema.string(description: 'Run type identifier.'),
-    'status': JsonSchema.string(description: 'Run status.'),
-    'title': JsonSchema.string(description: 'Compare run title.'),
-    'prompt': JsonSchema.string(description: 'Original prompt for the run.'),
-    'participants': JsonSchema.array(
-      description: 'Participants included in the compare run.',
-      items: JsonSchema.object(description: 'Participant details.'),
+    'result': JsonSchema.string(description: 'CLI-like output string.'),
+    'compare_id': JsonSchema.string(description: 'Compare run ID.'),
+    'verbose_data': JsonSchema.object(
+      description: 'Expanded structured payload returned only when verbose=true.',
     ),
-    'results': JsonSchema.array(
-      description: 'Per-participant results.',
-      items: JsonSchema.object(
-        properties: {
-          'participant': JsonSchema.object(description: 'Participant details.'),
-          'success': JsonSchema.boolean(
-            description: 'Whether the participant succeeded.',
-          ),
-          'response': JsonSchema.object(
-            description: 'Parsed response from the participant.',
-          ),
-          'session_id': JsonSchema.string(
-            description: 'Session ID for later follow-up.',
-          ),
-          'error': JsonSchema.string(description: 'Error message (if failed).'),
-        },
-        additionalProperties: true,
-      ),
-    ),
-    'created_at': JsonSchema.string(description: 'Creation timestamp.'),
-    'updated_at': JsonSchema.string(description: 'Update timestamp.'),
   },
-  required: [
-    'id',
-    'kind',
-    'status',
-    'title',
-    'prompt',
-    'participants',
-    'results',
-    'created_at',
-    'updated_at',
-  ],
+  required: ['result', 'compare_id'],
   additionalProperties: false,
 );
 
 final ToolOutputSchema _modelsOutputSchema = JsonSchema.object(
   properties: {
-    'agents': JsonSchema.array(
-      description: 'Agents and their supported models.',
-      items: JsonSchema.object(
-        properties: {
-          'agent': JsonSchema.string(description: 'Agent name.'),
-          'default_model': JsonSchema.string(
-            description: 'Default model name.',
-          ),
-          'models': JsonSchema.array(
-            description: 'Supported models.',
-            items: JsonSchema.object(
-              properties: {
-                'name': JsonSchema.string(description: 'Model name.'),
-                'aliases': JsonSchema.array(
-                  description: 'Model aliases.',
-                  items: JsonSchema.string(),
-                ),
-                'description': JsonSchema.string(
-                  description: 'Model description.',
-                ),
-                'is_default': JsonSchema.boolean(
-                  description: 'Whether model is default.',
-                ),
-              },
-              additionalProperties: false,
-            ),
-          ),
-        },
-        additionalProperties: false,
-      ),
+    'result': JsonSchema.string(description: 'Compact model summary.'),
+    'verbose_data': JsonSchema.object(
+      description: 'Expanded structured payload returned only when verbose=true.',
     ),
   },
-  required: ['agents'],
+  required: ['result'],
+  additionalProperties: false,
+);
+
+final ToolInputSchema _modelsInputSchema = JsonSchema.object(
+  properties: {
+    'verbose': JsonSchema.boolean(
+      description:
+          'Optional expanded output. Avoid unless the full per-model metadata is specifically needed.',
+    ),
+  },
   additionalProperties: false,
 );
 
@@ -516,6 +428,7 @@ Future<McpServer> _buildServer() async {
       final modelInput = _readStringArg(args, 'model', errors);
       final systemPrompt = _readStringArg(args, 'system', errors);
       final resume = _readStringArg(args, 'resume', errors);
+      final verbose = args['verbose'] == true;
 
       if (errors.isNotEmpty) {
         return _errorResult(errors.join(' '));
@@ -556,7 +469,12 @@ Future<McpServer> _buildServer() async {
           resume: resume,
         );
 
-        return CallToolResult.fromStructuredContent(_minimalResponse(response));
+        final output = {
+          'result': response.content,
+          if (response.sessionId != null) 'session_id': response.sessionId,
+          if (verbose) 'verbose_data': _minimalResponse(response),
+        };
+        return CallToolResult.fromStructuredContent(output);
       } on ParserException catch (e) {
         return _errorResult('Parse error: $e');
       } on CLIRunnerException catch (e) {
@@ -576,6 +494,7 @@ Future<McpServer> _buildServer() async {
       final prompt = _readStringArg(args, 'prompt', errors, required: true);
       final title = _readStringArg(args, 'title', errors);
       final participantsRaw = args['participants'];
+      final verbose = args['verbose'] == true;
 
       if (errors.isNotEmpty) {
         return _errorResult(errors.join(' '));
@@ -631,7 +550,12 @@ Future<McpServer> _buildServer() async {
               : buildCompareTitle(prompt),
           participants: participants,
         );
-        return CallToolResult.fromStructuredContent(result.toJson());
+        final output = {
+          'result': _formatCompareOutput(result),
+          'compare_id': result.compareId,
+          if (verbose) 'verbose_data': result.toJson(),
+        };
+        return CallToolResult.fromStructuredContent(output);
       } on ArgumentError catch (e) {
         return _errorResult(e.message ?? e.toString());
       } on ParserException catch (e) {
@@ -653,6 +577,7 @@ Future<McpServer> _buildServer() async {
       final proposal = _readStringArg(args, 'proposal', errors);
       final resume = _readStringArg(args, 'resume', errors);
       final participantsRaw = args['participants'];
+      final verbose = args['verbose'] == true;
 
       if (errors.isNotEmpty) {
         return _errorResult(errors.join(' '));
@@ -756,7 +681,7 @@ Future<McpServer> _buildServer() async {
           );
         }
 
-        final output = {
+        final verboseData = {
           'consensus_id': result.session.consensusId,
           'prompt': result.session.prompt,
           'results': result.results.map((r) {
@@ -769,7 +694,11 @@ Future<McpServer> _buildServer() async {
           }).toList(),
         };
 
-        return CallToolResult.fromStructuredContent(output);
+        return CallToolResult.fromStructuredContent({
+          'result': _formatConsensusOutput(result),
+          'consensus_id': result.session.consensusId,
+          if (verbose) 'verbose_data': verboseData,
+        });
       } on ArgumentError catch (e) {
         return _errorResult(e.message ?? e.toString());
       } on ParserException catch (e) {
@@ -789,6 +718,7 @@ Future<McpServer> _buildServer() async {
       final errors = <String>[];
       final prompt = _readStringArg(args, 'prompt', errors, required: true);
       final includeAnswers = args['include_answers'] == true;
+      final verbose = args['verbose'] == true;
       final participantsRaw = args['participants'];
       final chairmanRaw = args['chairman'];
 
@@ -892,7 +822,7 @@ Future<McpServer> _buildServer() async {
           chairman: chairman,
         );
 
-        final output = {
+        final verboseData = {
           'prompt': result.prompt,
           if (includeAnswers)
             'answers': result.answers.asMap().entries.map((entry) {
@@ -930,7 +860,10 @@ Future<McpServer> _buildServer() async {
           }).toList(),
         };
 
-        return CallToolResult.fromStructuredContent(output);
+        return CallToolResult.fromStructuredContent({
+          'result': _formatCouncilOutput(result, includeAnswers: includeAnswers),
+          if (verbose) 'verbose_data': verboseData,
+        });
       } on ArgumentError catch (e) {
         return _errorResult(e.message ?? e.toString());
       } on ParserException catch (e) {
@@ -944,8 +877,10 @@ Future<McpServer> _buildServer() async {
   server.registerTool(
     'cag_models',
     description: 'List supported models for each agent.',
+    inputSchema: _modelsInputSchema,
     outputSchema: _modelsOutputSchema,
     callback: (args, extra) async {
+      final verbose = args['verbose'] == true;
       final agentsInfo = CommandDefinitions.all
           .where((c) => c.models.isNotEmpty)
           .where((c) => enabledAgents.contains(c.name))
@@ -965,7 +900,10 @@ Future<McpServer> _buildServer() async {
           })
           .toList();
 
-      return CallToolResult.fromStructuredContent({'agents': agentsInfo});
+      return CallToolResult.fromStructuredContent({
+        'result': _formatModelsOutput(agentsInfo),
+        if (verbose) 'verbose_data': {'agents': agentsInfo},
+      });
     },
   );
 
@@ -977,12 +915,178 @@ CallToolResult _errorResult(String message) {
 }
 
 Map<String, dynamic> _minimalResponse(ParsedResponse response) {
+  final metadata = <String, dynamic>{};
+  final modelUsed = response.metadata['model_used'];
+  final durationMs = response.metadata['duration_ms'];
+  final usage = response.metadata['usage'];
+
+  if (response.sessionId != null) {
+    metadata['session_id'] = response.sessionId;
+  }
+  if (modelUsed is String && modelUsed.isNotEmpty) {
+    metadata['model_used'] = modelUsed;
+  }
+  if (durationMs is num) {
+    metadata['duration_ms'] = durationMs;
+  }
+  if (usage is Map) {
+    metadata['usage'] = usage;
+  }
+
   return {
     'content': response.content,
-    'metadata': {
-      if (response.sessionId != null) 'session_id': response.sessionId,
-    },
+    'metadata': metadata,
   };
+}
+
+String _formatCompareOutput(CompareRun run) {
+  final buffer = StringBuffer();
+  buffer.writeln('compare_id: ${run.compareId}');
+  buffer.writeln('title: ${run.title}');
+  buffer.writeln('====');
+  buffer.writeln();
+
+  for (final result in run.results) {
+    final participant = result.participant;
+    buffer.writeln(
+      '=== ${participant.agent.toUpperCase()} (${participant.model}) ===',
+    );
+    if (result.success) {
+      if (participant.sessionId != null) {
+        buffer.writeln('session_id: ${participant.sessionId}');
+        buffer.writeln('----');
+      }
+      final response = result.response?['content'] as String?;
+      if (response != null) {
+        buffer.writeln(response);
+      }
+    } else {
+      buffer.writeln('ERROR: ${result.error}');
+    }
+    buffer.writeln();
+  }
+
+  return buffer.toString().trimRight();
+}
+
+String _formatModelsOutput(List<Map<String, Object?>> agentsInfo) {
+  final lines = <String>[];
+  for (final agentInfo in agentsInfo) {
+    final agent = agentInfo['agent'] as String;
+    final models = (agentInfo['models'] as List).cast<Map<String, Object?>>();
+    final aliases = models
+        .map((model) {
+          final name = model['name'] as String;
+          final modelAliases = (model['aliases'] as List).cast<String>();
+          if (modelAliases.isEmpty) {
+            return name;
+          }
+          return '$name (${modelAliases.join(', ')})';
+        })
+        .join(', ');
+
+    lines.add('$agent: $aliases');
+  }
+  return lines.join(' | ');
+}
+
+String _formatConsensusOutput(ConsensusResult result) {
+  final buffer = StringBuffer();
+  buffer.writeln('consensus_id: ${result.session.consensusId}');
+  buffer.writeln('====');
+  buffer.writeln();
+
+  for (final entry in result.results) {
+    final participant = entry.participant;
+    buffer.writeln(
+      '=== ${participant.agent.toUpperCase()} (${participant.model}) [${participant.stance.value.toUpperCase()}] ===',
+    );
+    if (entry.success) {
+      final sessionId = entry.response?.sessionId ?? participant.sessionId;
+      if (sessionId != null) {
+        buffer.writeln('session_id: $sessionId');
+        buffer.writeln('----');
+      }
+      buffer.writeln(entry.response!.content);
+    } else {
+      buffer.writeln('ERROR: ${entry.error}');
+    }
+    buffer.writeln();
+  }
+
+  buffer.writeln('==== SUMMARY ====');
+  buffer.writeln('Total: ${result.results.length}');
+  buffer.writeln('Succeeded: ${result.successful.length}');
+  if (result.failed.isNotEmpty) {
+    buffer.writeln('Failed: ${result.failed.length}');
+    for (final failed in result.failed) {
+      buffer.writeln('  - ${failed.participant.agent}: ${failed.error}');
+    }
+  }
+
+  return buffer.toString().trimRight();
+}
+
+String _formatCouncilOutput(
+  CouncilResult result, {
+  required bool includeAnswers,
+}) {
+  final buffer = StringBuffer();
+
+  if (includeAnswers) {
+    buffer.writeln('==== Stage 1: Answers ====');
+    for (final answer in result.answers) {
+      final participant = answer.participant;
+      buffer.writeln(
+        '=== ${participant.agent.toUpperCase()} (${participant.model}) [ANSWER] ===',
+      );
+      if (answer.success) {
+        if (answer.response?.sessionId != null) {
+          buffer.writeln('session_id: ${answer.response!.sessionId}');
+          buffer.writeln('----');
+        }
+        buffer.writeln(answer.response!.content);
+      } else {
+        buffer.writeln('ERROR: ${answer.error}');
+      }
+      buffer.writeln();
+    }
+  }
+
+  buffer.writeln('==== Stage 2: Reviews ====');
+  for (final review in result.reviews) {
+    final participant = review.participant;
+    buffer.writeln(
+      '=== ${participant.agent.toUpperCase()} (${participant.model}) [REVIEW] ===',
+    );
+    if (review.success) {
+      buffer.writeln(review.response!.content);
+    } else {
+      buffer.writeln('ERROR: ${review.error}');
+    }
+    buffer.writeln();
+  }
+
+  buffer.writeln('==== Stage 3: Chairman ====');
+  buffer.writeln(
+    '=== ${result.chairman.chairman.agent.toUpperCase()} (${result.chairman.chairman.model}) [CHAIRMAN] ===',
+  );
+  if (result.chairman.success) {
+    buffer.writeln(result.chairman.response!.content);
+  } else {
+    buffer.writeln('ERROR: ${result.chairman.error}');
+  }
+  buffer.writeln();
+
+  buffer.writeln('==== Answer Map ====');
+  for (var index = 0; index < result.answers.length; index++) {
+    final participant = result.answers[index].participant;
+    buffer.writeln(
+      'ans_${index + 1}: ${participant.agent.toUpperCase()} (${participant.model})',
+    );
+  }
+
+  return buffer.toString().trimRight();
 }
 
 String _normalizePath(String value) {
