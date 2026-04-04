@@ -47,7 +47,27 @@ class ConfigService {
   }
 
   AgentConfig applyOverrides(AgentConfig base, AgentConfigOverride? overrides) {
-    if (overrides == null) return base;
+    if (overrides == null) {
+      return AgentConfig(
+        name: base.name,
+        executable: base.executable,
+        parser: base.parser,
+        enabled: base.enabled,
+        defaultModel: base.defaultModel,
+        additionalArgs: base.additionalArgs,
+        env: base.env,
+        timeoutSeconds: base.timeoutSeconds,
+        shellExecutable: base.shellExecutable,
+        shellArgs: base.shellArgs,
+        shellCommandPrefix: base.shellCommandPrefix,
+        availableModels: AgentModelRegistry.modelsFor(base.name),
+      );
+    }
+
+    final models = _mergeModels(
+      AgentModelRegistry.modelsFor(base.name),
+      overrides.models,
+    );
 
     return AgentConfig(
       name: base.name,
@@ -62,7 +82,21 @@ class ConfigService {
       shellArgs: overrides.shellArgs ?? base.shellArgs,
       shellCommandPrefix:
           overrides.shellCommandPrefix ?? base.shellCommandPrefix,
+      availableModels: models,
     );
+  }
+
+  List<ModelConfig> _mergeModels(
+    List<ModelConfig> base,
+    List<ModelConfig>? overrides,
+  ) {
+    if (overrides == null || overrides.isEmpty) return base;
+
+    final map = {for (final m in base) m.name: m};
+    for (final override in overrides) {
+      map[override.name] = override;
+    }
+    return map.values.toList();
   }
 
   AgentConfigOverride? overridesFor(AppConfig config, String agentName) {

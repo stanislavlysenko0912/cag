@@ -1,3 +1,4 @@
+import '../models/models.dart';
 import 'command_metadata.dart';
 
 /// Generates markdown documentation from command metadata.
@@ -7,10 +8,23 @@ class PrimeGenerator {
   /// Generate full onboarding markdown.
   String generate(
     List<CommandMetadata> commands, {
-    Set<String>? enabledAgents,
+    required Map<String, AgentConfig> agentConfigs,
   }) {
     final buffer = StringBuffer();
-    final agentCommands = _agentCommands(commands, enabledAgents);
+    final enabledAgents = agentConfigs.entries
+        .where((entry) => entry.value.enabled)
+        .map((entry) => entry.key)
+        .toSet();
+
+    final agentCommands = commands
+        .where((c) => enabledAgents.contains(c.name))
+        .map((c) {
+          final config = agentConfigs[c.name];
+          if (config == null || config.availableModels.isEmpty) return c;
+          return c.copyWith(models: config.availableModels);
+        })
+        .toList();
+
     final agentExamples = _agentExamples(agentCommands);
     final sessionExample = agentExamples.isNotEmpty
         ? agentExamples.first
@@ -328,17 +342,6 @@ class PrimeGenerator {
     buffer.writeln('- **agent**: $agentList');
     buffer.writeln('- **model**: full name or alias (see agent tables above)');
     buffer.writeln();
-  }
-
-  List<CommandMetadata> _agentCommands(
-    List<CommandMetadata> commands,
-    Set<String>? enabledAgents,
-  ) {
-    final agentCommands = commands.where((c) => c.models.isNotEmpty);
-    if (enabledAgents == null) {
-      return agentCommands.toList();
-    }
-    return agentCommands.where((c) => enabledAgents.contains(c.name)).toList();
   }
 
   List<({String agent, String model})> _agentExamples(

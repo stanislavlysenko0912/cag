@@ -1,3 +1,5 @@
+import 'model_config.dart';
+
 /// Configuration for a CLI agent.
 class AgentConfig {
   const AgentConfig({
@@ -12,6 +14,7 @@ class AgentConfig {
     this.shellExecutable,
     this.shellArgs = const [],
     this.shellCommandPrefix,
+    this.availableModels = const [],
   });
 
   /// Agent identifier (e.g., 'gemini', 'claude').
@@ -46,4 +49,7 @@ class AgentConfig {
 
   /// When set, runs via shell and prefixes the command with this string.
   final String? shellCommandPrefix;
+
+  /// List of available models for this agent.
+  final List<ModelConfig> availableModels;
 }

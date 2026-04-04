@@ -15,6 +15,24 @@ class CLIResult {
   bool get success => exitCode == 0;
 }
 
+/// Configuration for shell-based execution.
+class ShellConfig {
+  ShellConfig({
+    required this.commandPrefix,
+    this.shellExecutable,
+    this.shellArgs = const [],
+  });
+
+  /// The prefix for the command (e.g., 'exec', '/bin/zsh -c').
+  final String commandPrefix;
+
+  /// The shell executable (e.g., '/bin/sh', 'cmd').
+  final String? shellExecutable;
+
+  /// The arguments for the shell executable (e.g., ['-c'], ['/c']).
+  final List<String> shellArgs;
+}
+
 /// Exception thrown when CLI execution fails.
 class CLIRunnerException implements Exception {
   CLIRunnerException(this.message, {this.exitCode, this.stderr});
@@ -43,7 +61,19 @@ class CLIRunner {
     Map<String, String>? env,
     Duration? timeout,
     String? workingDirectory,
+    ShellConfig? shellConfig,
   }) async {
+    if (shellConfig != null) {
+      return _runInShell(
+        executable: executable,
+        args: args,
+        env: env,
+        timeout: timeout,
+        workingDirectory: workingDirectory,
+        shellConfig: shellConfig,
+      );
+    }
+
     final resolvedExecutable = _resolveExecutable(executable);
     final result = await _runProcess(
       executable: resolvedExecutable,
@@ -59,6 +89,76 @@ class CLIRunner {
       stdout: result.stdout as String,
       stderr: result.stderr as String,
     );
+  }
+
+  Future<CLIResult> _runInShell({
+    required String executable,
+    required List<String> args,
+    Map<String, String>? env,
+    Duration? timeout,
+    String? workingDirectory,
+    required ShellConfig shellConfig,
+  }) async {
+    final shellExec = shellConfig.shellExecutable ?? _defaultShellExecutable();
+    final shellArgs = shellConfig.shellArgs.isNotEmpty
+        ? shellConfig.shellArgs
+        : _defaultShellArgs(shellExec);
+
+    final fullCommand = [executable, ...args];
+    final command = _buildShellCommand(
+      shellConfig.commandPrefix,
+      fullCommand,
+      shellExec,
+    );
+
+    final result = await _runProcess(
+      executable: shellExec,
+      args: [...shellArgs, command],
+      env: env,
+      timeout: timeout,
+      workingDirectory: workingDirectory,
+      originalExecutable: shellExec,
+    );
+
+    return CLIResult(
+      exitCode: result.exitCode,
+      stdout: result.stdout as String,
+      stderr: result.stderr as String,
+    );
+  }
+
+  String _buildShellCommand(
+    String prefix,
+    List<String> args,
+    String shellExecutable,
+  ) {
+    final escapedArgs = args
+        .map((arg) => _shellEscape(arg, shellExecutable))
+        .join(' ');
+    final trimmedPrefix = prefix.trim();
+    if (escapedArgs.isEmpty) return trimmedPrefix;
+    return '$trimmedPrefix $escapedArgs';
+  }
+
+  String _shellEscape(String value, String shellExecutable) {
+    final lower = shellExecutable.toLowerCase();
+    if (lower.contains('cmd')) {
+      final escaped = value.replaceAll('"', '\\"');
+      return '"$escaped"';
+    }
+    final escaped = value.replaceAll("'", "'\\''");
+    return "'$escaped'";
+  }
+
+  String _defaultShellExecutable() {
+    if (Platform.isWindows) return 'cmd';
+    return '/bin/sh';
+  }
+
+  List<String> _defaultShellArgs(String shellExecutable) {
+    final lower = shellExecutable.toLowerCase();
+    if (lower.contains('cmd')) return ['/c'];
+    return ['-c'];
   }
 
   Future<ProcessResult> _runProcess({

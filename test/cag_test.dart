@@ -283,6 +283,29 @@ void main() {
     });
   });
 
+  group('CLIRunner', () {
+    test('run executes a basic command', () async {
+      final runner = CLIRunner();
+      final result = await runner.run(executable: 'echo', args: ['hello']);
+
+      expect(result.exitCode, equals(0));
+      expect(result.stdout.trim(), equals('hello'));
+    });
+
+    test('run with shellConfig executes via shell', () async {
+      final runner = CLIRunner();
+      final result = await runner.run(
+        executable: 'echo',
+        args: ['hello'],
+        shellConfig: ShellConfig(commandPrefix: 'echo prefix &&'),
+      );
+
+      expect(result.exitCode, equals(0));
+      expect(result.stdout, contains('prefix'));
+      expect(result.stdout, contains('hello'));
+    });
+  });
+
   group('PrimeGenerator', () {
     test('generate produces markdown with command info', () {
       const generator = PrimeGenerator();
@@ -290,16 +313,23 @@ void main() {
       final commands = [
         const CommandMetadata(
           name: 'test-agent',
-
           description: 'A test agent',
-
           models: [
             ModelConfig(name: 'm1', description: 'Model 1', isDefault: true),
           ],
         ),
       ];
 
-      final output = generator.generate(commands);
+      final output = generator.generate(
+        commands,
+        agentConfigs: {
+          'test-agent': const AgentConfig(
+            name: 'test-agent',
+            executable: 'test',
+            parser: 'test',
+          ),
+        },
+      );
 
       expect(output, contains('# CLI Agents'));
 
@@ -328,10 +358,55 @@ void main() {
         const CommandMetadata(name: 'compare', description: 'Compare command'),
       ];
 
-      final output = generator.generate(commands);
+      final output = generator.generate(
+        commands,
+        agentConfigs: {
+          'claude': const AgentConfig(
+            name: 'claude',
+            executable: 'claude',
+            parser: 'claude',
+          ),
+        },
+      );
 
       expect(output, contains('## Compare'));
       expect(output, contains('cag compare --list'));
+    });
+
+    test('generate reflects custom models from config', () {
+      const generator = PrimeGenerator();
+
+      final commands = [
+        const CommandMetadata(
+          name: 'claude',
+          description: 'Claude agent',
+          models: [
+            ModelConfig(name: 'sonnet', description: 'Base', isDefault: true),
+          ],
+        ),
+      ];
+
+      final output = generator.generate(
+        commands,
+        agentConfigs: {
+          'claude': const AgentConfig(
+            name: 'claude',
+            executable: 'claude',
+            parser: 'claude',
+            availableModels: [
+              ModelConfig(
+                name: 'custom-model',
+                description: 'Custom model',
+                isDefault: true,
+              ),
+            ],
+          ),
+        },
+      );
+
+      expect(output, contains('### claude'));
+      expect(output, contains('`custom-model` ⭐'));
+      expect(output, isNot(contains('`sonnet`')));
     });
   });
 

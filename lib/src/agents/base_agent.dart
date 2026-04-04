@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import '../models/models.dart';
 import '../parsers/parsers.dart';
 import '../runners/runners.dart';
@@ -63,64 +61,21 @@ abstract class BaseAgent {
 
   Future<CLIResult> _runCommand(List<String> args) {
     final timeout = Duration(seconds: config.timeoutSeconds);
-    if (config.shellCommandPrefix == null) {
-      return runner.run(
-        executable: config.executable,
-        args: args,
-        env: config.env.isNotEmpty ? config.env : null,
-        timeout: timeout,
+    ShellConfig? shellConfig;
+    if (config.shellCommandPrefix != null) {
+      shellConfig = ShellConfig(
+        commandPrefix: config.shellCommandPrefix!,
+        shellExecutable: config.shellExecutable,
+        shellArgs: config.shellArgs,
       );
     }
 
-    final shellExecutable = config.shellExecutable ?? _defaultShellExecutable();
-    final shellArgs = config.shellArgs.isNotEmpty
-        ? config.shellArgs
-        : _defaultShellArgs(shellExecutable);
-    final command = _buildShellCommand(
-      config.shellCommandPrefix!,
-      args,
-      shellExecutable,
-    );
-
     return runner.run(
-      executable: shellExecutable,
-      args: [...shellArgs, command],
+      executable: config.executable,
+      args: args,
       env: config.env.isNotEmpty ? config.env : null,
       timeout: timeout,
+      shellConfig: shellConfig,
     );
-  }
-
-  String _buildShellCommand(
-    String prefix,
-    List<String> args,
-    String shellExecutable,
-  ) {
-    final escapedArgs = args
-        .map((arg) => _shellEscape(arg, shellExecutable))
-        .join(' ');
-    final trimmedPrefix = prefix.trim();
-    if (escapedArgs.isEmpty) return trimmedPrefix;
-    return '$trimmedPrefix $escapedArgs';
-  }
-
-  String _shellEscape(String value, String shellExecutable) {
-    final lower = shellExecutable.toLowerCase();
-    if (lower.contains('cmd')) {
-      final escaped = value.replaceAll('"', '\\"');
-      return '"$escaped"';
-    }
-    final escaped = value.replaceAll("'", "'\\''");
-    return "'$escaped'";
-  }
-
-  String _defaultShellExecutable() {
-    if (Platform.isWindows) return 'cmd';
-    return '/bin/sh';
-  }
-
-  List<String> _defaultShellArgs(String shellExecutable) {
-    final lower = shellExecutable.toLowerCase();
-    if (lower.contains('cmd')) return ['/c'];
-    return ['-c'];
   }
 }

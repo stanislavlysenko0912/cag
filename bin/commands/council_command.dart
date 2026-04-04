@@ -9,8 +9,8 @@ import 'output_formatter.dart';
 /// Runs multi-stage council flows and inspects saved runs.
 class CouncilCommand extends Command<void> {
   /// Creates a council command.
-  CouncilCommand({required Set<String> enabledAgents})
-    : _enabledAgents = enabledAgents {
+  CouncilCommand({required Map<String, AgentConfig> agentConfigs})
+    : _agentConfigs = agentConfigs {
     argParser
       ..addMultiOption('add', abbr: 'a', help: 'Add participant: agent:model')
       ..addOption('title', help: 'Optional title override for the council run')
@@ -39,7 +39,12 @@ class CouncilCommand extends Command<void> {
       );
   }
 
-  final Set<String> _enabledAgents;
+  final Map<String, AgentConfig> _agentConfigs;
+
+  Set<String> get _enabledAgents => _agentConfigs.entries
+      .where((entry) => entry.value.enabled)
+      .map((entry) => entry.key)
+      .toSet();
 
   @override
   String get name => 'council';
@@ -140,14 +145,17 @@ Council runs are persisted for inspection and follow-up.''';
 
   void _resolveModels(List<CouncilMember> members) {
     for (final member in members) {
-      final cmdDef = CommandDefinitions.find(member.agent);
-      if (cmdDef == null || cmdDef.models.isEmpty) {
+      final config = _agentConfigs[member.agent];
+      if (config == null || config.availableModels.isEmpty) {
         continue;
       }
 
-      final modelConfig = cmdDef.findModel(member.model);
+      final modelConfig = config.availableModels
+          .where((m) => m.matches(member.model))
+          .firstOrNull;
       if (modelConfig == null) {
-        final available = cmdDef.models.map((model) => model.name).join(', ');
+        final available =
+            config.availableModels.map((model) => model.name).join(', ');
         throw UsageException(
           'Unknown model "${member.model}" for ${member.agent}. Available: $available',
           usage,

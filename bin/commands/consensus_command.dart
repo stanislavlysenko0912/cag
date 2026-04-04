@@ -6,9 +6,10 @@ import 'package:cag/cag.dart';
 
 import 'output_formatter.dart';
 
+/// Runs multi-model consensus sessions.
 class ConsensusCommand extends Command<void> {
-  ConsensusCommand({required Set<String> enabledAgents})
-    : _enabledAgents = enabledAgents {
+  ConsensusCommand({required Map<String, AgentConfig> agentConfigs})
+    : _agentConfigs = agentConfigs {
     argParser
       ..addMultiOption(
         'add',
@@ -39,7 +40,12 @@ class ConsensusCommand extends Command<void> {
       );
   }
 
-  final Set<String> _enabledAgents;
+  final Map<String, AgentConfig> _agentConfigs;
+
+  Set<String> get _enabledAgents => _agentConfigs.entries
+      .where((entry) => entry.value.enabled)
+      .map((entry) => entry.key)
+      .toSet();
 
   @override
   String get name => 'consensus';
@@ -110,12 +116,14 @@ This command runs the specified models in parallel with stance-based prompts.'''
 
         // Validate and resolve model aliases
         for (final p in participants) {
-          final cmdDef = CommandDefinitions.find(p.agent);
-          if (cmdDef == null || cmdDef.models.isEmpty) continue;
+          final config = _agentConfigs[p.agent];
+          if (config == null || config.availableModels.isEmpty) continue;
 
-          final modelConfig = cmdDef.findModel(p.model);
+          final modelConfig = config.availableModels
+              .where((m) => m.matches(p.model))
+              .firstOrNull;
           if (modelConfig == null) {
-            final available = cmdDef.models.map((m) => m.name).join(', ');
+            final available = config.availableModels.map((m) => m.name).join(', ');
             throw UsageException(
               'Unknown model "${p.model}" for ${p.agent}. Available: $available',
               usage,

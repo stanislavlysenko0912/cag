@@ -9,8 +9,8 @@ import 'output_formatter.dart';
 /// Run multi-agent compare without synthesis.
 class CompareCommand extends Command<void> {
   /// Creates a compare command.
-  CompareCommand({required Set<String> enabledAgents})
-    : _enabledAgents = enabledAgents {
+  CompareCommand({required Map<String, AgentConfig> agentConfigs})
+    : _agentConfigs = agentConfigs {
     argParser
       ..addMultiOption('add', abbr: 'a', help: 'Add participant: agent:model')
       ..addOption('title', help: 'Optional title override for the compare run')
@@ -29,7 +29,12 @@ class CompareCommand extends Command<void> {
       );
   }
 
-  final Set<String> _enabledAgents;
+  final Map<String, AgentConfig> _agentConfigs;
+
+  Set<String> get _enabledAgents => _agentConfigs.entries
+      .where((entry) => entry.value.enabled)
+      .map((entry) => entry.key)
+      .toSet();
 
   @override
   String get name => 'compare';
@@ -120,14 +125,17 @@ class CompareCommand extends Command<void> {
     List<CompareParticipant> participants,
   ) {
     return participants.map((participant) {
-      final cmdDef = CommandDefinitions.find(participant.agent);
-      if (cmdDef == null || cmdDef.models.isEmpty) {
+      final config = _agentConfigs[participant.agent];
+      if (config == null || config.availableModels.isEmpty) {
         return participant;
       }
 
-      final modelConfig = cmdDef.findModel(participant.model);
+      final modelConfig = config.availableModels
+          .where((m) => m.matches(participant.model))
+          .firstOrNull;
       if (modelConfig == null) {
-        final available = cmdDef.models.map((model) => model.name).join(', ');
+        final available =
+            config.availableModels.map((model) => model.name).join(', ');
         throw UsageException(
           'Unknown model "${participant.model}" for ${participant.agent}. Available: $available',
           usage,

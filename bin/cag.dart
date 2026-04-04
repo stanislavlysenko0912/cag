@@ -38,18 +38,14 @@ void main(List<String> args) async {
     'codex': codexConfig,
     'cursor': cursorConfig,
   };
-  final enabledAgents = agentConfigs.entries
-      .where((entry) => entry.value.enabled)
-      .map((entry) => entry.key)
-      .toSet();
 
   final runner = CommandRunner<void>('cag', 'CLI wrapper for AI agents')
-    ..addCommand(ConsensusCommand(enabledAgents: enabledAgents))
-    ..addCommand(CompareCommand(enabledAgents: enabledAgents))
-    ..addCommand(CouncilCommand(enabledAgents: enabledAgents))
+    ..addCommand(ConsensusCommand(agentConfigs: agentConfigs))
+    ..addCommand(CompareCommand(agentConfigs: agentConfigs))
+    ..addCommand(CouncilCommand(agentConfigs: agentConfigs))
     ..addCommand(DetectCommand())
     ..addCommand(McpCommand())
-    ..addCommand(PrimeCommand(enabledAgents: enabledAgents))
+    ..addCommand(PrimeCommand(agentConfigs: agentConfigs))
     ..argParser.addFlag(
       'version',
       abbr: 'v',

@@ -29,6 +29,25 @@ class CommandMetadata {
   /// Additional notes or tips.
   final String? notes;
 
+  /// Creates a copy of this metadata with optional overrides.
+  CommandMetadata copyWith({
+    String? name,
+    String? description,
+    List<ModelConfig>? models,
+    List<CommandExample>? examples,
+    List<CommandFlag>? flags,
+    String? notes,
+  }) {
+    return CommandMetadata(
+      name: name ?? this.name,
+      description: description ?? this.description,
+      models: models ?? this.models,
+      examples: examples ?? this.examples,
+      flags: flags ?? this.flags,
+      notes: notes ?? this.notes,
+    );
+  }
+
   /// Get default model.
   ModelConfig? get defaultModel => models.where((m) => m.isDefault).firstOrNull;
 

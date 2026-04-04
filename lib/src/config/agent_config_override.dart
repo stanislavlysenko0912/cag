@@ -1,3 +1,5 @@
+import '../models/model_config.dart';
+
 class AgentConfigOverride {
   AgentConfigOverride({
     this.executable,
@@ -9,6 +11,7 @@ class AgentConfigOverride {
     this.shellExecutable,
     this.shellArgs,
     this.shellCommandPrefix,
+    this.models,
   });
 
   final String? executable;
@@ -20,15 +23,15 @@ class AgentConfigOverride {
   final String? shellExecutable;
   final List<String>? shellArgs;
   final String? shellCommandPrefix;
+  final List<ModelConfig>? models;
 
   factory AgentConfigOverride.fromJson(Map<String, dynamic> json) {
     return AgentConfigOverride(
       executable: json['executable'] as String?,
       enabled: json['enabled'] is bool ? json['enabled'] as bool : null,
       defaultModel: json['default_model'] as String?,
-      additionalArgs: (json['additional_args'] as List?)
-          ?.whereType<String>()
-          .toList(),
+      additionalArgs:
+          (json['additional_args'] as List?)?.whereType<String>().toList(),
       env: (json['env'] as Map?)?.map(
         (key, value) => MapEntry(key.toString(), value.toString()),
       ),
@@ -38,6 +41,10 @@ class AgentConfigOverride {
       shellExecutable: json['shell_executable'] as String?,
       shellArgs: (json['shell_args'] as List?)?.whereType<String>().toList(),
       shellCommandPrefix: json['shell_command_prefix'] as String?,
+      models: (json['models'] as List?)
+          ?.whereType<Map<String, dynamic>>()
+          .map(ModelConfig.fromJson)
+          .toList(),
     );
   }
 
@@ -51,5 +58,6 @@ class AgentConfigOverride {
     if (shellExecutable != null) 'shell_executable': shellExecutable,
     if (shellArgs != null) 'shell_args': shellArgs,
     if (shellCommandPrefix != null) 'shell_command_prefix': shellCommandPrefix,
+    if (models != null) 'models': models!.map((m) => m.toJson()).toList(),
   };
 }
