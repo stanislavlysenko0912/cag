@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Added `cag compare` for parallel multi-agent runs with persisted compare IDs and per-agent session IDs.
 - Added `cag compare --list` and `cag compare --inspect` for browsing saved compare runs.
+- Added persisted `cag council` runs with `council_id`, `--list`, and `--inspect`.
 - Added `cag_compare` MCP tool.
 - Added `make mcp-inspect` target for launching MCP Inspector against the cag server.
 

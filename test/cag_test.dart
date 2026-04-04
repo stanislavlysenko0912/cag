@@ -550,6 +550,203 @@ void main() {
     });
   });
 
+  group('CouncilStorage', () {
+    late Directory tempDir;
+    late String storagePath;
+    late CouncilStorage storage;
+
+    setUp(() async {
+      tempDir = await Directory.systemTemp.createTemp('cag_council_test_');
+      storagePath = '${tempDir.path}/test_council.jsonl';
+      storage = CouncilStorage(storagePath: storagePath);
+    });
+
+    tearDown(() async {
+      await tempDir.delete(recursive: true);
+    });
+
+    test('save and loadAll', () async {
+      final run = _buildCouncilRun(councilId: 'council_1');
+
+      await storage.save(run);
+
+      final loaded = await storage.loadAll();
+      expect(loaded, hasLength(1));
+      expect(loaded.first.councilId, equals('council_1'));
+      expect(loaded.first.answers.first.participant.sessionId, equals('s1'));
+    });
+
+    test('load by ID', () async {
+      final run = _buildCouncilRun(councilId: 'council_2');
+
+      await storage.save(run);
+
+      final loaded = await storage.load('council_2');
+      expect(loaded, isNotNull);
+      expect(loaded?.councilId, equals('council_2'));
+    });
+
+    test('save overwrites existing run by id', () async {
+      final original = _buildCouncilRun(councilId: 'council_3');
+      final updated = _buildCouncilRun(
+        councilId: 'council_3',
+        title: 'Updated title',
+      );
+
+      await storage.save(original);
+      await storage.save(updated);
+
+      final loaded = await storage.loadAll();
+      expect(loaded, hasLength(1));
+      expect(loaded.first.title, equals('Updated title'));
+    });
+
+    test('load returns null for missing id', () async {
+      final loaded = await storage.load('missing');
+      expect(loaded, isNull);
+    });
+  });
+
+  group('CouncilRun', () {
+    test('status is completed when all stages succeed', () {
+      final run = _buildCouncilRun(councilId: 'council_completed');
+      expect(run.status, equals('completed'));
+    });
+
+    test('status is partial_failure when some stages fail', () {
+      final run = _buildCouncilRun(
+        councilId: 'council_partial',
+        answerError: 'answer failed',
+      );
+      expect(run.status, equals('partial_failure'));
+    });
+
+    test('status is failed when no stage succeeds', () {
+      final participants = [
+        CouncilMember(agent: 'gemini', model: 'pro'),
+        CouncilMember(agent: 'codex', model: 'gpt'),
+      ];
+      final chairman = CouncilMember(agent: 'claude', model: 'sonnet');
+      final run = CouncilRun(
+        councilId: 'council_failed',
+        title: 'Failed',
+        prompt: 'prompt',
+        participants: participants,
+        chairman: chairman,
+        answers: participants
+            .map(
+              (participant) => CouncilParticipantResult(
+                participant: participant,
+                response: null,
+                error: 'failed',
+              ),
+            )
+            .toList(),
+        reviews: participants
+            .map(
+              (participant) => CouncilReviewResult(
+                participant: participant,
+                response: null,
+                error: 'failed',
+              ),
+            )
+            .toList(),
+        chairmanResult: CouncilChairmanResult(
+          chairman: chairman,
+          response: null,
+          error: 'failed',
+        ),
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      expect(run.status, equals('failed'));
+    });
+  });
+
+  group('CouncilRunner', () {
+    late Directory tempDir;
+    late CouncilStorage storage;
+
+    setUp(() async {
+      tempDir = await Directory.systemTemp.createTemp('cag_council_runner_');
+      storage = CouncilStorage(storagePath: '${tempDir.path}/council.jsonl');
+    });
+
+    tearDown(() async {
+      await tempDir.delete(recursive: true);
+    });
+
+    test('run saves successful results with answer session IDs', () async {
+      final runner = CouncilRunner(
+        storage: storage,
+        geminiAgent: _FakeGeminiAgent(
+          response: ParsedResponse(
+            content: 'Gemini answer',
+            metadata: {'session_id': 'gemini-session'},
+          ),
+        ),
+        codexAgent: _FakeCodexAgent(
+          response: ParsedResponse(
+            content: 'Codex answer',
+            metadata: {'session_id': 'codex-session'},
+          ),
+        ),
+        claudeAgent: _FakeClaudeAgent(
+          response: ParsedResponse(content: 'Chairman summary'),
+        ),
+      );
+
+      final run = await runner.run(
+        prompt: 'Discuss this',
+        title: 'Discuss this',
+        participants: [
+          CouncilMember(agent: 'gemini', model: 'pro'),
+          CouncilMember(agent: 'codex', model: 'gpt'),
+        ],
+        chairman: CouncilMember(agent: 'claude', model: 'sonnet'),
+      );
+
+      expect(run.councilId, startsWith('council_'));
+      expect(run.answers.first.participant.sessionId, equals('gemini-session'));
+      expect(run.status, equals('completed'));
+
+      final saved = await storage.load(run.councilId);
+      expect(saved, isNotNull);
+      expect(saved?.answers.length, equals(2));
+    });
+
+    test('run keeps partial failure without throwing', () async {
+      final runner = CouncilRunner(
+        storage: storage,
+        geminiAgent: _FakeGeminiAgent(
+          response: ParsedResponse(
+            content: 'Gemini answer',
+            metadata: {'session_id': 'gemini-session'},
+          ),
+        ),
+        codexAgent: _FakeCodexAgent(error: Exception('codex failed')),
+        claudeAgent: _FakeClaudeAgent(
+          response: ParsedResponse(content: 'Chairman summary'),
+        ),
+      );
+
+      final run = await runner.run(
+        prompt: 'Discuss this',
+        title: 'Discuss this',
+        participants: [
+          CouncilMember(agent: 'gemini', model: 'pro'),
+          CouncilMember(agent: 'codex', model: 'gpt'),
+        ],
+        chairman: CouncilMember(agent: 'claude', model: 'sonnet'),
+      );
+
+      expect(run.status, equals('partial_failure'));
+      expect(run.answers.last.error, contains('codex failed'));
+      expect(run.reviews.last.error, contains('Stage 1 response missing'));
+    });
+  });
+
   group('AppPaths', () {
     test('appDataDir uses platform-appropriate location', () {
       final dir = AppPaths.appDataDir();
@@ -573,7 +770,66 @@ void main() {
       final path = AppPaths.comparePath();
       expect(path, endsWith('${Platform.pathSeparator}compare.jsonl'));
     });
+
+    test('councilPath ends with council.jsonl', () {
+      final path = AppPaths.councilPath();
+      expect(path, endsWith('${Platform.pathSeparator}council.jsonl'));
+    });
   });
+}
+
+CouncilRun _buildCouncilRun({
+  required String councilId,
+  String title = 'Council run',
+  String? answerError,
+}) {
+  final firstParticipant = CouncilMember(
+    agent: 'gemini',
+    model: 'pro',
+    sessionId: answerError == null ? 's1' : null,
+  );
+  final secondParticipant = CouncilMember(agent: 'codex', model: 'gpt');
+  final chairman = CouncilMember(agent: 'claude', model: 'sonnet');
+
+  return CouncilRun(
+    councilId: councilId,
+    title: title,
+    prompt: 'test prompt',
+    participants: [firstParticipant, secondParticipant],
+    chairman: chairman,
+    answers: [
+      CouncilParticipantResult(
+        participant: firstParticipant,
+        response: answerError == null
+            ? ParsedResponse(
+                content: 'answer 1',
+                metadata: {'session_id': 's1'},
+              )
+            : null,
+        error: answerError,
+      ),
+      CouncilParticipantResult(
+        participant: secondParticipant,
+        response: ParsedResponse(content: 'answer 2'),
+      ),
+    ],
+    reviews: [
+      CouncilReviewResult(
+        participant: firstParticipant,
+        response: ParsedResponse(content: 'review 1'),
+      ),
+      CouncilReviewResult(
+        participant: secondParticipant,
+        response: ParsedResponse(content: 'review 2'),
+      ),
+    ],
+    chairmanResult: CouncilChairmanResult(
+      chairman: chairman,
+      response: ParsedResponse(content: 'summary'),
+    ),
+    createdAt: DateTime.now(),
+    updatedAt: DateTime.now(),
+  );
 }
 
 class _FakeGeminiAgent extends GeminiAgent {
@@ -610,6 +866,23 @@ class _FakeCodexAgent extends CodexAgent {
     if (error != null) {
       throw error!;
     }
+    return response!;
+  }
+}
+
+class _FakeClaudeAgent extends ClaudeAgent {
+  _FakeClaudeAgent({this.response});
+
+  final ParsedResponse? response;
+
+  @override
+  Future<ParsedResponse> execute({
+    required String prompt,
+    String? model,
+    String? systemPrompt,
+    String? resume,
+    Map<String, String>? extraArgs,
+  }) async {
     return response!;
   }
 }

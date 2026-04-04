@@ -19,6 +19,12 @@ class OutputFormatter {
     print('====\n');
   }
 
+  static void printCouncilStart(String councilId, String title) {
+    print('council_id: $councilId');
+    print('title: $title');
+    print('====\n');
+  }
+
   static void printStageHeader(String title) {
     print('==== $title ====');
   }

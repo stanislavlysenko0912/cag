@@ -415,7 +415,8 @@ Future<McpServer> _buildServer() async {
           'from within your current session. '
           'Use it to get a second opinion, validate architectural decisions, brainstorm ideas, '
           'or leverage multiple models for deeper analysis.\n\n'
-          'Every call returns a session_id. Pass it via resume to continue the conversation with context preserved. '
+          'Regular agent conversations use a universal session_id. If a tool returns session_id, that conversation can be continued later through the matching agent tool with resume/session_id. '
+          'Any other returned ID belongs to a CAG wrapper flow and is not interchangeable with session_id. '
           'Provide detailed prompts with full context, constraints, and goals — short prompts produce weak results.\n\n'
           'Available models:\n$modelsSection',
     ),
@@ -496,7 +497,7 @@ Future<McpServer> _buildServer() async {
   server.registerTool(
     'cag_compare',
     description:
-        'Run multiple agents in parallel without synthesis and return per-branch session IDs.',
+        'Run multiple agents in parallel without synthesis and return per-branch session_id values plus compare_id for inspection.',
     inputSchema: _buildCompareInputSchema(enabledAgents),
     outputSchema: _compareOutputSchema,
     callback: (args, extra) async {
@@ -576,7 +577,8 @@ Future<McpServer> _buildServer() async {
 
   server.registerTool(
     'cag_consensus',
-    description: 'Run consensus across multiple agents.',
+    description:
+        'Run consensus across multiple agents. Resume uses consensus_id because this is a CAG-managed flow.',
     inputSchema: _buildConsensusInputSchema(enabledAgents),
     outputSchema: _consensusOutputSchema,
     callback: (args, extra) async {
@@ -719,7 +721,8 @@ Future<McpServer> _buildServer() async {
 
   server.registerTool(
     'cag_council',
-    description: 'Run multi-stage council (answers, reviews, chairman).',
+    description:
+        'Run multi-stage council (answers, reviews, chairman). Returns council_id for inspection and may include answer session_id values for branch follow-up.',
     inputSchema: _buildCouncilInputSchema(enabledAgents),
     outputSchema: _councilOutputSchema,
     callback: (args, extra) async {
@@ -826,54 +829,17 @@ Future<McpServer> _buildServer() async {
       try {
         final result = await councilRunner.run(
           prompt: prompt!,
+          title: buildCompareTitle(prompt),
           participants: participants,
           chairman: chairman,
         );
-
-        final verboseData = {
-          'prompt': result.prompt,
-          if (includeAnswers)
-            'answers': result.answers.asMap().entries.map((entry) {
-              final index = entry.key;
-              final r = entry.value;
-              return {
-                'answer_id': 'ans_${index + 1}',
-                if (r.response != null) 'content': r.response!.content,
-                if (includeAnswers && r.response?.sessionId != null)
-                  'session_id': r.response!.sessionId,
-                if (r.error != null) 'error': r.error,
-              };
-            }).toList(),
-          'reviews': result.reviews.map((r) {
-            return {
-              'reviewer':
-                  '${r.participant.agent.toUpperCase()} (${r.participant.model})',
-              if (r.response != null) 'content': r.response!.content,
-              if (r.error != null) 'error': r.error,
-            };
-          }).toList(),
-          'chairman_result': {
-            if (result.chairman.response != null)
-              'content': result.chairman.response!.content,
-            if (result.chairman.error != null) 'error': result.chairman.error,
-          },
-          'answer_map': result.answers.asMap().entries.map((entry) {
-            final index = entry.key;
-            final r = entry.value;
-            return {
-              'answer_id': 'ans_${index + 1}',
-              'label':
-                  '${r.participant.agent.toUpperCase()} (${r.participant.model})',
-            };
-          }).toList(),
-        };
 
         return CallToolResult.fromStructuredContent({
           'result': _formatCouncilOutput(
             result,
             includeAnswers: includeAnswers,
           ),
-          if (verbose) 'verbose_data': verboseData,
+          if (verbose) 'verbose_data': result.toJson(),
         });
       } on ArgumentError catch (e) {
         return _errorResult(e.message ?? e.toString());
@@ -1045,10 +1011,14 @@ String _formatConsensusOutput(ConsensusResult result) {
 }
 
 String _formatCouncilOutput(
-  CouncilResult result, {
+  CouncilRun result, {
   required bool includeAnswers,
 }) {
   final buffer = StringBuffer();
+  buffer.writeln('council_id: ${result.councilId}');
+  buffer.writeln('title: ${result.title}');
+  buffer.writeln('====');
+  buffer.writeln();
 
   if (includeAnswers) {
     buffer.writeln('==== Stage 1: Answers ====');
@@ -1058,8 +1028,8 @@ String _formatCouncilOutput(
         '=== ${participant.agent.toUpperCase()} (${participant.model}) [ANSWER] ===',
       );
       if (answer.success) {
-        if (answer.response?.sessionId != null) {
-          buffer.writeln('session_id: ${answer.response!.sessionId}');
+        if (participant.sessionId != null) {
+          buffer.writeln('session_id: ${participant.sessionId}');
           buffer.writeln('----');
         }
         buffer.writeln(answer.response!.content);
@@ -1086,12 +1056,12 @@ String _formatCouncilOutput(
 
   buffer.writeln('==== Stage 3: Chairman ====');
   buffer.writeln(
-    '=== ${result.chairman.chairman.agent.toUpperCase()} (${result.chairman.chairman.model}) [CHAIRMAN] ===',
+    '=== ${result.chairmanResult.chairman.agent.toUpperCase()} (${result.chairmanResult.chairman.model}) [CHAIRMAN] ===',
   );
-  if (result.chairman.success) {
-    buffer.writeln(result.chairman.response!.content);
+  if (result.chairmanResult.success) {
+    buffer.writeln(result.chairmanResult.response!.content);
   } else {
-    buffer.writeln('ERROR: ${result.chairman.error}');
+    buffer.writeln('ERROR: ${result.chairmanResult.error}');
   }
   buffer.writeln();
 

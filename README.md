@@ -155,6 +155,15 @@ cag council \
   -a "codex:gpt" \
   -c "claude:sonnet" \
   "Design a caching strategy for 10k RPM API"
+
+cag council --title "Caching council" \
+  -a "gemini:pro" \
+  -a "codex:gpt" \
+  -c "claude:sonnet" \
+  "Design a caching strategy for 10k RPM API"
+
+cag council --list
+cag council --inspect council_12345678
 ```
 
 ### prime
@@ -234,7 +243,7 @@ cag codex -r abc-123 "What if data changes hourly?"
 
 Compare runs print `compare_id` and keep the per-agent `session_id` values for branch follow-up.
 Consensus sessions print `consensus_id` and can be resumed with `-r`.
-Council runs are stateless (no resume).
+Council runs print `council_id` and are persisted for inspection and follow-up. The deliberation itself is not resumable.
 
 Example compare follow-up:
 

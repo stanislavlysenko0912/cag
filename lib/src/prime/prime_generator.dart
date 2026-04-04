@@ -54,7 +54,11 @@ class PrimeGenerator {
     buffer.writeln('## How Sessions Work');
     buffer.writeln();
     buffer.writeln(
-      'Every agent call returns a `session_id`. `compare` returns one `session_id` per successful branch. Pass the chosen one with `-r` to continue the conversation with full context preserved.',
+      'Every regular agent conversation uses a universal `session_id`. If a tool returns `session_id`, that conversation can be continued later with the matching agent command and `-r <session_id>`.',
+    );
+    buffer.writeln();
+    buffer.writeln(
+      'Any other returned ID is an internal CAG wrapper ID for its own flow and is not interchangeable with `session_id`.',
     );
     buffer.writeln();
     buffer.writeln('```bash');
@@ -99,7 +103,10 @@ class PrimeGenerator {
     buffer.writeln('## Required');
     buffer.writeln();
     buffer.writeln(
-      '- You **MUST ALLWAYS** pass the `session_id` with `-r` flag, or `consensus_id` if you are using consensus mode, to continue the conversation on the same task/subject',
+      '- If a tool returns `session_id`, treat it as a reusable agent conversation handle.',
+    );
+    buffer.writeln(
+      '- Any non-`session_id` returned by CAG belongs to that wrapper flow and should not be treated as a regular agent session handle.',
     );
     buffer.writeln(
       '- At the start of a conversation, you **MUST** provide maximum useful information: background, constraints, goals, current state, and desired output format.',
@@ -234,7 +241,7 @@ class PrimeGenerator {
     buffer.writeln('1. Sends the same prompt to multiple agents in parallel');
     buffer.writeln('2. Stores the run under `compare_id`');
     buffer.writeln(
-      '3. Returns per-agent `session_id` values for branch follow-up',
+      '3. Returns per-agent answer `session_id` values for branch follow-up with the underlying agent command',
     );
     buffer.writeln();
 
@@ -245,9 +252,9 @@ class PrimeGenerator {
       'cag compare -a "${first.agent}:${first.model}" -a "${second.agent}:${second.model}" "How should we cache profiles?"',
     );
     buffer.writeln('# Output: compare_id: cmp-abc123');
-    buffer.writeln('# Each answer also includes session_id');
+    buffer.writeln('# Each answer also includes its own session_id');
     buffer.writeln();
-    buffer.writeln('# Continue one branch with its session_id');
+    buffer.writeln('# Continue one branch with its session_id using the same agent command');
     buffer.writeln(
       'cag ${first.agent} -r abc-123 "Continue this direction with concrete implementation details"',
     );
@@ -287,7 +294,9 @@ class PrimeGenerator {
       'Multi-stage council: independent answers, peer reviews with ranking, and chairman synthesis.',
     );
     buffer.writeln();
-    buffer.writeln('Council runs are stateless (no resume).');
+    buffer.writeln(
+      'Council stores a `council_id` for inspection and may expose answer `session_id` values for branch follow-up. `council_id` is not a regular agent session handle.',
+    );
     buffer.writeln();
 
     buffer.writeln('### How It Works');
@@ -307,6 +316,8 @@ class PrimeGenerator {
     buffer.writeln(
       'cag council -a "${first.agent}:${first.model}" -a "${second.agent}:${second.model}" -c "${third.agent}:${third.model}" "Design a caching strategy"',
     );
+    buffer.writeln('# Output: council_id: council_abc123');
+    buffer.writeln('# Use --include-answers to see answer session_id values');
     buffer.writeln('```');
     buffer.writeln();
 
