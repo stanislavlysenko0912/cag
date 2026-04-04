@@ -13,8 +13,11 @@ class OutputFormatter {
   }
 
   /// Prints a consensus session header.
-  static void printConsensusStart(String consensusId) {
+  static void printConsensusStart(String consensusId, [String? title]) {
     print('consensus_id: $consensusId');
+    if (title != null && title.isNotEmpty) {
+      print('title: $title');
+    }
     print('====\n');
   }
 
@@ -38,13 +41,21 @@ class OutputFormatter {
   }
 
   /// Prints a participant header with agent, model, and stance.
-  static void printParticipantHeader({required String agent, required String model, required String stance}) {
-    final header = '=== ${agent.toUpperCase()} ($model) [${stance.toUpperCase()}] ===';
+  static void printParticipantHeader({
+    required String agent,
+    required String model,
+    required String stance,
+  }) {
+    final header =
+        '=== ${agent.toUpperCase()} ($model) [${stance.toUpperCase()}] ===';
     print(header);
   }
 
   /// Prints a participant header for compare runs.
-  static void printCompareParticipantHeader({required String agent, required String model}) {
+  static void printCompareParticipantHeader({
+    required String agent,
+    required String model,
+  }) {
     print('=== ${agent.toUpperCase()} ($model) ===');
   }
 
@@ -60,6 +71,54 @@ class OutputFormatter {
 
   static String formatFailure(AgentFailure failure) {
     return '${failure.summary}: ${failure.message}';
+  }
+
+  /// Formats a preview string for list output.
+  static String formatPreview(String value, {int maxLength = 128}) {
+    if (value.length <= maxLength) {
+      return value;
+    }
+    return '${value.substring(0, maxLength)}...';
+  }
+
+  /// Prints a compare list item.
+  static void printCompareListItem(CompareRun run) {
+    final participants = run.participants
+        .map((participant) => participant.toString())
+        .join(', ');
+    print(
+      '${run.compareId}  ${formatLocalDate(run.createdAt)}  ${run.successCount}/${run.results.length} ok  $participants',
+    );
+    print('  Title: ${run.title}');
+  }
+
+  /// Prints a council list item.
+  static void printCouncilListItem(CouncilRun run) {
+    final participants = run.participants
+        .map((participant) => participant.toString())
+        .join(', ');
+    print(
+      '${run.councilId}  ${formatLocalDate(run.createdAt)}  ${run.status}  $participants',
+    );
+    print('  Chairman: ${run.chairman}');
+    print('  Title: ${run.title}');
+  }
+
+  /// Prints a consensus list item.
+  static void printConsensusListItem(ConsensusSession session) {
+    final participants = session.participants
+        .map((participant) => participant.toString())
+        .join(', ');
+    print(
+      '${session.consensusId}  ${formatLocalDate(session.createdAt)}  ${session.participants.length} participants  $participants',
+    );
+    if (session.title != null && session.title!.isNotEmpty) {
+      print('  Title: ${session.title}');
+    }
+    if (session.proposal != null && session.proposal!.isNotEmpty) {
+      print('  Proposal: ${formatPreview(session.proposal!)}');
+    }
+    print('  Prompt: ${formatPreview(session.prompt)}');
   }
 
   static void printFailure(AgentFailure failure) {

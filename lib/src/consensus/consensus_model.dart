@@ -116,6 +116,7 @@ class ConsensusSession {
     required this.prompt,
     required this.participants,
     required this.createdAt,
+    this.title,
     this.proposal,
     this.updatedAt,
   });
@@ -125,6 +126,9 @@ class ConsensusSession {
 
   /// Original proposal/idea to analyze (optional context).
   final String? proposal;
+
+  /// Session title shown in lists and inspect views.
+  final String? title;
 
   /// Query/prompt from the calling agent.
   final String prompt;
@@ -140,6 +144,7 @@ class ConsensusSession {
 
   Map<String, dynamic> toJson() => {
     'consensus_id': consensusId,
+    if (title != null) 'title': title,
     if (proposal != null) 'proposal': proposal,
     'prompt': prompt,
     'participants': participants.map((p) => p.toJson()).toList(),
@@ -150,6 +155,7 @@ class ConsensusSession {
   factory ConsensusSession.fromJson(Map<String, dynamic> json) {
     return ConsensusSession(
       consensusId: json['consensus_id'] as String,
+      title: json['title'] as String?,
       proposal: json['proposal'] as String?,
       prompt: json['prompt'] as String,
       participants: (json['participants'] as List)
@@ -161,4 +167,17 @@ class ConsensusSession {
           : null,
     );
   }
+
+  /// Converts the session to summary JSON for list output.
+  Map<String, dynamic> toSummaryJson() => {
+    'id': consensusId,
+    'created_at': createdAt.toIso8601String(),
+    if (updatedAt != null) 'updated_at': updatedAt!.toIso8601String(),
+    'title': title,
+    'prompt': prompt,
+    if (proposal != null) 'proposal': proposal,
+    'participants': participants
+        .map((participant) => participant.toString())
+        .toList(),
+  };
 }

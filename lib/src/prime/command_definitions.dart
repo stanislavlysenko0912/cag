@@ -92,12 +92,20 @@ cag consensus -p "<your proposal>" -a "agent:model:stance" ... "<task context>"
         command: 'cag consensus --list',
         description: 'list sessions',
       ),
+      CommandExample(
+        command: 'cag consensus --inspect cons-abc123',
+        description: 'inspect a saved consensus session',
+      ),
     ],
     flags: [
       CommandFlag(
         flag: '--add',
         shortFlag: '-a',
         description: 'Add participant: agent:model:stance',
+      ),
+      CommandFlag(
+        flag: '--title',
+        description: 'Optional title override for the consensus run',
       ),
       CommandFlag(
         flag: '--proposal',
@@ -108,6 +116,10 @@ cag consensus -p "<your proposal>" -a "agent:model:stance" ... "<task context>"
         flag: '--list',
         shortFlag: '-l',
         description: 'List saved sessions (last 25)',
+      ),
+      CommandFlag(
+        flag: '--inspect',
+        description: 'Inspect a saved consensus session by consensus_id',
       ),
     ],
     notes:

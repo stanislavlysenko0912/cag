@@ -76,6 +76,7 @@ class ConsensusRunner {
   Future<ConsensusResult> run({
     required String prompt,
     required List<ConsensusParticipant> participants,
+    String? title,
     String? proposal,
   }) async {
     if (participants.length < 2) {
@@ -85,6 +86,7 @@ class ConsensusRunner {
     // Create session
     final session = ConsensusSession(
       consensusId: 'cons-${_uuid.v4().substring(0, 8)}',
+      title: title,
       prompt: prompt,
       proposal: proposal,
       participants: participants,

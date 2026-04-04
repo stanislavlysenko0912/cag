@@ -1,0 +1,334 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:cag/cag.dart';
+import 'package:path/path.dart' as p;
+import 'package:test/test.dart';
+
+void main() {
+  group('consensus CLI', () {
+    late Directory tempDir;
+    late Map<String, String> environment;
+
+    setUp(() async {
+      tempDir = await Directory.systemTemp.createTemp('cag_cli_consensus_');
+      environment = buildAppEnvironment(tempDir);
+    });
+
+    tearDown(() async {
+      await tempDir.delete(recursive: true);
+    });
+
+    test('--list shows empty message', () async {
+      final result = await runCli(['consensus', '--list'], environment);
+
+      expect(result.exitCode, equals(0));
+      expect(result.stdout, contains('No consensus sessions found.'));
+    });
+
+    test('--list --json returns empty runs payload', () async {
+      final result = await runCli([
+        'consensus',
+        '--list',
+        '--json',
+      ], environment);
+
+      expect(result.exitCode, equals(0));
+      expect(
+        jsonDecode(result.stdout as String),
+        equals({'runs': <Object?>[]}),
+      );
+    });
+
+    test('--inspect --json prints stored session document', () async {
+      final storage = ConsensusStorage(storagePath: consensusPathFor(tempDir));
+      await storage.save(
+        ConsensusSession(
+          consensusId: 'cons-123',
+          title: 'Profile caching debate',
+          prompt: 'Should we cache profiles?',
+          proposal: 'Use Redis.',
+          participants: [
+            ConsensusParticipant(
+              agent: 'gemini',
+              model: 'pro',
+              stance: ConsensusStance.forProposal,
+            ),
+          ],
+          createdAt: DateTime.parse('2026-04-04T10:00:00Z'),
+        ),
+      );
+
+      final result = await runCli([
+        'consensus',
+        '--inspect',
+        'cons-123',
+        '--json',
+      ], environment);
+
+      expect(result.exitCode, equals(0));
+      final payload =
+          jsonDecode(result.stdout as String) as Map<String, dynamic>;
+      expect(payload['consensus_id'], equals('cons-123'));
+      expect(payload['title'], equals('Profile caching debate'));
+      expect(payload['proposal'], equals('Use Redis.'));
+    });
+
+    test('--inspect prints stored session summary', () async {
+      final storage = ConsensusStorage(storagePath: consensusPathFor(tempDir));
+      await storage.save(
+        ConsensusSession(
+          consensusId: 'cons-234',
+          title: 'Caching session',
+          prompt: 'Evaluate profile caching',
+          participants: [
+            ConsensusParticipant(
+              agent: 'gemini',
+              model: 'pro',
+              stance: ConsensusStance.neutral,
+            ),
+          ],
+          createdAt: DateTime.parse('2026-04-04T10:00:00Z'),
+        ),
+      );
+
+      final result = await runCli([
+        'consensus',
+        '--inspect',
+        'cons-234',
+      ], environment);
+
+      expect(result.exitCode, equals(0));
+      expect(result.stdout, contains('consensus_id: cons-234'));
+      expect(result.stdout, contains('title: Caching session'));
+      expect(result.stdout, contains('participants: gemini:pro:neutral'));
+    });
+
+    test('--inspect missing exits non-zero', () async {
+      final result = await runCli([
+        'consensus',
+        '--inspect',
+        'missing',
+      ], environment);
+
+      expect(result.exitCode, equals(1));
+      expect(result.stderr, contains('Consensus session not found: missing'));
+    });
+
+    test('--list with --inspect returns usage error', () async {
+      final result = await runCli([
+        'consensus',
+        '--list',
+        '--inspect',
+        'cons-1',
+      ], environment);
+
+      expect(result.exitCode, equals(64));
+      expect(
+        result.stdout,
+        contains('Cannot use --list and --inspect together'),
+      );
+    });
+
+    test('--resume with --title returns usage error', () async {
+      final result = await runCli([
+        'consensus',
+        '--resume',
+        'cons-1',
+        '--title',
+        'Retry',
+        'Follow up',
+      ], environment);
+
+      expect(result.exitCode, equals(64));
+      expect(result.stdout, contains('Cannot use --title when resuming.'));
+    });
+  });
+
+  group('compare and council CLI persistence', () {
+    late Directory tempDir;
+    late Map<String, String> environment;
+
+    setUp(() async {
+      tempDir = await Directory.systemTemp.createTemp('cag_cli_persisted_');
+      environment = buildAppEnvironment(tempDir);
+    });
+
+    tearDown(() async {
+      await tempDir.delete(recursive: true);
+    });
+
+    test('compare --list --json returns run summaries', () async {
+      final storage = CompareStorage(storagePath: comparePathFor(tempDir));
+      await storage.save(
+        CompareRun(
+          compareId: 'cmp_123',
+          title: 'Compare run',
+          prompt: 'Compare this',
+          participants: [CompareParticipant(agent: 'gemini', model: 'pro')],
+          results: [
+            CompareParticipantResult(
+              participant: CompareParticipant(
+                agent: 'gemini',
+                model: 'pro',
+                sessionId: 's1',
+              ),
+              response: ParsedResponse(
+                content: 'hello',
+                metadata: {'session_id': 's1'},
+              ),
+            ),
+          ],
+          createdAt: DateTime.parse('2026-04-04T10:00:00Z'),
+          updatedAt: DateTime.parse('2026-04-04T10:00:00Z'),
+        ),
+      );
+
+      final result = await runCli(['compare', '--list', '--json'], environment);
+
+      expect(result.exitCode, equals(0));
+      final payload =
+          jsonDecode(result.stdout as String) as Map<String, dynamic>;
+      expect((payload['runs'] as List), hasLength(1));
+      expect((payload['runs'] as List).first['id'], equals('cmp_123'));
+    });
+
+    test('council --inspect --json returns stored run', () async {
+      final storage = CouncilStorage(storagePath: councilPathFor(tempDir));
+      await storage.save(
+        CouncilRun(
+          councilId: 'council_123',
+          title: 'Council run',
+          prompt: 'Discuss this',
+          participants: [
+            CouncilMember(agent: 'gemini', model: 'pro'),
+            CouncilMember(agent: 'codex', model: 'gpt'),
+          ],
+          chairman: CouncilMember(agent: 'claude', model: 'sonnet'),
+          answers: [
+            CouncilParticipantResult(
+              participant: CouncilMember(agent: 'gemini', model: 'pro'),
+              response: ParsedResponse(content: 'answer 1'),
+            ),
+            CouncilParticipantResult(
+              participant: CouncilMember(agent: 'codex', model: 'gpt'),
+              response: ParsedResponse(content: 'answer 2'),
+            ),
+          ],
+          reviews: [
+            CouncilReviewResult(
+              participant: CouncilMember(agent: 'gemini', model: 'pro'),
+              response: ParsedResponse(content: 'review 1'),
+            ),
+            CouncilReviewResult(
+              participant: CouncilMember(agent: 'codex', model: 'gpt'),
+              response: ParsedResponse(content: 'review 2'),
+            ),
+          ],
+          chairmanResult: CouncilChairmanResult(
+            chairman: CouncilMember(agent: 'claude', model: 'sonnet'),
+            response: ParsedResponse(content: 'summary'),
+          ),
+          createdAt: DateTime.parse('2026-04-04T10:00:00Z'),
+          updatedAt: DateTime.parse('2026-04-04T10:00:00Z'),
+        ),
+      );
+
+      final result = await runCli([
+        'council',
+        '--inspect',
+        'council_123',
+        '--json',
+      ], environment);
+
+      expect(result.exitCode, equals(0));
+      final payload =
+          jsonDecode(result.stdout as String) as Map<String, dynamic>;
+      expect(payload['id'], equals('council_123'));
+      expect(payload['title'], equals('Council run'));
+    });
+
+    test('compare --list with creation flags returns usage error', () async {
+      final result = await runCli([
+        'compare',
+        '--list',
+        '--title',
+        'bad',
+      ], environment);
+
+      expect(result.exitCode, equals(64));
+      expect(
+        result.stdout,
+        contains(
+          'Cannot combine persisted run browsing with prompt or creation flags.',
+        ),
+      );
+    });
+
+    test('council --inspect with creation flags returns usage error', () async {
+      final result = await runCli([
+        'council',
+        '--inspect',
+        'council_1',
+        '-c',
+        'claude:sonnet',
+      ], environment);
+
+      expect(result.exitCode, equals(64));
+      expect(
+        result.stdout,
+        contains(
+          'Cannot combine persisted run browsing with prompt or creation flags.',
+        ),
+      );
+    });
+  });
+}
+
+Future<ProcessResult> runCli(
+  List<String> args,
+  Map<String, String> environment,
+) {
+  return Process.run(
+    Platform.resolvedExecutable,
+    ['run', 'bin/cag.dart', ...args],
+    workingDirectory: Directory.current.path,
+    environment: environment,
+  );
+}
+
+Map<String, String> buildAppEnvironment(Directory tempDir) {
+  final environment = <String, String>{...Platform.environment};
+  if (Platform.isWindows) {
+    environment['APPDATA'] = tempDir.path;
+    environment['LOCALAPPDATA'] = tempDir.path;
+    environment['USERPROFILE'] = tempDir.path;
+    return environment;
+  }
+  if (Platform.isMacOS) {
+    environment['HOME'] = tempDir.path;
+    return environment;
+  }
+  environment['HOME'] = tempDir.path;
+  environment['XDG_DATA_HOME'] = tempDir.path;
+  return environment;
+}
+
+String appDataDirFor(Directory tempDir) {
+  if (Platform.isMacOS) {
+    return p.join(tempDir.path, '.cag');
+  }
+  return p.join(tempDir.path, 'cag');
+}
+
+String consensusPathFor(Directory tempDir) {
+  return p.join(appDataDirFor(tempDir), 'consensus.jsonl');
+}
+
+String comparePathFor(Directory tempDir) {
+  return p.join(appDataDirFor(tempDir), 'compare.jsonl');
+}
+
+String councilPathFor(Directory tempDir) {
+  return p.join(appDataDirFor(tempDir), 'council.jsonl');
+}

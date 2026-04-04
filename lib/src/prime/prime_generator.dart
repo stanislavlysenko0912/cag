@@ -219,6 +219,9 @@ class PrimeGenerator {
     buffer.writeln();
     buffer.writeln('# List saved sessions');
     buffer.writeln('cag consensus --list');
+    buffer.writeln();
+    buffer.writeln('# Inspect a saved session');
+    buffer.writeln('cag consensus --inspect cons-abc123');
     buffer.writeln('```');
     buffer.writeln();
 
@@ -271,7 +274,9 @@ class PrimeGenerator {
     buffer.writeln('# Output: compare_id: cmp-abc123');
     buffer.writeln('# Each answer also includes its own session_id');
     buffer.writeln();
-    buffer.writeln('# Continue one branch with its session_id using the same agent command');
+    buffer.writeln(
+      '# Continue one branch with its session_id using the same agent command',
+    );
     buffer.writeln(
       'cag ${first.agent} -r abc-123 "Continue this direction with concrete implementation details"',
     );

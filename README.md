@@ -121,6 +121,14 @@ cag consensus \
   -a "codex:gpt:against" \
   -p "I think we should use Redis with 5min TTL" \ # optional proposal
   "Should we add caching for user profiles, 10k RPM, data changes hourly?"
+
+cag consensus --title "Profile caching debate" \
+  -a "gemini:pro:for" \
+  -a "codex:gpt:against" \
+  "Should we add caching for user profiles, 10k RPM, data changes hourly?"
+
+cag consensus --list
+cag consensus --inspect cons-12345678
 ```
 
 ### compare

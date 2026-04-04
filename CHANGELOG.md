@@ -10,10 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added internal `AgentRegistry`, shared participant parser, and generic JSONL storage foundation for runner and persistence deduplication.
+- Added `cag consensus --inspect`, optional consensus titles, and JSON summary output for `cag consensus --list`.
 
 ### Changed
 
 - Refactored compare, consensus, and council runners and storage wrappers to share internal agent lookup and JSONL persistence infrastructure without changing CLI behavior.
+- Standardized persisted run/session browsing across compare, consensus, and council, including shared list formatting and stored consensus titles.
 
 ### Fixed
 
