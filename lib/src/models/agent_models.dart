@@ -6,20 +6,23 @@ class AgentModelRegistry {
 
   static const claudeModels = [
     ModelConfig(
-      name: 'sonnet',
+      name: 'claude-sonnet-4-6',
       description:
           'Top-tier, fast all-rounder. Use for: general tasks, code review, discussions',
       isDefault: true,
+      aliases: ['sonnet'],
     ),
     ModelConfig(
-      name: 'opus',
+      name: 'claude-opus-4-6',
       description:
           'Top-tier, strongest reasoning. Use for: architecture, complex debugging, deep code review',
+      aliases: ['opus'],
     ),
     ModelConfig(
-      name: 'haiku',
+      name: 'claude-haiku-4-5',
       description:
           'Light-tier, fastest. Use for: quick lookups, simple questions',
+      aliases: ['haiku'],
     ),
   ];
 

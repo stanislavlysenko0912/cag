@@ -170,6 +170,14 @@ void main() {
   group('AgentModelRegistry', () {
     test('resolves model aliases to canonical names', () {
       expect(
+        AgentModelRegistry.findModel('claude', 'sonnet')?.name,
+        equals('claude-sonnet-4-6'),
+      );
+      expect(
+        AgentModelRegistry.findModel('claude', 'haiku')?.name,
+        equals('claude-haiku-4-5'),
+      );
+      expect(
         AgentModelRegistry.findModel('gemini', 'pro')?.name,
         equals('gemini-3.1-pro-preview'),
       );

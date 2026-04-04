@@ -94,7 +94,7 @@ Common flags:
 
 Models and aliases:
 
-- **claude**: `sonnet` (default), `opus`, `haiku`
+- **claude**: `claude-sonnet-4-6` (alias `sonnet`, default), `claude-opus-4-6` (alias `opus`), `claude-haiku-4-5` (alias `haiku`)
 - **gemini**: `gemini-3-flash-preview` (alias `flash`, default), `gemini-3.1-pro-preview` (alias `pro`), `gemini-3.1-flash-lite-preview` (alias `flash-lite`)
 - **codex**: `gpt-5.4` (alias `gpt`, default), `gpt-5.3-codex` (alias `codex`), `gpt-5.4-mini` (alias `mini`)
 - **cursor**: `composer-2-fast` (default), `composer-2`

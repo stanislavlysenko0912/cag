@@ -11,11 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `cag compare` for parallel multi-agent runs with persisted compare IDs and per-agent session IDs.
 - Added `cag compare --list` and `cag compare --inspect` for browsing saved compare runs.
 - Added `cag_compare` MCP tool.
+- Added `make mcp-inspect` target for launching MCP Inspector against the cag server.
 
 ### Changed
 - Updated `cag prime` to document compare mode and compare follow-up flows.
 - Changed MCP tool output defaults to compact CLI-like `result` strings with optional `verbose` expanded payloads.
 - Reduced default MCP payload size for `cag_agent` and `cag_models`.
+- Changed Claude model resolution to use explicit canonical model IDs with short aliases (`sonnet`, `opus`, `haiku`).
+- Upgraded `mcp_dart` from 1.1.2 to 2.1.0 (MCP protocol `2025-11-25` support, fixes Inspector compatibility).
 
 ## [0.2.1] - 2026-02-11
 

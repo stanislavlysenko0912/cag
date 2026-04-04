@@ -405,7 +405,7 @@ Future<McpServer> _buildServer() async {
 
   final server = McpServer(
     Implementation(name: 'cag', version: _appVersion),
-    options: const ServerOptions(
+    options: const McpServerOptions(
       instructions:
           'cag MCP server exposing agent, compare, consensus, and council tools.',
     ),
@@ -978,10 +978,19 @@ String _formatModelsOutput(List<Map<String, Object?>> agentsInfo) {
         .map((model) {
           final name = model['name'] as String;
           final modelAliases = (model['aliases'] as List).cast<String>();
+          final description = model['description'] as String? ?? '';
+          final parts = <String>[name];
           if (modelAliases.isEmpty) {
-            return name;
+            if (description.isNotEmpty) {
+              parts.add('- $description');
+            }
+            return parts.join(' ');
           }
-          return '$name (${modelAliases.join(', ')})';
+          parts.add('(${modelAliases.join(', ')})');
+          if (description.isNotEmpty) {
+            parts.add('- $description');
+          }
+          return parts.join(' ');
         })
         .join(', ');
 
