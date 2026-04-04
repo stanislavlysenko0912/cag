@@ -404,11 +404,11 @@ Future<McpServer> _buildServer() async {
     if (codexConfig.enabled)
       'codex':
           codexConfig.defaultModel ??
-          (AgentModelRegistry.defaultModelName('codex') ?? 'gpt-5.2'),
+          (AgentModelRegistry.defaultModelName('codex') ?? 'gpt-5.4'),
     if (cursorConfig.enabled)
       'cursor':
           cursorConfig.defaultModel ??
-          (AgentModelRegistry.defaultModelName('cursor') ?? 'composer-1'),
+          (AgentModelRegistry.defaultModelName('cursor') ?? 'composer-2-fast'),
   };
 
   final agents = <String, BaseAgent>{

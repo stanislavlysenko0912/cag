@@ -93,7 +93,7 @@ void main(List<String> args) async {
         descriptionText: 'Run Codex CLI agent',
         defaultModel:
             codexConfig.defaultModel ??
-            (AgentModelRegistry.defaultModelName('codex') ?? 'gpt-5.2'),
+            (AgentModelRegistry.defaultModelName('codex') ?? 'gpt-5.4'),
         agent: CodexAgent(config: codexConfig),
         metaPrinter: printCodexMeta,
         systemHelp: 'System prompt',
@@ -108,7 +108,8 @@ void main(List<String> args) async {
         descriptionText: 'Run Cursor Agent CLI',
         defaultModel:
             cursorConfig.defaultModel ??
-            (AgentModelRegistry.defaultModelName('cursor') ?? 'composer-1'),
+            (AgentModelRegistry.defaultModelName('cursor') ??
+                'composer-2-fast'),
         agent: CursorAgent(config: cursorConfig),
         metaPrinter: printCursorMeta,
         systemHelp: 'System prompt (prepended to prompt)',

@@ -80,7 +80,7 @@ irm https://raw.githubusercontent.com/stanislavlysenko0912/cag/main/install.ps1 
 cag claude -m sonnet "Review this function"
 cag gemini -m pro "Find issues in this parser"
 cag codex -m gpt "Explain this architecture"
-cag cursor -m composer-1 "Summarize this architecture"
+cag cursor -m composer-2 "Summarize this architecture"
 ```
 
 Common flags:
@@ -94,9 +94,9 @@ Common flags:
 Models and aliases:
 
 - **claude**: `sonnet` (default), `opus`, `haiku`
-- **gemini**: `gemini-3-flash-preview` (alias `flash`, default), `gemini-3-pro-preview` (alias `pro`)
-- **codex**: `gpt-5.2` (alias `gpt`, default), `gpt-5.2-codex` (alias `codex`), `gpt-5.1-codex-mini` (alias `mini`)
-- **cursor**: `composer-1` (default), `auto`, `grok`
+- **gemini**: `gemini-3-flash-preview` (alias `flash`, default), `gemini-3.1-pro-preview` (alias `pro`), `gemini-3.1-flash-lite-preview` (alias `flash-lite`)
+- **codex**: `gpt-5.4` (alias `gpt`, default), `gpt-5.3-codex` (alias `codex`), `gpt-5.4-mini` (alias `mini`)
+- **cursor**: `composer-2-fast` (default), `composer-2`
 
 > [!CAUTION]
 > **⚠️ Permission Note:** Agents run with elevated permissions for non-interactive execution:
@@ -246,7 +246,7 @@ If you want to use a different binary than the default one, or `cag` cannot find
     "codex": {
       "enabled": true, // if false, agent will be hidden from help/prime/models output and cannot be invoked
       "executable": "codex",
-      "default_model": "gpt-5.2",
+      "default_model": "gpt-5.4",
       "additional_args": ["--search", "exec", "--json", "--skip-git-repo-check"]
     }
   }
