@@ -447,6 +447,102 @@ void main() {
       expect(output, contains('`custom-model` ⭐'));
       expect(output, isNot(contains('`sonnet`')));
     });
+
+    test('generate explains single-agent model syntax explicitly', () {
+      const generator = PrimeGenerator();
+
+      final commands = [
+        const CommandMetadata(
+          name: 'codex',
+          description: 'Codex agent',
+          models: [
+            ModelConfig(
+              name: 'gpt-5.4',
+              description: 'Default',
+              isDefault: true,
+            ),
+            ModelConfig(name: 'gpt-5.3-codex', description: 'Code model'),
+          ],
+        ),
+        const CommandMetadata(
+          name: 'claude',
+          description: 'Claude agent',
+          models: [
+            ModelConfig(
+              name: 'claude-sonnet-4-6',
+              description: 'Default',
+              isDefault: true,
+            ),
+          ],
+        ),
+        const CommandMetadata(name: 'compare', description: 'Compare command'),
+      ];
+
+      final output = generator.generate(
+        commands,
+        agentConfigs: {
+          'codex': const AgentConfig(
+            name: 'codex',
+            executable: 'codex',
+            parser: 'codex',
+          ),
+          'claude': const AgentConfig(
+            name: 'claude',
+            executable: 'claude',
+            parser: 'claude',
+          ),
+        },
+      );
+
+      expect(output, contains('## Command Syntax'));
+      expect(output, contains('cag codex -m gpt-5.4 "Review this approach"'));
+      expect(
+        output,
+        contains(
+          'cag compare -a "codex:gpt-5.4" -a "claude:claude-sonnet-4-6" "Compare options"',
+        ),
+      );
+      expect(
+        output,
+        contains('Wrong: cag codex:gpt-5.4 "Review this approach"'),
+      );
+    });
+
+    test('generate warns against retrying slow strong models', () {
+      const generator = PrimeGenerator();
+
+      final commands = [
+        const CommandMetadata(
+          name: 'codex',
+          description: 'Codex agent',
+          models: [
+            ModelConfig(
+              name: 'gpt-5.4',
+              description: 'Default',
+              isDefault: true,
+            ),
+          ],
+        ),
+      ];
+
+      final output = generator.generate(
+        commands,
+        agentConfigs: {
+          'codex': const AgentConfig(
+            name: 'codex',
+            executable: 'codex',
+            parser: 'codex',
+          ),
+        },
+      );
+
+      expect(
+        output,
+        contains(
+          'Stronger models can take noticeably longer to answer; do not resend the same request just because the response is slow',
+        ),
+      );
+    });
   });
 
   group('ConsensusStorage', () {

@@ -40,6 +40,7 @@ class PrimeGenerator {
       '> Always provide a detailed task description (context, constraints, goals, and expected output). Short prompts lead to weak results.',
     );
     buffer.writeln();
+    _writeCommandSyntax(buffer, agentExamples);
 
     // Agents section
     buffer.writeln('## Agents');
@@ -114,6 +115,9 @@ class PrimeGenerator {
       '- Conversations are not just question-answer — use multi-turn dialogue (resume via session_id) to iterate, challenge ideas, and reach better solutions',
     );
     buffer.writeln('- Provide your proposal in consensus mode');
+    buffer.writeln(
+      '- Stronger models can take noticeably longer to answer; do not resend the same request just because the response is slow',
+    );
     buffer.writeln();
 
     // Required
@@ -131,6 +135,39 @@ class PrimeGenerator {
     buffer.writeln();
 
     return buffer.toString();
+  }
+
+  void _writeCommandSyntax(
+    StringBuffer buffer,
+    List<({String agent, String model})> agentExamples,
+  ) {
+    final single = agentExamples.isNotEmpty
+        ? agentExamples.first
+        : (agent: 'agent', model: 'model');
+    final multi = agentExamples.length > 1 ? agentExamples[1] : single;
+
+    buffer.writeln('## Command Syntax');
+    buffer.writeln();
+    buffer.writeln('- Single agent: `cag <agent> -m <model> "<prompt>"`');
+    buffer.writeln(
+      '- Multi-agent modes: use `agent:model` only inside flags like `-a`',
+    );
+    buffer.writeln(
+      '- Never run single-agent commands as `cag agent:model "<prompt>"`',
+    );
+    buffer.writeln();
+    buffer.writeln('```bash');
+    buffer.writeln(
+      'cag ${single.agent} -m ${single.model} "Review this approach"',
+    );
+    buffer.writeln(
+      'cag compare -a "${single.agent}:${single.model}" -a "${multi.agent}:${multi.model}" "Compare options"',
+    );
+    buffer.writeln(
+      '# Wrong: cag ${single.agent}:${single.model} "Review this approach"',
+    );
+    buffer.writeln('```');
+    buffer.writeln();
   }
 
   void _writeAgent(StringBuffer buffer, CommandMetadata cmd) {

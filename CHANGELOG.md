@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed duplicated participant parsing paths to enforce the same validation and normalization rules across compare, consensus, and council models.
 - Fixed JSONL storage loading to skip malformed records with warnings instead of crashing on partial file corruption.
 - Fixed config loading to warn and fall back on invalid content without overwriting broken config files, while only rewriting migrated configs after successful validation.
+- Fixed `cag prime` to explain that single-agent runs use `cag <agent> -m <model>`, while `agent:model` syntax is only valid inside multi-agent flags such as `compare`, `consensus`, and `council`.
+- Fixed `cag prime` to warn that stronger models may answer slowly and should not be retried just because they take longer.
 
 ## [0.3.0] - 2026-04-04
 
