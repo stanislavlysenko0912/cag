@@ -7,23 +7,16 @@ class AgentModelRegistry {
   static const claudeModels = [
     ModelConfig(
       name: 'claude-sonnet-4-6',
-      description:
-          'Top-tier, fast all-rounder. Use for: general tasks, code review, discussions',
+      description: 'Top-tier, fast all-rounder. Use for: general tasks, code review, discussions',
       isDefault: true,
       aliases: ['sonnet'],
     ),
     ModelConfig(
-      name: 'claude-opus-4-6',
-      description:
-          'Top-tier, strongest reasoning. Use for: architecture, complex debugging, deep code review',
+      name: 'claude-opus-4-7',
+      description: 'Top-tier, strongest reasoning. Use for: architecture, complex debugging, deep code review',
       aliases: ['opus'],
     ),
-    ModelConfig(
-      name: 'claude-haiku-4-5',
-      description:
-          'Light-tier, fastest. Use for: quick lookups, simple questions',
-      aliases: ['haiku'],
-    ),
+    ModelConfig(name: 'claude-haiku-4-5', description: 'Light-tier, fastest. Use for: quick lookups, simple questions', aliases: ['haiku']),
   ];
 
   static const geminiModels = [
@@ -35,8 +28,7 @@ class AgentModelRegistry {
     ),
     ModelConfig(
       name: 'gemini-3.1-pro-preview',
-      description:
-          'Top-tier, strong analysis. Use for: complex analysis, architecture, deep code review',
+      description: 'Top-tier, strong analysis. Use for: complex analysis, architecture, deep code review',
       aliases: ['pro'],
     ),
     ModelConfig(
@@ -48,46 +40,29 @@ class AgentModelRegistry {
 
   static const codexModels = [
     ModelConfig(
-      name: 'gpt-5.4',
-      description:
-          'Top-tier, versatile frontier model. Use for: general tasks, discussions, broad coding',
+      name: 'gpt-5.5',
+      description: 'Top-tier, versatile frontier model. Use for: general tasks, discussions, broad coding',
       isDefault: true,
       aliases: ['gpt'],
     ),
     ModelConfig(
       name: 'gpt-5.3-codex',
-      description:
-          'Top-tier, thorough code reviewer. Use for: code review, finding subtle bugs, detailed analysis',
+      description: 'Top-tier code reviewer. Use for: code review, finding subtle bugs',
       aliases: ['codex'],
     ),
-    ModelConfig(
-      name: 'gpt-5.4-mini',
-      description:
-          'Mid-tier, fast. Use for: quick code questions, simple fixes',
-      aliases: ['mini'],
-    ),
+    ModelConfig(name: 'gpt-5.5-mini', description: 'Mid-tier, fast. Use for: quick code questions, simple fixes', aliases: ['mini']),
   ];
 
   static const cursorModels = [
     ModelConfig(
       name: 'composer-2-fast',
-      description:
-          'Mid-tier, fast variant (higher cost). Use for: foreground tasks, quick research',
+      description: 'Mid-tier, fast variant (higher cost). Use for: foreground tasks, quick research',
       isDefault: true,
     ),
-    ModelConfig(
-      name: 'composer-2',
-      description:
-          'Mid-tier, standard variant (lower cost). Use for: background tasks, longer sessions',
-    ),
+    ModelConfig(name: 'composer-2', description: 'Mid-tier, standard variant (lower cost). Use for: background tasks, longer sessions'),
   ];
 
-  static const byAgent = {
-    'claude': claudeModels,
-    'gemini': geminiModels,
-    'codex': codexModels,
-    'cursor': cursorModels,
-  };
+  static const byAgent = {'claude': claudeModels, 'gemini': geminiModels, 'codex': codexModels, 'cursor': cursorModels};
 
   static List<ModelConfig> modelsFor(String agent) {
     return byAgent[agent] ?? const [];

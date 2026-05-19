@@ -390,7 +390,7 @@ Future<McpServer> _buildServer() async {
     if (codexConfig.enabled)
       'codex':
           codexConfig.defaultModel ??
-          (AgentModelRegistry.defaultModelName('codex') ?? 'gpt-5.4'),
+          (AgentModelRegistry.defaultModelName('codex') ?? 'gpt-5.5'),
     if (cursorConfig.enabled)
       'cursor':
           cursorConfig.defaultModel ??

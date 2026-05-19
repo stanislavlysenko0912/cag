@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Refactored compare, consensus, and council runners and storage wrappers to share internal agent lookup and JSONL persistence infrastructure without changing CLI behavior.
 - Standardized persisted run/session browsing across compare, consensus, and council, including shared list formatting and stored consensus titles.
+- Updated Codex default and mid-tier models to `gpt-5.5` and `gpt-5.5-mini`; shortened description for `gpt-5.3-codex`.
 
 ### Fixed
 
@@ -24,6 +25,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed config loading to warn and fall back on invalid content without overwriting broken config files, while only rewriting migrated configs after successful validation.
 - Fixed `cag prime` to explain that single-agent runs use `cag <agent> -m <model>`, while `agent:model` syntax is only valid inside multi-agent flags such as `compare`, `consensus`, and `council`.
 - Fixed `cag prime` to warn that stronger models may answer slowly and should not be retried just because they take longer.
+- Fixed shared-workspace guidance in `cag prime` and `cag_discuss` so agents are told more explicitly that they run in the same `cwd` and should inspect files directly instead of retelling repository structure.
+- Fixed dialogue guidance in `cag prime` and `cag_discuss` to push agents toward real multi-turn collaboration by default instead of stopping after a single answer.
+- Fixed dialogue guidance to require follow-up rounds after the first useful answer and to tell caller agents not to pause on intermediate responses.
 
 ## [0.3.0] - 2026-04-04
 

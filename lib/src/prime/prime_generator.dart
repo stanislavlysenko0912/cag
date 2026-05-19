@@ -107,12 +107,17 @@ class PrimeGenerator {
     // Tips
     buffer.writeln('## Tips');
     buffer.writeln();
-    buffer.writeln('- All agents run in current directory with file access');
+    buffer.writeln(
+      '- All agents start in the same current working directory (`cwd`) as you and have direct file access to that workspace',
+    );
     buffer.writeln(
       "- Don't delegate code writing — ask for direction/validation",
     );
     buffer.writeln(
       '- Conversations are not just question-answer — use multi-turn dialogue (resume via session_id) to iterate, challenge ideas, and reach better solutions',
+    );
+    buffer.writeln(
+      '- After the first useful answer, always continue with at least 2 follow-up rounds (pushback, refinement, deeper questions) before presenting results to the user',
     );
     buffer.writeln('- Provide your proposal in consensus mode');
     buffer.writeln(
@@ -131,6 +136,12 @@ class PrimeGenerator {
     );
     buffer.writeln(
       '- At the start of a conversation, you **MUST** provide maximum useful information: background, constraints, goals, current state, and desired output format.',
+    );
+    buffer.writeln(
+      '- Treat `session_id` as the default way to deepen the discussion, not just a technical detail for optional follow-ups.',
+    );
+    buffer.writeln(
+      '- Treat the workspace as shared: reference file paths and ask the agent to inspect files directly instead of retelling repository structure or pasting large file contents.',
     );
     buffer.writeln();
 

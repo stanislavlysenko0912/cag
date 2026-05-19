@@ -12,7 +12,7 @@ class CodexAgent extends BaseAgent {
     name: 'codex',
     executable: 'codex',
     parser: 'codex_jsonl',
-    defaultModel: AgentModelRegistry.defaultModelName('codex') ?? 'gpt-5.4',
+    defaultModel: AgentModelRegistry.defaultModelName('codex') ?? 'gpt-5.5',
     additionalArgs: [
       '--dangerously-bypass-approvals-and-sandbox',
       '--search',

@@ -91,7 +91,7 @@ void main(List<String> args) async {
         descriptionText: 'Run Codex CLI agent',
         defaultModel:
             codexConfig.defaultModel ??
-            (AgentModelRegistry.defaultModelName('codex') ?? 'gpt-5.4'),
+            (AgentModelRegistry.defaultModelName('codex') ?? 'gpt-5.5'),
         agent: CodexAgent(config: codexConfig),
         metaPrinter: printCodexMeta,
         systemHelp: 'System prompt',

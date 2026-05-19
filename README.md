@@ -94,9 +94,9 @@ Common flags:
 
 Models and aliases:
 
-- **claude**: `claude-sonnet-4-6` (alias `sonnet`, default), `claude-opus-4-6` (alias `opus`), `claude-haiku-4-5` (alias `haiku`)
+- **claude**: `claude-sonnet-4-6` (alias `sonnet`, default), `claude-opus-4-7` (alias `opus`), `claude-haiku-4-5` (alias `haiku`)
 - **gemini**: `gemini-3-flash-preview` (alias `flash`, default), `gemini-3.1-pro-preview` (alias `pro`), `gemini-3.1-flash-lite-preview` (alias `flash-lite`)
-- **codex**: `gpt-5.4` (alias `gpt`, default), `gpt-5.3-codex` (alias `codex`), `gpt-5.4-mini` (alias `mini`)
+- **codex**: `gpt-5.5` (alias `gpt`, default), `gpt-5.3-codex` (alias `codex`), `gpt-5.5-mini` (alias `mini`)
 - **cursor**: `composer-2-fast` (default), `composer-2`
 
 > [!CAUTION]
@@ -296,7 +296,7 @@ If you want to use a different binary than the default one, or `cag` cannot find
     "codex": {
       "enabled": true, // if false, agent will be hidden from help/prime/models output and cannot be invoked
       "executable": "codex",
-      "default_model": "gpt-5.4",
+      "default_model": "gpt-5.5",
       "additional_args": ["--search", "exec", "--json", "--skip-git-repo-check"]
     }
   }
