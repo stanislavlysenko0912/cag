@@ -101,7 +101,9 @@ class AgentCommand extends Command<void> {
       return modelInput;
     }
 
-    final matched = availableModels.where((m) => m.matches(modelInput)).firstOrNull;
+    final matched = availableModels
+        .where((m) => m.matches(modelInput))
+        .firstOrNull;
     if (matched == null) {
       final available = availableModels.map((m) => m.name).join(', ');
       throw UsageException(
@@ -181,5 +183,17 @@ void printCursorMeta(ParsedResponse response) {
   }
   if (response.metadata['duration_api_ms'] != null) {
     print('duration_api_ms: ${response.metadata['duration_api_ms']}');
+  }
+}
+
+void printAntigravityMeta(ParsedResponse response) {
+  if (response.metadata['model_used'] != null) {
+    print('model: ${response.metadata['model_used']}');
+  }
+  if (response.metadata['duration_ms'] != null) {
+    print('duration_ms: ${response.metadata['duration_ms']}');
+  }
+  if (response.metadata['session_id'] != null) {
+    print('conversation_id: ${response.metadata['session_id']}');
   }
 }

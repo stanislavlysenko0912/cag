@@ -1,4 +1,5 @@
 import '../models/models.dart';
+import '../utils/participant_parser.dart';
 
 /// A member of the council.
 ///
@@ -12,7 +13,7 @@ class CouncilMember {
     String? resolvedModel,
   }) : _resolvedModel = resolvedModel;
 
-  /// Agent name (gemini, codex, claude, cursor).
+  /// Agent name (gemini, codex, claude, cursor, antigravity).
   final String agent;
 
   /// Model name as provided (may be alias like "flash").
@@ -47,37 +48,16 @@ class CouncilMember {
       'codex',
       'claude',
       'cursor',
+      'antigravity',
     ],
   }) {
-    final parts = input.split(':');
-    if (parts.length != 2) {
-      throw ArgumentError(
-        'Invalid format: "$input". Expected: agent:model (e.g., agent:model)',
-      );
-    }
-
-    final agent = parts[0].trim().toLowerCase();
-    final model = parts[1].trim();
-
-    if (agent.isEmpty) {
-      throw ArgumentError('Agent cannot be empty in: "$input"');
-    }
-    if (model.isEmpty) {
-      throw ArgumentError('Model cannot be empty in: "$input"');
-    }
-
-    final validAgents = allowedAgents
-        .map((value) => value.toLowerCase())
-        .toSet();
-    if (validAgents.isEmpty) {
-      throw ArgumentError('No agents are enabled.');
-    }
-    if (!validAgents.contains(agent)) {
-      final allowed = validAgents.toList()..sort();
-      throw ArgumentError('Invalid agent: $agent. Use: ${allowed.join(', ')}');
-    }
-
-    return CouncilMember(agent: agent, model: model);
+    final parsed = ParticipantParser.parse(
+      input: input,
+      expectedParts: 2,
+      expectedFormat: 'agent:model (e.g., agent:model)',
+      allowedAgents: allowedAgents,
+    );
+    return CouncilMember(agent: parsed.agent, model: parsed.model);
   }
 
   /// Converts the member to JSON.
@@ -316,19 +296,19 @@ class CouncilRun {
       participants: (json['participants'] as List)
           .map((item) => CouncilMember.fromJson(item as Map<String, dynamic>))
           .toList(),
-      chairman: CouncilMember.fromJson(json['chairman'] as Map<String, dynamic>),
+      chairman: CouncilMember.fromJson(
+        json['chairman'] as Map<String, dynamic>,
+      ),
       answers: (json['answers'] as List)
           .map(
-            (item) => CouncilParticipantResult.fromJson(
-              item as Map<String, dynamic>,
-            ),
+            (item) =>
+                CouncilParticipantResult.fromJson(item as Map<String, dynamic>),
           )
           .toList(),
       reviews: (json['reviews'] as List)
           .map(
-            (item) => CouncilReviewResult.fromJson(
-              item as Map<String, dynamic>,
-            ),
+            (item) =>
+                CouncilReviewResult.fromJson(item as Map<String, dynamic>),
           )
           .toList(),
       chairmanResult: CouncilChairmanResult.fromJson(

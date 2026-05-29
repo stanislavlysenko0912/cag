@@ -13,7 +13,7 @@ class AgentModelRegistry {
       aliases: ['sonnet'],
     ),
     ModelConfig(
-      name: 'claude-opus-4-6',
+      name: 'claude-opus-4-8',
       description:
           'Top-tier, strongest reasoning. Use for: architecture, complex debugging, deep code review',
       aliases: ['opus'],
@@ -48,7 +48,7 @@ class AgentModelRegistry {
 
   static const codexModels = [
     ModelConfig(
-      name: 'gpt-5.4',
+      name: 'gpt-5.5',
       description:
           'Top-tier, versatile frontier model. Use for: general tasks, discussions, broad coding',
       isDefault: true,
@@ -57,28 +57,68 @@ class AgentModelRegistry {
     ModelConfig(
       name: 'gpt-5.3-codex',
       description:
-          'Top-tier, thorough code reviewer. Use for: code review, finding subtle bugs, detailed analysis',
+          'Top-tier code reviewer. Use for: code review, finding subtle bugs',
       aliases: ['codex'],
     ),
     ModelConfig(
-      name: 'gpt-5.4-mini',
+      name: 'gpt-5.5-mini',
       description:
           'Mid-tier, fast. Use for: quick code questions, simple fixes',
       aliases: ['mini'],
     ),
   ];
 
+  /// Curated Cursor Agent models for `cag cursor -m`.
+  ///
+  /// Discover the full account-specific slug list with
+  /// `cursor-agent models` (alias: `cursor-agent --list-models`).
+  /// Refresh this curated list when new slugs appear there.
   static const cursorModels = [
     ModelConfig(
-      name: 'composer-2-fast',
+      name: 'composer-2.5-fast',
       description:
-          'Mid-tier, fast variant (higher cost). Use for: foreground tasks, quick research',
+          'Solid-tier agent model, fast variant. Use for: interactive work, delegated tasks, quick research',
       isDefault: true,
     ),
     ModelConfig(
-      name: 'composer-2',
+      name: 'composer-2.5',
       description:
-          'Mid-tier, standard variant (lower cost). Use for: background tasks, longer sessions',
+          'Solid-tier agent model, standard variant (lower cost). Use for: longer sessions, background tasks',
+    ),
+    ModelConfig(
+      name: 'gemini-3.5-flash',
+      description:
+          'Solid-tier, fast and capable. Use for: advice, brainstorming, everyday discussion',
+    ),
+    ModelConfig(
+      name: 'gemini-3.1-pro',
+      description:
+          'Top-tier analysis. Use for: complex reasoning, architecture, deep code review',
+    ),
+    ModelConfig(
+      name: 'gpt-5.5-high',
+      description:
+          'Front-tier frontier model. Use for: hardest problems, broad coding, high-stakes decisions',
+    ),
+    ModelConfig(
+      name: 'grok-4.3',
+      description:
+          'Mid-tier alternative viewpoint. Use for: second opinions, contrasting takes',
+    ),
+    ModelConfig(
+      name: 'claude-opus-4-8-thinking-max',
+      description:
+          'Front-tier, deepest reasoning. Use for: architecture, complex debugging, critical decisions',
+    ),
+  ];
+
+  static const antigravityModels = [
+    ModelConfig(
+      name: 'configured',
+      description:
+          'Uses the reasoning model currently selected in Antigravity CLI via /model or settings.',
+      isDefault: true,
+      aliases: ['current', 'default'],
     ),
   ];
 
@@ -87,6 +127,7 @@ class AgentModelRegistry {
     'gemini': geminiModels,
     'codex': codexModels,
     'cursor': cursorModels,
+    'antigravity': antigravityModels,
   };
 
   static List<ModelConfig> modelsFor(String agent) {

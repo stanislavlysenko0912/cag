@@ -17,6 +17,10 @@ class ConsensusCommand extends Command<void> {
         help: 'Add participant: agent:model:stance',
       )
       ..addOption(
+        'title',
+        help: 'Optional title override for the consensus run',
+      )
+      ..addOption(
         'proposal',
         abbr: 'p',
         help: 'Proposal/idea being evaluated (optional, provides context)',
@@ -37,6 +41,10 @@ class ConsensusCommand extends Command<void> {
         abbr: 'l',
         negatable: false,
         help: 'List saved consensus sessions',
+      )
+      ..addOption(
+        'inspect',
+        help: 'Inspect a saved consensus session by consensus_id',
       );
   }
 
@@ -61,8 +69,24 @@ This command runs the specified models in parallel with stance-based prompts.'''
   @override
   Future<void> run() async {
     final listSessions = argResults!['list'] as bool;
+    final inspectId = argResults!['inspect'] as String?;
+    if (listSessions && inspectId != null) {
+      throw UsageException('Cannot use --list and --inspect together', usage);
+    }
+    _validatePersistenceMode(
+      isPersistenceMode: listSessions || inspectId != null,
+      hasAddOptions: (argResults!['add'] as List<String>).isNotEmpty,
+      hasProposal: (argResults!['proposal'] as String?) != null,
+      hasResume: (argResults!['resume'] as String?) != null,
+      hasTitle: (argResults!['title'] as String?) != null,
+      hasPrompt: argResults!.rest.isNotEmpty,
+    );
     if (listSessions) {
-      await _listSessions();
+      await _listSessions(argResults!['json'] as bool);
+      return;
+    }
+    if (inspectId != null) {
+      await _inspectSession(inspectId, argResults!['json'] as bool);
       return;
     }
 
@@ -75,6 +99,7 @@ This command runs the specified models in parallel with stance-based prompts.'''
 
     final resume = argResults!['resume'] as String?;
     final addOptions = argResults!['add'] as List<String>;
+    final title = argResults!['title'] as String?;
     final proposal = argResults!['proposal'] as String?;
     final outputJson = argResults!['json'] as bool;
     final rest = argResults!.rest;
@@ -84,12 +109,18 @@ This command runs the specified models in parallel with stance-based prompts.'''
     }
 
     final prompt = rest.join(' ');
-    final runner = ConsensusRunner();
+    final runner = ConsensusRunner(agentConfigs: _agentConfigs);
 
     try {
       final ConsensusResult result;
 
       if (resume != null) {
+        if (title != null) {
+          throw UsageException(
+            'Cannot use --title when resuming. Title is fixed for the saved session.',
+            usage,
+          );
+        }
         if (addOptions.isNotEmpty) {
           throw UsageException(
             'Cannot add participants when resuming. Participants are fixed.',
@@ -123,7 +154,9 @@ This command runs the specified models in parallel with stance-based prompts.'''
               .where((m) => m.matches(p.model))
               .firstOrNull;
           if (modelConfig == null) {
-            final available = config.availableModels.map((m) => m.name).join(', ');
+            final available = config.availableModels
+                .map((m) => m.name)
+                .join(', ');
             throw UsageException(
               'Unknown model "${p.model}" for ${p.agent}. Available: $available',
               usage,
@@ -136,6 +169,7 @@ This command runs the specified models in parallel with stance-based prompts.'''
         result = await runner.run(
           prompt: prompt,
           participants: participants,
+          title: title ?? buildCompareTitle(prompt),
           proposal: proposal,
         );
       }
@@ -153,6 +187,25 @@ This command runs the specified models in parallel with stance-based prompts.'''
         'Execution error [${e.failure.summary}]: ${e.failure.message}',
       );
       exit(1);
+    }
+  }
+
+  void _validatePersistenceMode({
+    required bool isPersistenceMode,
+    required bool hasAddOptions,
+    required bool hasProposal,
+    required bool hasResume,
+    required bool hasTitle,
+    required bool hasPrompt,
+  }) {
+    if (!isPersistenceMode) {
+      return;
+    }
+    if (hasAddOptions || hasProposal || hasResume || hasTitle || hasPrompt) {
+      throw UsageException(
+        'Cannot combine persisted run browsing with prompt or creation flags.',
+        usage,
+      );
     }
   }
 
@@ -174,44 +227,52 @@ This command runs the specified models in parallel with stance-based prompts.'''
     }
   }
 
-  Future<void> _listSessions() async {
+  Future<void> _listSessions(bool outputJson) async {
     final storage = ConsensusStorage();
-    final allSessions = await storage.loadAll();
+    final sessions = await storage.loadAll();
+    sessions.sort((left, right) => right.createdAt.compareTo(left.createdAt));
 
-    if (allSessions.isEmpty) {
+    if (outputJson) {
+      final output = {
+        'runs': sessions
+            .take(25)
+            .map((session) => session.toSummaryJson())
+            .toList(),
+      };
+      print(const JsonEncoder.withIndent('  ').convert(output));
+      return;
+    }
+
+    if (sessions.isEmpty) {
       print('No consensus sessions found.');
       return;
     }
 
-    // Sort by date descending and take last 25
-    allSessions.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    final sessions = allSessions.take(25).toList();
-
-    print('Consensus sessions (${sessions.length}/${allSessions.length}):\n');
-    for (final session in sessions) {
-      final participants = session.participants
-          .map((p) => '${p.agent}:${p.model}:${p.stance.value}')
-          .join(', ');
-      final promptPreview = session.prompt.length > 128
-          ? '${session.prompt.substring(0, 128)}...'
-          : session.prompt;
-      print('  ${session.consensusId}');
-      print('    Created: ${session.createdAt.toLocal()}');
-      print('    Participants: $participants');
-      if (session.proposal != null) {
-        final proposalPreview = session.proposal!.length > 128
-            ? '${session.proposal!.substring(0, 128)}...'
-            : session.proposal;
-        print('    Proposal: $proposalPreview');
-      }
-      print('    Prompt: $promptPreview');
-      print('');
+    for (final session in sessions.take(25)) {
+      OutputFormatter.printConsensusListItem(session);
     }
+  }
+
+  Future<void> _inspectSession(String consensusId, bool outputJson) async {
+    final storage = ConsensusStorage();
+    final session = await storage.load(consensusId);
+    if (session == null) {
+      stderr.writeln('Consensus session not found: $consensusId');
+      exit(1);
+    }
+
+    if (outputJson) {
+      print(const JsonEncoder.withIndent('  ').convert(session.toJson()));
+      return;
+    }
+
+    _printStoredSession(session);
   }
 
   void _printJsonOutput(ConsensusResult result) {
     final output = {
       'consensus_id': result.session.consensusId,
+      if (result.session.title != null) 'title': result.session.title,
       'prompt': result.session.prompt,
       'results': result.results.map((r) {
         return {
@@ -226,7 +287,10 @@ This command runs the specified models in parallel with stance-based prompts.'''
   }
 
   void _printFormattedOutput(ConsensusResult result) {
-    OutputFormatter.printConsensusStart(result.session.consensusId);
+    _printStoredSession(result.session);
+    if (result.session.proposal != null) {
+      print('');
+    }
 
     for (final r in result.results) {
       final p = r.participant;
@@ -252,8 +316,22 @@ This command runs the specified models in parallel with stance-based prompts.'''
     if (result.failed.isNotEmpty) {
       print('Failed: ${result.failed.length}');
       for (final f in result.failed) {
-        print('  - ${f.participant.agent}: ${OutputFormatter.formatFailure(f.failure!)}');
+        print(
+          '  - ${f.participant.agent}: ${OutputFormatter.formatFailure(f.failure!)}',
+        );
       }
     }
+  }
+
+  void _printStoredSession(ConsensusSession session) {
+    OutputFormatter.printConsensusStart(session.consensusId, session.title);
+    final participants = session.participants
+        .map((participant) => participant.toString())
+        .join(', ');
+    print('participants: $participants');
+    if (session.proposal != null) {
+      print('proposal: ${session.proposal}');
+    }
+    print('prompt: ${session.prompt}');
   }
 }

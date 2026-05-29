@@ -54,6 +54,12 @@ class CompareCommand extends Command<void> {
     if (listRuns && inspectId != null) {
       throw UsageException('Cannot use --list and --inspect together', usage);
     }
+    _validatePersistenceMode(
+      isPersistenceMode: listRuns || inspectId != null,
+      hasAddOptions: (argResults!['add'] as List<String>).isNotEmpty,
+      hasTitle: (argResults!['title'] as String?) != null,
+      hasPrompt: argResults!.rest.isNotEmpty,
+    );
     if (listRuns) {
       await _listRuns(argResults!['json'] as bool);
       return;
@@ -95,7 +101,7 @@ class CompareCommand extends Command<void> {
 
     final resolvedParticipants = _resolveModels(participants);
 
-    final runner = CompareRunner();
+    final runner = CompareRunner(agentConfigs: _agentConfigs);
 
     try {
       final result = await runner.run(
@@ -120,6 +126,23 @@ class CompareCommand extends Command<void> {
     }
   }
 
+  void _validatePersistenceMode({
+    required bool isPersistenceMode,
+    required bool hasAddOptions,
+    required bool hasTitle,
+    required bool hasPrompt,
+  }) {
+    if (!isPersistenceMode) {
+      return;
+    }
+    if (hasAddOptions || hasTitle || hasPrompt) {
+      throw UsageException(
+        'Cannot combine persisted run browsing with prompt or creation flags.',
+        usage,
+      );
+    }
+  }
+
   List<CompareParticipant> _resolveModels(
     List<CompareParticipant> participants,
   ) {
@@ -133,8 +156,9 @@ class CompareCommand extends Command<void> {
           .where((m) => m.matches(participant.model))
           .firstOrNull;
       if (modelConfig == null) {
-        final available =
-            config.availableModels.map((model) => model.name).join(', ');
+        final available = config.availableModels
+            .map((model) => model.name)
+            .join(', ');
         throw UsageException(
           'Unknown model "${participant.model}" for ${participant.agent}. Available: $available',
           usage,
@@ -191,13 +215,7 @@ class CompareCommand extends Command<void> {
     }
 
     for (final run in runs.take(25)) {
-      final participants = run.participants
-          .map((participant) => participant.toString())
-          .join(', ');
-      print(
-        '${run.compareId}  ${OutputFormatter.formatLocalDate(run.createdAt)}  ${run.successCount}/${run.results.length} ok  $participants',
-      );
-      print('  Title: ${run.title}');
+      OutputFormatter.printCompareListItem(run);
     }
   }
 

@@ -1,6 +1,6 @@
 # CAG - CLI Agents Wrapper
 
-CLI wrapper for multiple AI agent CLIs (Claude, Gemini, Codex, Cursor) with compare/consensus/council modes and session resume.
+CLI wrapper for multiple AI agent CLIs (Claude, Gemini, Codex, Cursor, Antigravity) with compare/consensus/council modes and session resume.
 
 <img src="docs/images/consensus-demo.png" width="700" alt="CAG - CLI Agents Wrapper">
 
@@ -18,12 +18,22 @@ CLI wrapper for multiple AI agent CLIs (Claude, Gemini, Codex, Cursor) with comp
 
 This tool wraps external AI CLIs that must be installed separately:
 
-| CLI | Install |
-|-----|---------|
-| `claude` | [Claude Code](https://docs.anthropic.com/en/docs/claude-code) |
-| `gemini` | [Gemini CLI](https://github.com/google-gemini/gemini-cli) |
-| `codex` | [Codex CLI](https://github.com/openai/codex) |
-| `cursor` | [Cursor Agent CLI](https://cursor.com/cli) |
+| CLI | Install | Status |
+|-----|---------|--------|
+| `claude` | [Claude Code](https://docs.anthropic.com/en/docs/claude-code) | |
+| `gemini` | [Gemini CLI](https://github.com/google-gemini/gemini-cli) | **Deprecated** — superseded by Antigravity |
+| `agy` (`antigravity`) | [Antigravity CLI](https://antigravity.google/product/antigravity-cli) | **Work in progress** — disabled by default |
+| `codex` | [Codex CLI](https://github.com/openai/codex) | |
+| `cursor` | [Cursor Agent CLI](https://cursor.com/cli) | |
+
+> [!NOTE]
+> **Gemini CLI** is deprecated in favor of **Antigravity CLI** (`agy`). The `gemini` agent remains available for now.
+>
+> **Antigravity** support is implemented but **work in progress**: the agent is disabled by default until AGY CLI reliably supports session resume. Enable manually in config:
+>
+> ```json
+> { "agents": { "antigravity": { "enabled": true } } }
+> ```
 
 You only need to install the CLIs you plan to use.
 If you don't want to use some of the agents, you can disable them in the config.
@@ -79,9 +89,10 @@ irm https://raw.githubusercontent.com/stanislavlysenko0912/cag/main/install.ps1 
 
 ```bash
 cag claude -m sonnet "Review this function"
-cag gemini -m pro "Find issues in this parser"
+cag gemini -m pro "Find issues in this parser"   # deprecated — prefer antigravity
+cag antigravity "Find issues in this parser"     # work in progress (enable in config)
 cag codex -m gpt "Explain this architecture"
-cag cursor -m composer-2 "Summarize this architecture"
+cag cursor -m composer-2.5 "Summarize this architecture"
 ```
 
 Common flags:
@@ -94,10 +105,16 @@ Common flags:
 
 Models and aliases:
 
-- **claude**: `claude-sonnet-4-6` (alias `sonnet`, default), `claude-opus-4-6` (alias `opus`), `claude-haiku-4-5` (alias `haiku`)
-- **gemini**: `gemini-3-flash-preview` (alias `flash`, default), `gemini-3.1-pro-preview` (alias `pro`), `gemini-3.1-flash-lite-preview` (alias `flash-lite`)
-- **codex**: `gpt-5.4` (alias `gpt`, default), `gpt-5.3-codex` (alias `codex`), `gpt-5.4-mini` (alias `mini`)
-- **cursor**: `composer-2-fast` (default), `composer-2`
+- **claude**: `claude-sonnet-4-6` (alias `sonnet`, default), `claude-opus-4-8` (alias `opus`), `claude-haiku-4-5` (alias `haiku`)
+- **gemini** (deprecated): `gemini-3-flash-preview` (alias `flash`, default), `gemini-3.1-pro-preview` (alias `pro`), `gemini-3.1-flash-lite-preview` (alias `flash-lite`)
+- **antigravity** (work in progress): model comes from AGY CLI `/model` or settings (alias `current`, default)
+- **codex**: `gpt-5.5` (alias `gpt`, default), `gpt-5.3-codex` (alias `codex`), `gpt-5.5-mini` (alias `mini`)
+- **cursor**: curated slugs below; run `cursor-agent models` for the full account list
+  - `composer-2.5-fast` (default), `composer-2.5` — solid-tier agent models
+  - `gemini-3.5-flash` — solid-tier, fast and capable for advice and discussion
+  - `gemini-3.1-pro` — top-tier
+  - `grok-4.3` — mid-tier second opinion
+  - `gpt-5.5-high`, `claude-opus-4-8-thinking-max` — front-tier (above top)
 
 > [!CAUTION]
 > **⚠️ Permission Note:** Agents run with elevated permissions for non-interactive execution:
@@ -121,6 +138,14 @@ cag consensus \
   -a "codex:gpt:against" \
   -p "I think we should use Redis with 5min TTL" \ # optional proposal
   "Should we add caching for user profiles, 10k RPM, data changes hourly?"
+
+cag consensus --title "Profile caching debate" \
+  -a "gemini:pro:for" \
+  -a "codex:gpt:against" \
+  "Should we add caching for user profiles, 10k RPM, data changes hourly?"
+
+cag consensus --list
+cag consensus --inspect cons-12345678
 ```
 
 ### compare
@@ -288,7 +313,7 @@ If you want to use a different binary than the default one, or `cag` cannot find
     "codex": {
       "enabled": true, // if false, agent will be hidden from help/prime/models output and cannot be invoked
       "executable": "codex",
-      "default_model": "gpt-5.4",
+      "default_model": "gpt-5.5",
       "additional_args": ["--search", "exec", "--json", "--skip-git-repo-check"]
     }
   }

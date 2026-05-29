@@ -31,12 +31,17 @@ void main(List<String> args) async {
     CursorAgent.defaultConfig,
     configService.overridesFor(config, 'cursor'),
   );
+  final antigravityConfig = configService.applyOverrides(
+    AntigravityAgent.defaultConfig,
+    configService.overridesFor(config, 'antigravity'),
+  );
 
   final agentConfigs = {
     'claude': claudeConfig,
     'gemini': geminiConfig,
     'codex': codexConfig,
     'cursor': cursorConfig,
+    'antigravity': antigravityConfig,
   };
 
   final runner = CommandRunner<void>('cag', 'CLI wrapper for AI agents')
@@ -91,7 +96,7 @@ void main(List<String> args) async {
         descriptionText: 'Run Codex CLI agent',
         defaultModel:
             codexConfig.defaultModel ??
-            (AgentModelRegistry.defaultModelName('codex') ?? 'gpt-5.4'),
+            (AgentModelRegistry.defaultModelName('codex') ?? 'gpt-5.5'),
         agent: CodexAgent(config: codexConfig),
         metaPrinter: printCodexMeta,
         systemHelp: 'System prompt',
@@ -107,11 +112,27 @@ void main(List<String> args) async {
         defaultModel:
             cursorConfig.defaultModel ??
             (AgentModelRegistry.defaultModelName('cursor') ??
-                'composer-2-fast'),
+                'composer-2.5-fast'),
         agent: CursorAgent(config: cursorConfig),
         metaPrinter: printCursorMeta,
         systemHelp: 'System prompt (prepended to prompt)',
         resumeHelp: 'Resume session (session_id)',
+      ),
+    );
+  }
+  if (antigravityConfig.enabled) {
+    runner.addCommand(
+      AgentCommand(
+        agentName: 'antigravity',
+        descriptionText: 'Run Antigravity CLI agent',
+        defaultModel:
+            antigravityConfig.defaultModel ??
+            (AgentModelRegistry.defaultModelName('antigravity') ??
+                'configured'),
+        agent: AntigravityAgent(config: antigravityConfig),
+        metaPrinter: printAntigravityMeta,
+        systemHelp: 'System prompt',
+        resumeHelp: 'Resume session (conversation_id)',
       ),
     );
   }

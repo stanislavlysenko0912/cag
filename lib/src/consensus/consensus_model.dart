@@ -1,3 +1,5 @@
+import '../utils/participant_parser.dart';
+
 /// Stance for a model in consensus.
 enum ConsensusStance {
   /// Supportive perspective - find benefits and reasons to proceed.
@@ -35,7 +37,7 @@ class ConsensusParticipant {
     String? resolvedModel,
   }) : _resolvedModel = resolvedModel;
 
-  /// Agent name (gemini, codex, claude, cursor).
+  /// Agent name (gemini, codex, claude, cursor, antigravity).
   final String agent;
 
   /// Model name as provided (may be alias like "flash").
@@ -67,41 +69,20 @@ class ConsensusParticipant {
       'codex',
       'claude',
       'cursor',
+      'antigravity',
     ],
   }) {
-    final parts = input.split(':');
-    if (parts.length != 3) {
-      throw ArgumentError(
-        'Invalid format: "$input". Expected: agent:model:stance (e.g., agent:model:for)',
-      );
-    }
-
-    final agent = parts[0].trim().toLowerCase();
-    final model = parts[1].trim();
-    final stance = parts[2].trim().toLowerCase();
-
-    if (agent.isEmpty) {
-      throw ArgumentError('Agent cannot be empty in: "$input"');
-    }
-    if (model.isEmpty) {
-      throw ArgumentError('Model cannot be empty in: "$input"');
-    }
-
-    final validAgents = allowedAgents
-        .map((value) => value.toLowerCase())
-        .toSet();
-    if (validAgents.isEmpty) {
-      throw ArgumentError('No agents are enabled.');
-    }
-    if (!validAgents.contains(agent)) {
-      final allowed = validAgents.toList()..sort();
-      throw ArgumentError('Invalid agent: $agent. Use: ${allowed.join(', ')}');
-    }
+    final parsed = ParticipantParser.parse(
+      input: input,
+      expectedParts: 3,
+      expectedFormat: 'agent:model:stance (e.g., agent:model:for)',
+      allowedAgents: allowedAgents,
+    );
 
     return ConsensusParticipant(
-      agent: agent,
-      model: model,
-      stance: ConsensusStance.fromString(stance),
+      agent: parsed.agent,
+      model: parsed.model,
+      stance: ConsensusStance.fromString(parsed.extraParts.single),
     );
   }
 
@@ -136,6 +117,7 @@ class ConsensusSession {
     required this.prompt,
     required this.participants,
     required this.createdAt,
+    this.title,
     this.proposal,
     this.updatedAt,
   });
@@ -145,6 +127,9 @@ class ConsensusSession {
 
   /// Original proposal/idea to analyze (optional context).
   final String? proposal;
+
+  /// Session title shown in lists and inspect views.
+  final String? title;
 
   /// Query/prompt from the calling agent.
   final String prompt;
@@ -160,6 +145,7 @@ class ConsensusSession {
 
   Map<String, dynamic> toJson() => {
     'consensus_id': consensusId,
+    if (title != null) 'title': title,
     if (proposal != null) 'proposal': proposal,
     'prompt': prompt,
     'participants': participants.map((p) => p.toJson()).toList(),
@@ -170,6 +156,7 @@ class ConsensusSession {
   factory ConsensusSession.fromJson(Map<String, dynamic> json) {
     return ConsensusSession(
       consensusId: json['consensus_id'] as String,
+      title: json['title'] as String?,
       proposal: json['proposal'] as String?,
       prompt: json['prompt'] as String,
       participants: (json['participants'] as List)
@@ -181,4 +168,17 @@ class ConsensusSession {
           : null,
     );
   }
+
+  /// Converts the session to summary JSON for list output.
+  Map<String, dynamic> toSummaryJson() => {
+    'id': consensusId,
+    'created_at': createdAt.toIso8601String(),
+    if (updatedAt != null) 'updated_at': updatedAt!.toIso8601String(),
+    'title': title,
+    'prompt': prompt,
+    if (proposal != null) 'proposal': proposal,
+    'participants': participants
+        .map((participant) => participant.toString())
+        .toList(),
+  };
 }

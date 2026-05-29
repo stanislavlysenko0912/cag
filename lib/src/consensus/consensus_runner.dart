@@ -45,17 +45,18 @@ class ConsensusRunner {
     CodexAgent? codexAgent,
     CursorAgent? cursorAgent,
     ClaudeAgent? claudeAgent,
+    Map<String, AgentConfig> agentConfigs = const {},
   }) : _storage = storage ?? ConsensusStorage(),
-       _geminiAgent = geminiAgent ?? GeminiAgent(),
-       _codexAgent = codexAgent ?? CodexAgent(),
-       _cursorAgent = cursorAgent ?? CursorAgent(),
-       _claudeAgent = claudeAgent ?? ClaudeAgent();
+       _agentRegistry = AgentRegistry(
+         geminiAgent: geminiAgent,
+         codexAgent: codexAgent,
+         cursorAgent: cursorAgent,
+         claudeAgent: claudeAgent,
+         agentConfigs: agentConfigs,
+       );
 
   final ConsensusStorage _storage;
-  final GeminiAgent _geminiAgent;
-  final CodexAgent _codexAgent;
-  final CursorAgent _cursorAgent;
-  final ClaudeAgent _claudeAgent;
+  final AgentRegistry _agentRegistry;
 
   static const _uuid = Uuid();
 
@@ -73,21 +74,11 @@ class ConsensusRunner {
     return consensusPrompt.replaceAll('{stance_prompt}', stancePrompt);
   }
 
-  /// Get agent for participant.
-  BaseAgent _getAgent(String agentName) {
-    return switch (agentName) {
-      'gemini' => _geminiAgent,
-      'codex' => _codexAgent,
-      'cursor' => _cursorAgent,
-      'claude' => _claudeAgent,
-      _ => throw ArgumentError('Unknown agent: $agentName'),
-    };
-  }
-
   /// Run a new consensus.
   Future<ConsensusResult> run({
     required String prompt,
     required List<ConsensusParticipant> participants,
+    String? title,
     String? proposal,
   }) async {
     if (participants.length < 2) {
@@ -97,6 +88,7 @@ class ConsensusRunner {
     // Create session
     final session = ConsensusSession(
       consensusId: 'cons-${_uuid.v4().substring(0, 8)}',
+      title: title,
       prompt: prompt,
       proposal: proposal,
       participants: participants,
@@ -167,7 +159,7 @@ class ConsensusRunner {
   }) async {
     final futures = participants.map((p) async {
       try {
-        final agent = _getAgent(p.agent);
+        final agent = _agentRegistry.get(p.agent);
         final systemPrompt = buildSystemPrompt(p);
 
         final response = await agent.execute(

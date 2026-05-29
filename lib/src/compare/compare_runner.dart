@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:uuid/uuid.dart';
 
 import '../agents/agents.dart';
-import '../models/agent_execution.dart';
 import '../models/models.dart';
 import 'compare_model.dart';
 import 'compare_storage.dart';
@@ -17,17 +16,18 @@ class CompareRunner {
     CodexAgent? codexAgent,
     CursorAgent? cursorAgent,
     ClaudeAgent? claudeAgent,
+    Map<String, AgentConfig> agentConfigs = const {},
   }) : _storage = storage ?? CompareStorage(),
-       _geminiAgent = geminiAgent ?? GeminiAgent(),
-       _codexAgent = codexAgent ?? CodexAgent(),
-       _cursorAgent = cursorAgent ?? CursorAgent(),
-       _claudeAgent = claudeAgent ?? ClaudeAgent();
+       _agentRegistry = AgentRegistry(
+         geminiAgent: geminiAgent,
+         codexAgent: codexAgent,
+         cursorAgent: cursorAgent,
+         claudeAgent: claudeAgent,
+         agentConfigs: agentConfigs,
+       );
 
   final CompareStorage _storage;
-  final GeminiAgent _geminiAgent;
-  final CodexAgent _codexAgent;
-  final CursorAgent _cursorAgent;
-  final ClaudeAgent _claudeAgent;
+  final AgentRegistry _agentRegistry;
 
   static const _uuid = Uuid();
 
@@ -58,22 +58,12 @@ class CompareRunner {
     return run;
   }
 
-  BaseAgent _getAgent(String agentName) {
-    return switch (agentName) {
-      'gemini' => _geminiAgent,
-      'codex' => _codexAgent,
-      'cursor' => _cursorAgent,
-      'claude' => _claudeAgent,
-      _ => throw ArgumentError('Unknown agent: $agentName'),
-    };
-  }
-
   Future<CompareParticipantResult> _runParticipant(
     String prompt,
     CompareParticipant participant,
   ) async {
     try {
-      final agent = _getAgent(participant.agent);
+      final agent = _agentRegistry.get(participant.agent);
       final response = await agent.execute(
         prompt: prompt,
         model: participant.resolvedModel,

@@ -71,6 +71,13 @@ Council runs are persisted for inspection and follow-up.''';
     if (listRuns && inspectId != null) {
       throw UsageException('Cannot use --list and --inspect together', usage);
     }
+    _validatePersistenceMode(
+      isPersistenceMode: listRuns || inspectId != null,
+      hasAddOptions: (argResults!['add'] as List<String>).isNotEmpty,
+      hasTitle: (argResults!['title'] as String?) != null,
+      hasChairman: (argResults!['chairman'] as String?) != null,
+      hasPrompt: argResults!.rest.isNotEmpty,
+    );
     if (listRuns) {
       await _listRuns(argResults!['json'] as bool);
       return;
@@ -98,7 +105,10 @@ Council runs are persisted for inspection and follow-up.''';
       throw UsageException('Missing prompt', usage);
     }
     if (addOptions.length < 2) {
-      throw UsageException('Council requires at least 2 participants (-a)', usage);
+      throw UsageException(
+        'Council requires at least 2 participants (-a)',
+        usage,
+      );
     }
     if (chairmanRaw == null || chairmanRaw.trim().isEmpty) {
       throw UsageException('Chairman is required (-c)', usage);
@@ -106,7 +116,9 @@ Council runs are persisted for inspection and follow-up.''';
 
     final prompt = rest.join(' ');
     final participants = addOptions
-        .map((input) => CouncilMember.parse(input, allowedAgents: _enabledAgents))
+        .map(
+          (input) => CouncilMember.parse(input, allowedAgents: _enabledAgents),
+        )
         .toList();
     final chairman = CouncilMember.parse(
       chairmanRaw,
@@ -116,7 +128,7 @@ Council runs are persisted for inspection and follow-up.''';
     _resolveModels(participants);
     _resolveModels([chairman]);
 
-    final runner = CouncilRunner();
+    final runner = CouncilRunner(agentConfigs: _agentConfigs);
 
     try {
       final result = await runner.run(
@@ -142,6 +154,24 @@ Council runs are persisted for inspection and follow-up.''';
     }
   }
 
+  void _validatePersistenceMode({
+    required bool isPersistenceMode,
+    required bool hasAddOptions,
+    required bool hasTitle,
+    required bool hasChairman,
+    required bool hasPrompt,
+  }) {
+    if (!isPersistenceMode) {
+      return;
+    }
+    if (hasAddOptions || hasTitle || hasChairman || hasPrompt) {
+      throw UsageException(
+        'Cannot combine persisted run browsing with prompt or creation flags.',
+        usage,
+      );
+    }
+  }
+
   void _resolveModels(List<CouncilMember> members) {
     for (final member in members) {
       final config = _agentConfigs[member.agent];
@@ -153,8 +183,9 @@ Council runs are persisted for inspection and follow-up.''';
           .where((m) => m.matches(member.model))
           .firstOrNull;
       if (modelConfig == null) {
-        final available =
-            config.availableModels.map((model) => model.name).join(', ');
+        final available = config.availableModels
+            .map((model) => model.name)
+            .join(', ');
         throw UsageException(
           'Unknown model "${member.model}" for ${member.agent}. Available: $available',
           usage,
@@ -255,14 +286,7 @@ Council runs are persisted for inspection and follow-up.''';
     }
 
     for (final run in runs.take(25)) {
-      final participants = run.participants
-          .map((participant) => participant.toString())
-          .join(', ');
-      print(
-        '${run.councilId}  ${OutputFormatter.formatLocalDate(run.createdAt)}  ${run.status}  $participants',
-      );
-      print('  Chairman: ${run.chairman}');
-      print('  Title: ${run.title}');
+      OutputFormatter.printCouncilListItem(run);
     }
   }
 

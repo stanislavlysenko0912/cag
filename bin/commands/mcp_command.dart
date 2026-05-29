@@ -11,7 +11,7 @@ const String _appVersion = String.fromEnvironment(
   'APP_VERSION',
   defaultValue: 'unknown',
 );
-const _knownAgents = ['claude', 'gemini', 'codex', 'cursor'];
+const _knownAgents = ['claude', 'gemini', 'codex', 'cursor', 'antigravity'];
 
 ToolInputSchema _buildAgentInputSchema(List<String> enabledAgents) {
   return JsonSchema.object(
@@ -369,12 +369,17 @@ Future<McpServer> _buildServer() async {
     CursorAgent.defaultConfig,
     configService.overridesFor(config, 'cursor'),
   );
+  final antigravityConfig = configService.applyOverrides(
+    AntigravityAgent.defaultConfig,
+    configService.overridesFor(config, 'antigravity'),
+  );
 
   final enabledAgents = <String>[
     if (claudeConfig.enabled) 'claude',
     if (geminiConfig.enabled) 'gemini',
     if (codexConfig.enabled) 'codex',
     if (cursorConfig.enabled) 'cursor',
+    if (antigravityConfig.enabled) 'antigravity',
   ];
 
   final agentDefaults = <String, String>{
@@ -390,11 +395,15 @@ Future<McpServer> _buildServer() async {
     if (codexConfig.enabled)
       'codex':
           codexConfig.defaultModel ??
-          (AgentModelRegistry.defaultModelName('codex') ?? 'gpt-5.4'),
+          (AgentModelRegistry.defaultModelName('codex') ?? 'gpt-5.5'),
     if (cursorConfig.enabled)
       'cursor':
           cursorConfig.defaultModel ??
-          (AgentModelRegistry.defaultModelName('cursor') ?? 'composer-2-fast'),
+          (AgentModelRegistry.defaultModelName('cursor') ?? 'composer-2.5-fast'),
+    if (antigravityConfig.enabled)
+      'antigravity':
+          antigravityConfig.defaultModel ??
+          (AgentModelRegistry.defaultModelName('antigravity') ?? 'configured'),
   };
 
   final agents = <String, BaseAgent>{
@@ -402,11 +411,37 @@ Future<McpServer> _buildServer() async {
     if (geminiConfig.enabled) 'gemini': GeminiAgent(config: geminiConfig),
     if (codexConfig.enabled) 'codex': CodexAgent(config: codexConfig),
     if (cursorConfig.enabled) 'cursor': CursorAgent(config: cursorConfig),
+    if (antigravityConfig.enabled)
+      'antigravity': AntigravityAgent(config: antigravityConfig),
   };
 
-  final compareRunner = CompareRunner();
-  final consensusRunner = ConsensusRunner();
-  final councilRunner = CouncilRunner();
+  final compareRunner = CompareRunner(
+    agentConfigs: {
+      'claude': claudeConfig,
+      'gemini': geminiConfig,
+      'codex': codexConfig,
+      'cursor': cursorConfig,
+      'antigravity': antigravityConfig,
+    },
+  );
+  final consensusRunner = ConsensusRunner(
+    agentConfigs: {
+      'claude': claudeConfig,
+      'gemini': geminiConfig,
+      'codex': codexConfig,
+      'cursor': cursorConfig,
+      'antigravity': antigravityConfig,
+    },
+  );
+  final councilRunner = CouncilRunner(
+    agentConfigs: {
+      'claude': claudeConfig,
+      'gemini': geminiConfig,
+      'codex': codexConfig,
+      'cursor': cursorConfig,
+      'antigravity': antigravityConfig,
+    },
+  );
 
   final modelsSection = _buildModelsSection(enabledAgents);
   final server = McpServer(
@@ -1023,22 +1058,19 @@ String _formatConsensusOutput(ConsensusResult result) {
   buffer.writeln('==== SUMMARY ====');
   buffer.writeln('Total: ${result.results.length}');
   buffer.writeln('Succeeded: ${result.successful.length}');
-    if (result.failed.isNotEmpty) {
-      buffer.writeln('Failed: ${result.failed.length}');
-      for (final failed in result.failed) {
-        buffer.writeln(
-          '  - ${failed.participant.agent}: ${OutputFormatter.formatFailure(failed.failure!)}',
-        );
-      }
+  if (result.failed.isNotEmpty) {
+    buffer.writeln('Failed: ${result.failed.length}');
+    for (final failed in result.failed) {
+      buffer.writeln(
+        '  - ${failed.participant.agent}: ${OutputFormatter.formatFailure(failed.failure!)}',
+      );
     }
+  }
 
   return buffer.toString().trimRight();
 }
 
-String _formatCouncilOutput(
-  CouncilRun result, {
-  required bool includeAnswers,
-}) {
+String _formatCouncilOutput(CouncilRun result, {required bool includeAnswers}) {
   final buffer = StringBuffer();
   buffer.writeln('council_id: ${result.councilId}');
   buffer.writeln('title: ${result.title}');
