@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated Cursor Composer models to `composer-2.5-fast` (default) and `composer-2.5`.
 - Expanded curated Cursor model list and documented `cursor-agent models` for slug discovery.
 - Temporarily disabled `antigravity` agent until AGY CLI reliably supports session resume.
+- Documented Gemini CLI as deprecated and Antigravity as work in progress in README.
 
 ### Added
 

@@ -1,6 +1,6 @@
 # CAG - CLI Agents Wrapper
 
-CLI wrapper for multiple AI agent CLIs (Claude, Gemini, Codex, Cursor) with compare/consensus/council modes and session resume.
+CLI wrapper for multiple AI agent CLIs (Claude, Gemini, Codex, Cursor, Antigravity) with compare/consensus/council modes and session resume.
 
 <img src="docs/images/consensus-demo.png" width="700" alt="CAG - CLI Agents Wrapper">
 
@@ -18,12 +18,22 @@ CLI wrapper for multiple AI agent CLIs (Claude, Gemini, Codex, Cursor) with comp
 
 This tool wraps external AI CLIs that must be installed separately:
 
-| CLI | Install |
-|-----|---------|
-| `claude` | [Claude Code](https://docs.anthropic.com/en/docs/claude-code) |
-| `gemini` | [Gemini CLI](https://github.com/google-gemini/gemini-cli) |
-| `codex` | [Codex CLI](https://github.com/openai/codex) |
-| `cursor` | [Cursor Agent CLI](https://cursor.com/cli) |
+| CLI | Install | Status |
+|-----|---------|--------|
+| `claude` | [Claude Code](https://docs.anthropic.com/en/docs/claude-code) | |
+| `gemini` | [Gemini CLI](https://github.com/google-gemini/gemini-cli) | **Deprecated** — superseded by Antigravity |
+| `agy` (`antigravity`) | [Antigravity CLI](https://antigravity.google/product/antigravity-cli) | **Work in progress** — disabled by default |
+| `codex` | [Codex CLI](https://github.com/openai/codex) | |
+| `cursor` | [Cursor Agent CLI](https://cursor.com/cli) | |
+
+> [!NOTE]
+> **Gemini CLI** is deprecated in favor of **Antigravity CLI** (`agy`). The `gemini` agent remains available for now.
+>
+> **Antigravity** support is implemented but **work in progress**: the agent is disabled by default until AGY CLI reliably supports session resume. Enable manually in config:
+>
+> ```json
+> { "agents": { "antigravity": { "enabled": true } } }
+> ```
 
 You only need to install the CLIs you plan to use.
 If you don't want to use some of the agents, you can disable them in the config.
@@ -79,7 +89,8 @@ irm https://raw.githubusercontent.com/stanislavlysenko0912/cag/main/install.ps1 
 
 ```bash
 cag claude -m sonnet "Review this function"
-cag gemini -m pro "Find issues in this parser"
+cag gemini -m pro "Find issues in this parser"   # deprecated — prefer antigravity
+cag antigravity "Find issues in this parser"     # work in progress (enable in config)
 cag codex -m gpt "Explain this architecture"
 cag cursor -m composer-2.5 "Summarize this architecture"
 ```
@@ -95,7 +106,8 @@ Common flags:
 Models and aliases:
 
 - **claude**: `claude-sonnet-4-6` (alias `sonnet`, default), `claude-opus-4-8` (alias `opus`), `claude-haiku-4-5` (alias `haiku`)
-- **gemini**: `gemini-3-flash-preview` (alias `flash`, default), `gemini-3.1-pro-preview` (alias `pro`), `gemini-3.1-flash-lite-preview` (alias `flash-lite`)
+- **gemini** (deprecated): `gemini-3-flash-preview` (alias `flash`, default), `gemini-3.1-pro-preview` (alias `pro`), `gemini-3.1-flash-lite-preview` (alias `flash-lite`)
+- **antigravity** (work in progress): model comes from AGY CLI `/model` or settings (alias `current`, default)
 - **codex**: `gpt-5.5` (alias `gpt`, default), `gpt-5.3-codex` (alias `codex`), `gpt-5.5-mini` (alias `mini`)
 - **cursor**: curated slugs below; run `cursor-agent models` for the full account list
   - `composer-2.5-fast` (default), `composer-2.5` — solid-tier agent models
