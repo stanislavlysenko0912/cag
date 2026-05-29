@@ -3,6 +3,9 @@ import '../parsers/cursor_parser.dart';
 import 'base_agent.dart';
 
 /// Cursor CLI agent.
+///
+/// Model slugs are account-specific. Run `cursor-agent models` to list all
+/// available slugs; [AgentModelRegistry.cursorModels] holds the curated subset.
 class CursorAgent extends BaseAgent {
   CursorAgent({AgentConfig? config, CursorParser? parser})
     : super(config: config ?? _defaultConfig, parser: parser ?? CursorParser());
@@ -12,7 +15,7 @@ class CursorAgent extends BaseAgent {
     executable: 'cursor-agent',
     parser: 'cursor_json',
     defaultModel:
-        AgentModelRegistry.defaultModelName('cursor') ?? 'composer-2-fast',
+        AgentModelRegistry.defaultModelName('cursor') ?? 'composer-2.5-fast',
     additionalArgs: ['--print', '--output-format', 'json', '--force'],
     hardTimeoutSeconds: 1800,
     idleTimeoutSeconds: 900,

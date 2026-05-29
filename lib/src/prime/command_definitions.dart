@@ -60,6 +60,20 @@ class CommandDefinitions {
     ],
   );
 
+  static const antigravity = CommandMetadata(
+    name: 'antigravity',
+    description:
+        'Run Antigravity CLI agent. Model selection comes from AGY CLI /model or settings.',
+    models: AgentModelRegistry.antigravityModels,
+    flags: [
+      CommandFlag(
+        flag: '--system',
+        shortFlag: '-s',
+        description: 'System prompt',
+      ),
+    ],
+  );
+
   static const consensus = CommandMetadata(
     name: 'consensus',
     description:
@@ -249,6 +263,7 @@ cag council -a "agent:model" -a "..." -c "agent:model" "<prompt>"
     gemini,
     codex,
     cursor,
+    antigravity,
     consensus,
     compare,
     council,

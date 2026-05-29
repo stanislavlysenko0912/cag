@@ -7,8 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-05-29
+
+### Changed
+
+- Updated Claude Opus canonical model from `claude-opus-4-7` to `claude-opus-4-8` (alias `opus` unchanged).
+- Updated curated Cursor front-tier Opus from `claude-opus-4-7-thinking-max` to `claude-opus-4-8-thinking-max`.
+- Updated Cursor Composer models to `composer-2.5-fast` (default) and `composer-2.5`.
+- Expanded curated Cursor model list and documented `cursor-agent models` for slug discovery.
+- Temporarily disabled `antigravity` agent until AGY CLI reliably supports session resume.
+
 ### Added
 
+- Added `AntigravityAgent` and `AntigravityParser` to support the new Antigravity CLI (`agy`).
+- Added `antigravity` command to the main CLI with support for `--print`, session resume, and system prompts; model selection uses AGY CLI's configured `/model` setting.
 - Added internal `AgentRegistry`, shared participant parser, and generic JSONL storage foundation for runner and persistence deduplication.
 - Added `cag consensus --inspect`, optional consensus titles, and JSON summary output for `cag consensus --list`.
 

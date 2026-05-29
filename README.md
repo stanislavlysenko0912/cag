@@ -81,7 +81,7 @@ irm https://raw.githubusercontent.com/stanislavlysenko0912/cag/main/install.ps1 
 cag claude -m sonnet "Review this function"
 cag gemini -m pro "Find issues in this parser"
 cag codex -m gpt "Explain this architecture"
-cag cursor -m composer-2 "Summarize this architecture"
+cag cursor -m composer-2.5 "Summarize this architecture"
 ```
 
 Common flags:
@@ -94,10 +94,15 @@ Common flags:
 
 Models and aliases:
 
-- **claude**: `claude-sonnet-4-6` (alias `sonnet`, default), `claude-opus-4-7` (alias `opus`), `claude-haiku-4-5` (alias `haiku`)
+- **claude**: `claude-sonnet-4-6` (alias `sonnet`, default), `claude-opus-4-8` (alias `opus`), `claude-haiku-4-5` (alias `haiku`)
 - **gemini**: `gemini-3-flash-preview` (alias `flash`, default), `gemini-3.1-pro-preview` (alias `pro`), `gemini-3.1-flash-lite-preview` (alias `flash-lite`)
 - **codex**: `gpt-5.5` (alias `gpt`, default), `gpt-5.3-codex` (alias `codex`), `gpt-5.5-mini` (alias `mini`)
-- **cursor**: `composer-2-fast` (default), `composer-2`
+- **cursor**: curated slugs below; run `cursor-agent models` for the full account list
+  - `composer-2.5-fast` (default), `composer-2.5` — solid-tier agent models
+  - `gemini-3.5-flash` — solid-tier, fast and capable for advice and discussion
+  - `gemini-3.1-pro` — top-tier
+  - `grok-4.3` — mid-tier second opinion
+  - `gpt-5.5-high`, `claude-opus-4-8-thinking-max` — front-tier (above top)
 
 > [!CAUTION]
 > **⚠️ Permission Note:** Agents run with elevated permissions for non-interactive execution:

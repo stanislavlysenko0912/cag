@@ -37,7 +37,7 @@ class ConsensusParticipant {
     String? resolvedModel,
   }) : _resolvedModel = resolvedModel;
 
-  /// Agent name (gemini, codex, claude, cursor).
+  /// Agent name (gemini, codex, claude, cursor, antigravity).
   final String agent;
 
   /// Model name as provided (may be alias like "flash").
@@ -69,6 +69,7 @@ class ConsensusParticipant {
       'codex',
       'claude',
       'cursor',
+      'antigravity',
     ],
   }) {
     final parsed = ParticipantParser.parse(
