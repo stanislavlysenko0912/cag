@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
 import '../models/models.dart';
@@ -54,48 +53,61 @@ class CLIRunner {
     Duration? idleTimeout,
     String? workingDirectory,
   }) async {
+    final capture = await _CaptureDirectory.create();
+    try {
+      return await _runProcessWithCapture(
+        executable: executable,
+        args: args,
+        env: env,
+        hardTimeout: hardTimeout,
+        idleTimeout: idleTimeout,
+        workingDirectory: workingDirectory,
+        capture: capture,
+      );
+    } finally {
+      await capture.delete();
+    }
+  }
+
+  Future<CLIResult> _runProcessWithCapture({
+    required String executable,
+    required List<String> args,
+    Map<String, String>? env,
+    Duration? hardTimeout,
+    Duration? idleTimeout,
+    String? workingDirectory,
+    required _CaptureDirectory capture,
+  }) async {
     final stopwatch = Stopwatch()..start();
+    final shell = _redirectShellCommand(
+      executable: executable,
+      args: args,
+      stdoutPath: capture.stdoutFile.path,
+      stderrPath: capture.stderrFile.path,
+    );
+
     final process = await Process.start(
-      executable,
-      args,
+      shell.executable,
+      shell.args,
       environment: env != null ? {...Platform.environment, ...env} : null,
       workingDirectory: workingDirectory,
       runInShell: false,
     );
     await process.stdin.close();
 
-    final stdoutBuffer = StringBuffer();
-    final stderrBuffer = StringBuffer();
-    final stdoutDone = Completer<void>();
-    final stderrDone = Completer<void>();
-    var lastActivityAt = DateTime.now();
-
-    final stdoutSub = _listen(
-      stream: process.stdout,
-      buffer: stdoutBuffer,
-      done: stdoutDone,
-      onActivity: () => lastActivityAt = DateTime.now(),
-    );
-    final stderrSub = _listen(
-      stream: process.stderr,
-      buffer: stderrBuffer,
-      done: stderrDone,
-      onActivity: () => lastActivityAt = DateTime.now(),
-    );
-
+    final activity = _OutputActivityTracker(capture: capture);
     final timeoutReason = Completer<AgentExitReason>();
     final monitor = Timer.periodic(const Duration(seconds: 1), (_) {
       if (timeoutReason.isCompleted) {
         return;
       }
+      activity.recordChanges();
       if (hardTimeout != null && stopwatch.elapsed >= hardTimeout) {
         timeoutReason.complete(AgentExitReason.timeoutHard);
         return;
       }
-      if (idleTimeout == null) {
-        return;
-      }
-      if (DateTime.now().difference(lastActivityAt) >= idleTimeout) {
+      if (idleTimeout != null &&
+          DateTime.now().difference(activity.lastActivityAt) >= idleTimeout) {
         timeoutReason.complete(AgentExitReason.timeoutIdle);
       }
     });
@@ -109,25 +121,21 @@ class CLIRunner {
     final exitCode = outcome is int
         ? outcome
         : await _killAndCollectExitCode(process);
-    await Future.wait([stdoutDone.future, stderrDone.future]);
-    await stdoutSub.cancel();
-    await stderrSub.cancel();
+    final output = await capture.readOutput();
     stopwatch.stop();
 
-    final stdout = stdoutBuffer.toString();
-    final stderr = stderrBuffer.toString();
     if (outcome is AgentExitReason) {
       return CLIResult(
         exitCode: exitCode,
-        stdout: stdout,
-        stderr: stderr,
+        stdout: output.stdout,
+        stderr: output.stderr,
         durationMs: stopwatch.elapsedMilliseconds,
         failure: _buildTimeoutFailure(
           reason: outcome,
           hardTimeout: hardTimeout,
           idleTimeout: idleTimeout,
-          stdout: stdout,
-          stderr: stderr,
+          stdout: output.stdout,
+          stderr: output.stderr,
           durationMs: stopwatch.elapsedMilliseconds,
           exitCode: exitCode,
         ),
@@ -137,45 +145,67 @@ class CLIRunner {
     if (exitCode == 0) {
       return CLIResult(
         exitCode: exitCode,
-        stdout: stdout,
-        stderr: stderr,
+        stdout: output.stdout,
+        stderr: output.stderr,
         durationMs: stopwatch.elapsedMilliseconds,
       );
     }
 
     return CLIResult(
       exitCode: exitCode,
-      stdout: stdout,
-      stderr: stderr,
+      stdout: output.stdout,
+      stderr: output.stderr,
       durationMs: stopwatch.elapsedMilliseconds,
       failure: AgentFailure(
         reason: AgentExitReason.cliError,
         message: 'Process exited with code $exitCode.',
         exitCode: exitCode,
-        stdoutSnippet: _snippet(stdout),
-        stderrSnippet: _snippet(stderr),
+        stdoutSnippet: _snippet(output.stdout),
+        stderrSnippet: _snippet(output.stderr),
         durationMs: stopwatch.elapsedMilliseconds,
-        hadPartialOutput: _hasPartialOutput(stdout, stderr),
+        hadPartialOutput: _hasPartialOutput(output.stdout, output.stderr),
       ),
     );
   }
 
-  StreamSubscription<String> _listen({
-    required Stream<List<int>> stream,
-    required StringBuffer buffer,
-    required Completer<void> done,
-    required void Function() onActivity,
+  ({String executable, List<String> args}) _redirectShellCommand({
+    required String executable,
+    required List<String> args,
+    required String stdoutPath,
+    required String stderrPath,
   }) {
-    return stream.transform(utf8.decoder).listen(
-      (chunk) {
-        if (chunk.isEmpty) {
-          return;
-        }
-        buffer.write(chunk);
-        onActivity();
-      },
-      onDone: done.complete,
-    );
+    if (Platform.isWindows) {
+      final command = [
+        _cmdQuote(executable),
+        ...args.map(_cmdQuote),
+        '>',
+        _cmdQuote(stdoutPath),
+        '2>',
+        _cmdQuote(stderrPath),
+      ].join(' ');
+      return (executable: 'cmd.exe', args: ['/c', command]);
+    }
+
+    final command = [
+      _posixShellQuote(executable),
+      ...args.map(_posixShellQuote),
+      '>',
+      _posixShellQuote(stdoutPath),
+      '2>',
+      _posixShellQuote(stderrPath),
+    ].join(' ');
+    return (executable: '/bin/sh', args: ['-c', command]);
+  }
+
+  String _posixShellQuote(String value) {
+    return "'${value.replaceAll("'", "'\\''")}'";
+  }
+
+  String _cmdQuote(String value) {
+    if (value.contains(' ') || value.contains('"')) {
+      return '"${value.replaceAll('"', r'\"')}"';
+    }
+    return value;
   }
 
   Future<int?> _killAndCollectExitCode(Process process) async {
@@ -307,5 +337,83 @@ class CLIRunner {
         .where((entry) => entry.trim().isNotEmpty)
         .map((entry) => entry.trim().toLowerCase())
         .toList();
+  }
+}
+
+class _CaptureDirectory {
+  _CaptureDirectory({
+    required this.directory,
+    required this.stdoutFile,
+    required this.stderrFile,
+  });
+
+  final Directory directory;
+  final File stdoutFile;
+  final File stderrFile;
+
+  static Future<_CaptureDirectory> create() async {
+    final directory = await Directory.systemTemp.createTemp('cag_cli_');
+    return _CaptureDirectory(
+      directory: directory,
+      stdoutFile: File('${directory.path}/stdout'),
+      stderrFile: File('${directory.path}/stderr'),
+    );
+  }
+
+  Future<({String stdout, String stderr})> readOutput() async {
+    final stdout = await _readIfExists(stdoutFile);
+    final stderr = await _readIfExists(stderrFile);
+    return (stdout: stdout, stderr: stderr);
+  }
+
+  Future<String> _readIfExists(File file) async {
+    if (!await file.exists()) {
+      return '';
+    }
+    return file.readAsString();
+  }
+
+  Future<void> delete() async {
+    try {
+      if (await stdoutFile.exists()) {
+        await stdoutFile.delete();
+      }
+      if (await stderrFile.exists()) {
+        await stderrFile.delete();
+      }
+      if (await directory.exists()) {
+        await directory.delete(recursive: true);
+      }
+    } on FileSystemException {
+      // Best-effort cleanup; temp dir is removed by the OS eventually.
+    }
+  }
+}
+
+class _OutputActivityTracker {
+  _OutputActivityTracker({required _CaptureDirectory capture})
+    : _capture = capture,
+      lastActivityAt = DateTime.now();
+
+  final _CaptureDirectory _capture;
+  DateTime lastActivityAt;
+  var _stdoutSize = 0;
+  var _stderrSize = 0;
+
+  void recordChanges() {
+    final stdoutSize = _fileSize(_capture.stdoutFile);
+    final stderrSize = _fileSize(_capture.stderrFile);
+    if (stdoutSize > _stdoutSize || stderrSize > _stderrSize) {
+      _stdoutSize = stdoutSize;
+      _stderrSize = stderrSize;
+      lastActivityAt = DateTime.now();
+    }
+  }
+
+  int _fileSize(File file) {
+    if (!file.existsSync()) {
+      return 0;
+    }
+    return file.lengthSync();
   }
 }

@@ -369,6 +369,35 @@ void main() {
         expect(result.stdout, contains('hello'));
       },
     );
+
+    test('run captures stdout larger than legacy pipe buffer limits', () async {
+      final runner = CLIRunner();
+      final result = await runner.run(
+        executable: '/bin/sh',
+        args: ['-c', r'python3 -c "print(\"x\" * 250000)"'],
+      );
+
+      expect(result.exitCode, equals(0));
+      expect(result.stdout.length, greaterThan(200000));
+    });
+
+    test('run deletes temporary capture files after completion', () async {
+      final runner = CLIRunner();
+      final before = Directory.systemTemp
+          .listSync()
+          .whereType<Directory>()
+          .where((dir) => dir.path.contains('cag_cli_'))
+          .length;
+
+      await runner.run(executable: 'echo', args: ['cleanup-check']);
+
+      final after = Directory.systemTemp
+          .listSync()
+          .whereType<Directory>()
+          .where((dir) => dir.path.contains('cag_cli_'))
+          .length;
+      expect(after, lessThanOrEqualTo(before));
+    });
   });
 
   group('PrimeGenerator', () {
