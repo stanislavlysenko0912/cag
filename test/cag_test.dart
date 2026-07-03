@@ -370,6 +370,19 @@ void main() {
       },
     );
 
+    test('runShellCommand appends and escapes shell arguments', () async {
+      if (Platform.isWindows) return;
+
+      final runner = CLIRunner();
+      final result = await runner.runShellCommand(
+        commandPrefix: 'printf "%s"',
+        args: ["hello world & it's fine"],
+      );
+
+      expect(result.exitCode, equals(0));
+      expect(result.stdout, equals("hello world & it's fine"));
+    });
+
     test('run captures stdout larger than legacy pipe buffer limits', () async {
       final runner = CLIRunner();
       final result = await runner.run(

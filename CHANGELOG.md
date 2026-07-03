@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Centralized platform-aware shell command construction in `CLIRunner`, keeping agent execution code focused on agent arguments.
 - Improved MCP and `prime` guidance for `cag_agent` and `cag_models` so hosts know when to use them, when to prefer native tools, how IDs differ, and when to inspect model aliases.
 
 ### Fixed

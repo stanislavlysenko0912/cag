@@ -45,6 +45,31 @@ class CLIRunner {
     }
   }
 
+  /// Execute a command prefix through a platform-aware shell.
+  Future<CLIResult> runShellCommand({
+    required String commandPrefix,
+    required List<String> args,
+    String? shellExecutable,
+    List<String> shellArgs = const [],
+    Map<String, String>? env,
+    Duration? hardTimeout,
+    Duration? idleTimeout,
+    String? workingDirectory,
+  }) {
+    final shell = _ShellCommand.forExecutable(shellExecutable);
+    final resolvedShellArgs = shellArgs.isNotEmpty ? shellArgs : shell.args;
+    final command = shell.buildCommand(commandPrefix, args);
+
+    return run(
+      executable: shell.executable,
+      args: [...resolvedShellArgs, command],
+      env: env,
+      hardTimeout: hardTimeout,
+      idleTimeout: idleTimeout,
+      workingDirectory: workingDirectory,
+    );
+  }
+
   Future<CLIResult> _runProcess({
     required String executable,
     required List<String> args,
@@ -217,10 +242,9 @@ class CLIRunner {
     if (!exited) {
       process.kill(ProcessSignal.sigkill);
     }
-    return process.exitCode.timeout(
-      const Duration(seconds: 2),
-      onTimeout: () => -1,
-    ).then((code) => code == -1 ? null : code);
+    return process.exitCode
+        .timeout(const Duration(seconds: 2), onTimeout: () => -1)
+        .then((code) => code == -1 ? null : code);
   }
 
   AgentFailure _buildTimeoutFailure({
@@ -337,6 +361,65 @@ class CLIRunner {
         .where((entry) => entry.trim().isNotEmpty)
         .map((entry) => entry.trim().toLowerCase())
         .toList();
+  }
+}
+
+class _ShellCommand {
+  _ShellCommand({
+    required this.executable,
+    required this.args,
+    required this.dialect,
+  });
+
+  final String executable;
+  final List<String> args;
+  final _ShellDialect dialect;
+
+  static _ShellCommand forExecutable(String? shellExecutable) {
+    final executable = shellExecutable ?? _defaultExecutable();
+    return _ShellCommand(
+      executable: executable,
+      args: _defaultArgs(executable),
+      dialect: _ShellDialect.forExecutable(executable),
+    );
+  }
+
+  String buildCommand(String prefix, List<String> args) {
+    final escapedArgs = args.map(dialect.quote).join(' ');
+    final trimmedPrefix = prefix.trim();
+    if (escapedArgs.isEmpty) return trimmedPrefix;
+    return '$trimmedPrefix $escapedArgs';
+  }
+
+  static String _defaultExecutable() {
+    if (Platform.isWindows) return 'cmd';
+    return '/bin/sh';
+  }
+
+  static List<String> _defaultArgs(String executable) {
+    final dialect = _ShellDialect.forExecutable(executable);
+    return switch (dialect) {
+      _ShellDialect.windowsCommand => const ['/c'],
+      _ShellDialect.posix => const ['-c'],
+    };
+  }
+}
+
+enum _ShellDialect {
+  posix,
+  windowsCommand;
+
+  static _ShellDialect forExecutable(String executable) {
+    final lower = executable.toLowerCase();
+    if (lower.contains('cmd')) return windowsCommand;
+    return posix;
+  }
+
+  String quote(String value) {
+    return switch (this) {
+      posix => "'${value.replaceAll("'", "'\\''")}'",
+      windowsCommand => '"${value.replaceAll('"', '\\"')}"',
+    };
   }
 }
 

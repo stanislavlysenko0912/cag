@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import '../models/models.dart';
 import '../parsers/parsers.dart';
 import '../runners/runners.dart';
@@ -56,7 +54,10 @@ abstract class BaseAgent {
     }
 
     try {
-      final response = parser.parse(stdout: result.stdout, stderr: result.stderr);
+      final response = parser.parse(
+        stdout: result.stdout,
+        stderr: result.stderr,
+      );
       if (response.content.trim().isEmpty) {
         throw AgentExecutionException(
           AgentFailure(
@@ -67,7 +68,8 @@ abstract class BaseAgent {
             stderrSnippet: _snippet(result.stderr),
             durationMs: result.durationMs,
             hadPartialOutput:
-                result.stdout.trim().isNotEmpty || result.stderr.trim().isNotEmpty,
+                result.stdout.trim().isNotEmpty ||
+                result.stderr.trim().isNotEmpty,
           ),
         );
       }
@@ -82,7 +84,8 @@ abstract class BaseAgent {
           stderrSnippet: _snippet(result.stderr),
           durationMs: result.durationMs,
           hadPartialOutput:
-              result.stdout.trim().isNotEmpty || result.stderr.trim().isNotEmpty,
+              result.stdout.trim().isNotEmpty ||
+              result.stderr.trim().isNotEmpty,
         ),
       );
     }
@@ -101,19 +104,11 @@ abstract class BaseAgent {
       );
     }
 
-    final shellExecutable = config.shellExecutable ?? _defaultShellExecutable();
-    final shellArgs = config.shellArgs.isNotEmpty
-        ? config.shellArgs
-        : _defaultShellArgs(shellExecutable);
-    final command = _buildShellCommand(
-      config.shellCommandPrefix!,
-      args,
-      shellExecutable,
-    );
-
-    return runner.run(
-      executable: shellExecutable,
-      args: [...shellArgs, command],
+    return runner.runShellCommand(
+      commandPrefix: config.shellCommandPrefix!,
+      args: args,
+      shellExecutable: config.shellExecutable,
+      shellArgs: config.shellArgs,
       env: config.env.isNotEmpty ? config.env : null,
       hardTimeout: hardTimeout,
       idleTimeout: idleTimeout,
@@ -128,40 +123,6 @@ abstract class BaseAgent {
       content: response.content,
       metadata: {...response.metadata, 'duration_ms': result.durationMs},
     );
-  }
-
-  String _buildShellCommand(
-    String prefix,
-    List<String> args,
-    String shellExecutable,
-  ) {
-    final escapedArgs = args
-        .map((arg) => _shellEscape(arg, shellExecutable))
-        .join(' ');
-    final trimmedPrefix = prefix.trim();
-    if (escapedArgs.isEmpty) return trimmedPrefix;
-    return '$trimmedPrefix $escapedArgs';
-  }
-
-  String _shellEscape(String value, String shellExecutable) {
-    final lower = shellExecutable.toLowerCase();
-    if (lower.contains('cmd')) {
-      final escaped = value.replaceAll('"', '\\"');
-      return '"$escaped"';
-    }
-    final escaped = value.replaceAll("'", "'\\''");
-    return "'$escaped'";
-  }
-
-  String _defaultShellExecutable() {
-    if (Platform.isWindows) return 'cmd';
-    return '/bin/sh';
-  }
-
-  List<String> _defaultShellArgs(String shellExecutable) {
-    final lower = shellExecutable.toLowerCase();
-    if (lower.contains('cmd')) return ['/c'];
-    return ['-c'];
   }
 
   String? _snippet(String value) {
