@@ -12,26 +12,45 @@ const String _appVersion = String.fromEnvironment(
   defaultValue: 'unknown',
 );
 const _knownAgents = ['claude', 'gemini', 'codex', 'cursor', 'antigravity'];
+const _agentToolDescription =
+    'Ask one enabled CAG agent to inspect, reason about, or answer a task. '
+    'Use CAG only when the user asks for CAG or a specific CAG agent/model, '
+    'or when external independent judgment or cross-agent comparison would materially improve the answer. '
+    'Prefer your own native tools, subagents, or direct model tools for ordinary delegation and simple same-family model calls. '
+    'The agent runs in the same working directory and can inspect files directly, '
+    'so reference paths and goals instead of pasting large file contents. '
+    'Call cag_models first when you are unsure which agent IDs or model aliases are available, '
+    'or when model choice matters. '
+    'Only pass resume with a session_id returned by cag_agent for the same agent; '
+    'compare_id, consensus_id, and council_id are CAG wrapper IDs, not agent sessions.';
+const _modelsToolDescription =
+    'List enabled CAG agent IDs, default models, supported model names, aliases, '
+    'and short model guidance. Call this before cag_agent when you need the exact '
+    'agent ID/model alias, want to choose an appropriate model, or receive a model error.';
 
 ToolInputSchema _buildAgentInputSchema(List<String> enabledAgents) {
   return JsonSchema.object(
     properties: {
       'agent': JsonSchema.string(
-        description: 'Agent name.',
+        description:
+            'Enabled CAG agent ID to run. Use cag_models if you are unsure which IDs are available.',
         enumValues: enabledAgents,
       ),
       'prompt': JsonSchema.string(
         description:
-            'User prompt to send to the agent. Provide full context, constraints, and desired output.',
+            'Task or question for the agent. Provide context, constraints, relevant paths, and desired output; the agent can inspect the shared working directory directly.',
       ),
       'model': JsonSchema.string(
-        description: 'Model name or alias supported by the agent.',
+        description:
+            'Optional model name or alias supported by the selected agent. Omit to use the configured default; call cag_models first when choosing a model or resolving aliases.',
       ),
       'system': JsonSchema.string(
-        description: 'Optional system prompt to prepend.',
+        description:
+            'Optional system prompt to prepend when you need agent-specific behavior beyond the user prompt.',
       ),
       'resume': JsonSchema.string(
-        description: 'Optional session/thread ID to resume.',
+        description:
+            'Optional session_id returned by cag_agent for the same agent. Do not pass compare_id, consensus_id, or council_id here.',
       ),
       'verbose': JsonSchema.boolean(
         description:
@@ -399,7 +418,8 @@ Future<McpServer> _buildServer() async {
     if (cursorConfig.enabled)
       'cursor':
           cursorConfig.defaultModel ??
-          (AgentModelRegistry.defaultModelName('cursor') ?? 'composer-2.5-fast'),
+          (AgentModelRegistry.defaultModelName('cursor') ??
+              'composer-2.5-fast'),
     if (antigravityConfig.enabled)
       'antigravity':
           antigravityConfig.defaultModel ??
@@ -450,8 +470,9 @@ Future<McpServer> _buildServer() async {
       instructions:
           'cag is a multi-agent gateway that lets you query external AI agents '
           'from within your current session. '
-          'Use it to get a second opinion, validate architectural decisions, brainstorm ideas, '
-          'or leverage multiple models for deeper analysis.\n\n'
+          'Use CAG only when the user explicitly asks for CAG or a specific CAG agent/model, '
+          'or when external independent judgment or cross-agent comparison would materially improve the work. '
+          'Prefer your own native tools, subagents, or direct model tools for ordinary delegation and simple same-family model calls.\n\n'
           'Regular agent conversations use a universal session_id. If a tool returns session_id, that conversation can be continued later through the matching agent tool with resume/session_id. '
           'Any other returned ID belongs to a CAG wrapper flow and is not interchangeable with session_id. '
           'Provide detailed prompts with full context, constraints, and goals — short prompts produce weak results.\n\n'
@@ -462,7 +483,7 @@ Future<McpServer> _buildServer() async {
 
   server.registerTool(
     'cag_agent',
-    description: 'Run a single agent.',
+    description: _agentToolDescription,
     inputSchema: _buildAgentInputSchema(enabledAgents),
     outputSchema: _agentOutputSchema,
     callback: (args, extra) async {
@@ -891,7 +912,7 @@ Future<McpServer> _buildServer() async {
 
   server.registerTool(
     'cag_models',
-    description: 'List supported models for each agent.',
+    description: _modelsToolDescription,
     inputSchema: _modelsInputSchema,
     outputSchema: _modelsOutputSchema,
     callback: (args, extra) async {

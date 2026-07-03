@@ -33,7 +33,11 @@ class PrimeGenerator {
     buffer.writeln('# CLI Agents CAG - tool usage guide');
     buffer.writeln();
     buffer.writeln(
-      '> User has CLI wrapper for AI agents, named "cag". Use it to get another opinion, search code, validate ideas, or discuss architecture.',
+      '> User has CLI wrapper for AI agents, named "cag". Use CAG only when the user asks for CAG or a specific CAG agent/model, or when external independent judgment or cross-agent comparison would materially improve the work.',
+    );
+    buffer.writeln();
+    buffer.writeln(
+      '> Prefer your own native tools, subagents, or direct model tools for ordinary delegation and simple same-family model calls.',
     );
     buffer.writeln();
     buffer.writeln(
@@ -114,6 +118,9 @@ class PrimeGenerator {
       "- Don't delegate code writing — ask for direction/validation",
     );
     buffer.writeln(
+      '- Prefer your own native tools, subagents, or direct model tools for ordinary delegation and simple same-family model calls',
+    );
+    buffer.writeln(
       '- Conversations are not just question-answer — use multi-turn dialogue (resume via session_id) to iterate, challenge ideas, and reach better solutions',
     );
     buffer.writeln(
@@ -133,6 +140,9 @@ class PrimeGenerator {
     );
     buffer.writeln(
       '- Any non-`session_id` returned by CAG belongs to that wrapper flow and should not be treated as a regular agent session handle.',
+    );
+    buffer.writeln(
+      '- Use CAG only when the user asks for CAG or a specific CAG agent/model, or when external independent judgment or cross-agent comparison would materially improve the work.',
     );
     buffer.writeln(
       '- At the start of a conversation, you **MUST** provide maximum useful information: background, constraints, goals, current state, and desired output format.',

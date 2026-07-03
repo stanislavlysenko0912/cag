@@ -641,6 +641,48 @@ void main() {
       );
     });
 
+    test('generate explains when to prefer native tools over CAG', () {
+      const generator = PrimeGenerator();
+
+      final commands = [
+        const CommandMetadata(
+          name: 'codex',
+          description: 'Codex agent',
+          models: [
+            ModelConfig(
+              name: 'gpt-5.5-mini',
+              description: 'Fast',
+              isDefault: true,
+            ),
+          ],
+        ),
+      ];
+
+      final output = generator.generate(
+        commands,
+        agentConfigs: {
+          'codex': const AgentConfig(
+            name: 'codex',
+            executable: 'codex',
+            parser: 'codex',
+          ),
+        },
+      );
+
+      expect(
+        output,
+        contains(
+          'Use CAG only when the user asks for CAG or a specific CAG agent/model, or when external independent judgment or cross-agent comparison would materially improve the work.',
+        ),
+      );
+      expect(
+        output,
+        contains(
+          'Prefer your own native tools, subagents, or direct model tools for ordinary delegation and simple same-family model calls.',
+        ),
+      );
+    });
+
     test('generate defaults to multi-turn dialogue instead of one-shot', () {
       const generator = PrimeGenerator();
 
