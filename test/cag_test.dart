@@ -392,7 +392,9 @@ void main() {
   group('CLIRunner', () {
     test('run executes a basic command', () async {
       final runner = CLIRunner();
-      final result = await runner.run(executable: 'echo', args: ['hello']);
+      final result = Platform.isWindows
+          ? await runner.run(executable: 'cmd', args: ['/c', 'echo hello'])
+          : await runner.run(executable: 'echo', args: ['hello']);
 
       expect(result.exitCode, equals(0));
       expect(result.stdout.trim(), equals('hello'));
@@ -402,10 +404,15 @@ void main() {
       'run executes a shell command when invoked via shell executable',
       () async {
         final runner = CLIRunner();
-        final result = await runner.run(
-          executable: '/bin/sh',
-          args: ['-c', 'echo prefix && echo hello'],
-        );
+        final result = Platform.isWindows
+            ? await runner.run(
+                executable: 'cmd',
+                args: ['/c', 'echo prefix && echo hello'],
+              )
+            : await runner.run(
+                executable: '/bin/sh',
+                args: ['-c', 'echo prefix && echo hello'],
+              );
 
         expect(result.exitCode, equals(0));
         expect(result.stdout, contains('prefix'));
@@ -428,10 +435,15 @@ void main() {
 
     test('run captures stdout larger than legacy pipe buffer limits', () async {
       final runner = CLIRunner();
-      final result = await runner.run(
-        executable: '/bin/sh',
-        args: ['-c', r'python3 -c "print(\"x\" * 250000)"'],
-      );
+      final result = Platform.isWindows
+          ? await runner.run(
+              executable: 'python',
+              args: ['-c', 'print("x" * 250000)'],
+            )
+          : await runner.run(
+              executable: '/bin/sh',
+              args: ['-c', r'python3 -c "print(\"x\" * 250000)"'],
+            );
 
       expect(result.exitCode, equals(0));
       expect(result.stdout.length, greaterThan(200000));

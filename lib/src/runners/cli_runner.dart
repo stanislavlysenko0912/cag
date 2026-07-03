@@ -104,20 +104,14 @@ class CLIRunner {
     required _CaptureDirectory capture,
   }) async {
     final stopwatch = Stopwatch()..start();
-    final shell = _redirectShellCommand(
-      executable: executable,
-      args: args,
-      stdoutPath: capture.stdoutFile.path,
-      stderrPath: capture.stderrFile.path,
-    );
-
     final process = await Process.start(
-      shell.executable,
-      shell.args,
+      executable,
+      args,
       environment: env != null ? {...Platform.environment, ...env} : null,
       workingDirectory: workingDirectory,
       runInShell: false,
     );
+    final outputCapture = capture.writeProcessOutput(process);
     await process.stdin.close();
 
     final activity = _OutputActivityTracker(capture: capture);
@@ -146,6 +140,7 @@ class CLIRunner {
     final exitCode = outcome is int
         ? outcome
         : await _killAndCollectExitCode(process);
+    await outputCapture;
     final output = await capture.readOutput();
     stopwatch.stop();
 
@@ -191,46 +186,6 @@ class CLIRunner {
         hadPartialOutput: _hasPartialOutput(output.stdout, output.stderr),
       ),
     );
-  }
-
-  ({String executable, List<String> args}) _redirectShellCommand({
-    required String executable,
-    required List<String> args,
-    required String stdoutPath,
-    required String stderrPath,
-  }) {
-    if (Platform.isWindows) {
-      final command = [
-        _cmdQuote(executable),
-        ...args.map(_cmdQuote),
-        '>',
-        _cmdQuote(stdoutPath),
-        '2>',
-        _cmdQuote(stderrPath),
-      ].join(' ');
-      return (executable: 'cmd.exe', args: ['/c', command]);
-    }
-
-    final command = [
-      _posixShellQuote(executable),
-      ...args.map(_posixShellQuote),
-      '>',
-      _posixShellQuote(stdoutPath),
-      '2>',
-      _posixShellQuote(stderrPath),
-    ].join(' ');
-    return (executable: '/bin/sh', args: ['-c', command]);
-  }
-
-  String _posixShellQuote(String value) {
-    return "'${value.replaceAll("'", "'\\''")}'";
-  }
-
-  String _cmdQuote(String value) {
-    if (value.contains(' ') || value.contains('"')) {
-      return '"${value.replaceAll('"', r'\"')}"';
-    }
-    return value;
   }
 
   Future<int?> _killAndCollectExitCode(Process process) async {
@@ -447,6 +402,19 @@ class _CaptureDirectory {
     final stdout = await _readIfExists(stdoutFile);
     final stderr = await _readIfExists(stderrFile);
     return (stdout: stdout, stderr: stderr);
+  }
+
+  Future<void> writeProcessOutput(Process process) async {
+    final stdoutSink = stdoutFile.openWrite();
+    final stderrSink = stderrFile.openWrite();
+    try {
+      await Future.wait([
+        stdoutSink.addStream(process.stdout),
+        stderrSink.addStream(process.stderr),
+      ]);
+    } finally {
+      await Future.wait([stdoutSink.close(), stderrSink.close()]);
+    }
   }
 
   Future<String> _readIfExists(File file) async {

@@ -308,8 +308,9 @@ void main() {
       );
 
       expect(result.exitCode, equals(0));
-      expect(result.stdout, contains('review this\n\ndiff --git'));
-      expect(result.stdout, contains('+new line'));
+      final stdout = (result.stdout as String).replaceAll('\r\n', '\n');
+      expect(stdout, contains('review this\n\ndiff --git'));
+      expect(stdout, contains('+new line'));
     });
   });
 
@@ -418,19 +419,19 @@ String councilPathFor(Directory tempDir) {
 }
 
 Future<File> writeFakeCodexExecutable(Directory tempDir) async {
-  final file = File(p.join(tempDir.path, 'fake_codex'));
+  final file = File(p.join(tempDir.path, 'fake_codex.dart'));
   await file.writeAsString('''
-#!/bin/sh
-last=''
-for arg in "\$@"; do
-  last=\$arg
-done
-PROMPT=\$last python3 -c 'import json, os
-print(json.dumps({"type": "thread.started", "thread_id": "fake-thread"}))
-print(json.dumps({"type": "item.completed", "item": {"type": "agent_message", "text": os.environ["PROMPT"]}}))
-'
+import 'dart:convert';
+
+void main(List<String> args) {
+  final prompt = args.isEmpty ? '' : args.last;
+  print(jsonEncode({'type': 'thread.started', 'thread_id': 'fake-thread'}));
+  print(jsonEncode({
+    'type': 'item.completed',
+    'item': {'type': 'agent_message', 'text': prompt},
+  }));
+}
 ''');
-  await Process.run('chmod', ['+x', file.path]);
   return file;
 }
 
@@ -445,13 +446,16 @@ Future<File> writeFakeExecutable(Directory tempDir, String name) async {
   return file;
 }
 
-Future<void> writeCodexConfig(Directory tempDir, String executablePath) async {
+Future<void> writeCodexConfig(Directory tempDir, String fakeCodexPath) async {
   final file = File(p.join(appDataDirFor(tempDir), 'config.json'));
   await file.parent.create(recursive: true);
   await file.writeAsString(
     '${jsonEncode({
       'agents': {
-        'codex': {'executable': executablePath, 'additional_args': <String>[]},
+        'codex': {
+          'executable': Platform.resolvedExecutable,
+          'additional_args': [fakeCodexPath],
+        },
       },
     })}\n',
   );
