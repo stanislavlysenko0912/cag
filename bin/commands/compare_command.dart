@@ -5,6 +5,7 @@ import 'package:args/command_runner.dart';
 import 'package:cag/cag.dart';
 
 import 'output_formatter.dart';
+import 'stdin_prompt.dart';
 
 /// Run multi-agent compare without synthesis.
 class CompareCommand extends Command<void> {
@@ -80,8 +81,9 @@ class CompareCommand extends Command<void> {
     final title = argResults!['title'] as String?;
     final outputJson = argResults!['json'] as bool;
     final rest = argResults!.rest;
+    final prompt = await readPromptInput(rest);
 
-    if (rest.isEmpty) {
+    if (prompt.isEmpty) {
       throw UsageException('Missing prompt', usage);
     }
     if (addOptions.length < 2) {
@@ -91,7 +93,6 @@ class CompareCommand extends Command<void> {
       );
     }
 
-    final prompt = rest.join(' ');
     final participants = addOptions
         .map(
           (input) =>

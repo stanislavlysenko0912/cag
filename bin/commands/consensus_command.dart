@@ -5,6 +5,7 @@ import 'package:args/command_runner.dart';
 import 'package:cag/cag.dart';
 
 import 'output_formatter.dart';
+import 'stdin_prompt.dart';
 
 /// Runs multi-model consensus sessions.
 class ConsensusCommand extends Command<void> {
@@ -103,12 +104,12 @@ This command runs the specified models in parallel with stance-based prompts.'''
     final proposal = argResults!['proposal'] as String?;
     final outputJson = argResults!['json'] as bool;
     final rest = argResults!.rest;
+    final prompt = await readPromptInput(rest);
 
-    if (rest.isEmpty) {
+    if (prompt.isEmpty) {
       throw UsageException('Missing prompt', usage);
     }
 
-    final prompt = rest.join(' ');
     final runner = ConsensusRunner(agentConfigs: _agentConfigs);
 
     try {

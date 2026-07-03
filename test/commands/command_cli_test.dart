@@ -283,6 +283,35 @@ void main() {
       );
     });
   });
+
+  group('stdin prompt input', () {
+    late Directory tempDir;
+    late Map<String, String> environment;
+
+    setUp(() async {
+      tempDir = await Directory.systemTemp.createTemp('cag_cli_stdin_');
+      environment = buildAppEnvironment(tempDir);
+    });
+
+    tearDown(() async {
+      await tempDir.delete(recursive: true);
+    });
+
+    test('agent appends piped stdin to argument prompt', () async {
+      final fakeCodex = await writeFakeCodexExecutable(tempDir);
+      await writeCodexConfig(tempDir, fakeCodex.path);
+
+      final result = await runCliWithStdin(
+        ['codex', '-m', 'mini', 'review this'],
+        environment,
+        'diff --git a/file.dart b/file.dart\n+new line\n',
+      );
+
+      expect(result.exitCode, equals(0));
+      expect(result.stdout, contains('review this\n\ndiff --git'));
+      expect(result.stdout, contains('+new line'));
+    });
+  });
 }
 
 Future<ProcessResult> runCli(
@@ -295,6 +324,27 @@ Future<ProcessResult> runCli(
     workingDirectory: Directory.current.path,
     environment: environment,
   );
+}
+
+Future<ProcessResult> runCliWithStdin(
+  List<String> args,
+  Map<String, String> environment,
+  String input,
+) async {
+  final process = await Process.start(
+    Platform.resolvedExecutable,
+    ['run', 'bin/cag.dart', ...args],
+    workingDirectory: Directory.current.path,
+    environment: environment,
+  );
+  process.stdin.write(input);
+  await process.stdin.close();
+
+  final stdout = await process.stdout.transform(utf8.decoder).join();
+  final stderr = await process.stderr.transform(utf8.decoder).join();
+  final exitCode = await process.exitCode;
+
+  return ProcessResult(process.pid, exitCode, stdout, stderr);
 }
 
 Map<String, String> buildAppEnvironment(Directory tempDir) {
@@ -331,4 +381,33 @@ String comparePathFor(Directory tempDir) {
 
 String councilPathFor(Directory tempDir) {
   return p.join(appDataDirFor(tempDir), 'council.jsonl');
+}
+
+Future<File> writeFakeCodexExecutable(Directory tempDir) async {
+  final file = File(p.join(tempDir.path, 'fake_codex'));
+  await file.writeAsString('''
+#!/bin/sh
+last=''
+for arg in "\$@"; do
+  last=\$arg
+done
+PROMPT=\$last python3 -c 'import json, os
+print(json.dumps({"type": "thread.started", "thread_id": "fake-thread"}))
+print(json.dumps({"type": "item.completed", "item": {"type": "agent_message", "text": os.environ["PROMPT"]}}))
+'
+''');
+  await Process.run('chmod', ['+x', file.path]);
+  return file;
+}
+
+Future<void> writeCodexConfig(Directory tempDir, String executablePath) async {
+  final file = File(p.join(appDataDirFor(tempDir), 'config.json'));
+  await file.parent.create(recursive: true);
+  await file.writeAsString(
+    '${jsonEncode({
+      'agents': {
+        'codex': {'executable': executablePath, 'additional_args': <String>[]},
+      },
+    })}\n',
+  );
 }

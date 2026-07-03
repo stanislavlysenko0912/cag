@@ -103,6 +103,13 @@ Common flags:
 - `-j, --json` – raw JSON output
 - `--meta` – show token/latency metadata
 
+Prompt commands also accept piped stdin. When stdin is piped, CAG appends it
+after the argument prompt:
+
+```bash
+git diff | cag codex -m mini "Review this change"
+```
+
 Models and aliases:
 
 - **claude**: `claude-sonnet-4-6` (alias `sonnet`, default), `claude-opus-4-8` (alias `opus`), `claude-haiku-4-5` (alias `haiku`)

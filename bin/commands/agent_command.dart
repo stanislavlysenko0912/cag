@@ -5,6 +5,7 @@ import 'package:args/command_runner.dart';
 import 'package:cag/cag.dart';
 
 import 'output_formatter.dart';
+import 'stdin_prompt.dart';
 
 typedef MetaPrinter = void Function(ParsedResponse response);
 
@@ -61,11 +62,11 @@ class AgentCommand extends Command<void> {
   @override
   Future<void> run() async {
     final rest = argResults!.rest;
-    if (rest.isEmpty) {
+    final prompt = await readPromptInput(rest);
+    if (prompt.isEmpty) {
       throw UsageException('Missing prompt', usage);
     }
 
-    final prompt = rest.join(' ');
     final model = argResults!['model'] as String;
     final systemPrompt = argResults!['system'] as String?;
     final outputJson = argResults!['json'] as bool;

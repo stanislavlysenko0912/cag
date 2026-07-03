@@ -5,6 +5,7 @@ import 'package:args/command_runner.dart';
 import 'package:cag/cag.dart';
 
 import 'output_formatter.dart';
+import 'stdin_prompt.dart';
 
 /// Runs multi-stage council flows and inspects saved runs.
 class CouncilCommand extends Command<void> {
@@ -100,8 +101,9 @@ Council runs are persisted for inspection and follow-up.''';
     final includeAnswers = argResults!['include-answers'] as bool;
     final outputJson = argResults!['json'] as bool;
     final rest = argResults!.rest;
+    final prompt = await readPromptInput(rest);
 
-    if (rest.isEmpty) {
+    if (prompt.isEmpty) {
       throw UsageException('Missing prompt', usage);
     }
     if (addOptions.length < 2) {
@@ -114,7 +116,6 @@ Council runs are persisted for inspection and follow-up.''';
       throw UsageException('Chairman is required (-c)', usage);
     }
 
-    final prompt = rest.join(' ');
     final participants = addOptions
         .map(
           (input) => CouncilMember.parse(input, allowedAgents: _enabledAgents),

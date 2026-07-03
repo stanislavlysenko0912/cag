@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added stdin/pipe prompt input for prompt-based CLI commands, allowing usage such as `git diff | cag codex "review this"`.
+
 ### Fixed
 
 - Fixed CLI runner capturing agent stdout/stderr via temporary files instead of pipes, avoiding truncated JSON from Claude CLI and other agents on large responses (~192 KB+). Temporary capture files are deleted after each run.
