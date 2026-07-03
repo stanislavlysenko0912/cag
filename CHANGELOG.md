@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fixed CLI runner capturing agent stdout/stderr via temporary files instead of pipes, avoiding truncated JSON from Claude CLI and other agents on large responses (~192 KB+). Temporary capture files are deleted after each run.
+- Restored Linux release artifact publishing and Homebrew formula checksum updates for the Linux installer flow.
 
 ## [0.3.1] - 2026-05-29
 

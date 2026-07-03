@@ -18,9 +18,9 @@ jobs:
           - os: macos-15-intel
             artifact: cag_macos_x64
             ext: ''
-          # - os: ubuntu-20.04
-          #   artifact: cag_linux_x64
-          #   ext: ''
+          - os: ubuntu-22.04
+            artifact: cag_linux_x64
+            ext: ''
           - os: windows-latest
             artifact: cag_windows_x64
             ext: '.exe'
@@ -152,18 +152,18 @@ jobs:
 
           SHA_MACOS_ARM64=$(grep cag_macos_arm64 SHA256SUMS | awk '{print $1}')
           SHA_MACOS_X64=$(grep cag_macos_x64 SHA256SUMS | awk '{print $1}')
-          # SHA_LINUX_X64=$(grep cag_linux_x64 SHA256SUMS | awk '{print $1}')
+          SHA_LINUX_X64=$(grep cag_linux_x64 SHA256SUMS | awk '{print $1}')
 
           sed -i "s/version \".*\"/version \"$VERSION\"/" Formula/cag.rb
           sed -i "s/sha256 \"SHA256_MACOS_ARM64\"/sha256 \"$SHA_MACOS_ARM64\"/" Formula/cag.rb
           sed -i "s/sha256 \"SHA256_MACOS_X64\"/sha256 \"$SHA_MACOS_X64\"/" Formula/cag.rb
-          # sed -i "s/sha256 \"SHA256_LINUX_X64\"/sha256 \"$SHA_LINUX_X64\"/" Formula/cag.rb
+          sed -i "s/sha256 \"SHA256_LINUX_X64\"/sha256 \"$SHA_LINUX_X64\"/" Formula/cag.rb
 
           # Also update if already has real hashes (for subsequent releases)
           sed -i "s/sha256 \"[a-f0-9]\{64\}\"/sha256 \"PLACEHOLDER\"/g" Formula/cag.rb
           sed -i "0,/PLACEHOLDER/s//$SHA_MACOS_ARM64/" Formula/cag.rb
           sed -i "0,/PLACEHOLDER/s//$SHA_MACOS_X64/" Formula/cag.rb
-          # sed -i "0,/PLACEHOLDER/s//$SHA_LINUX_X64/" Formula/cag.rb
+          sed -i "0,/PLACEHOLDER/s//$SHA_LINUX_X64/" Formula/cag.rb
 
       - name: Commit and push
         run: |
