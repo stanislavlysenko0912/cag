@@ -18,16 +18,16 @@ CLI wrapper for multiple AI agent CLIs (Claude, Gemini, Codex, Cursor, Antigravi
 
 This tool wraps external AI CLIs that must be installed separately:
 
-| CLI | Install | Status |
-|-----|---------|--------|
-| `claude` | [Claude Code](https://docs.anthropic.com/en/docs/claude-code) | |
-| `gemini` | [Gemini CLI](https://github.com/google-gemini/gemini-cli) | **Deprecated** — superseded by Antigravity |
-| `agy` (`antigravity`) | [Antigravity CLI](https://antigravity.google/product/antigravity-cli) | Enabled by `cag detect` when installed |
-| `codex` | [Codex CLI](https://github.com/openai/codex) | |
-| `cursor` | [Cursor Agent CLI](https://cursor.com/cli) | |
+| CLI | Install |
+|-----|---------|
+| `claude` | [Claude Code](https://docs.anthropic.com/en/docs/claude-code) |
+| `gemini` | [Gemini CLI](https://github.com/google-gemini/gemini-cli) |
+| `agy` | [Antigravity CLI](https://antigravity.google/product/antigravity-cli) |
+| `codex` | [Codex CLI](https://github.com/openai/codex) |
+| `cursor` | [Cursor Agent CLI](https://cursor.com/cli) |
 
 > [!NOTE]
-> **Gemini CLI** is deprecated in favor of **Antigravity CLI** (`agy`). The `gemini` agent remains available for now.
+> **Gemini CLI** is deprecated in favor of **Antigravity CLI** (`agy`). The `gemini` agent remains available for now. And will be removed in the future.
 
 You only need to install the CLIs you plan to use.
 If you don't want to use some of the agents, you can disable them in the config.
