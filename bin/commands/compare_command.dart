@@ -165,7 +165,7 @@ class CompareCommand extends Command<void> {
           usage,
         );
       }
-      return participant.copyWith(resolvedModel: modelConfig.name);
+      return participant.copyWith(resolvedModel: modelConfig.resolvedModel);
     }).toList();
   }
 

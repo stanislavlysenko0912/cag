@@ -113,7 +113,7 @@ class AgentCommand extends Command<void> {
       );
     }
 
-    return matched.name;
+    return matched.resolvedModel;
   }
 
   void _printTextResponse(

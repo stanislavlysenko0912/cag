@@ -30,6 +30,7 @@ class CursorAgent extends BaseAgent {
     String? systemPrompt,
     String? resume,
     Map<String, String>? extraArgs,
+    AgentRunContext? runContext,
   }) {
     final args = <String>[...config.additionalArgs];
 

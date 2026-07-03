@@ -1,6 +1,13 @@
+import 'dart:io';
+
 import '../models/models.dart';
 import '../parsers/parsers.dart';
 import '../runners/runners.dart';
+
+/// Per-execution state prepared by an agent before it builds CLI arguments.
+class AgentRunContext {
+  const AgentRunContext();
+}
 
 /// Base class for CLI agents.
 abstract class BaseAgent {
@@ -21,11 +28,34 @@ abstract class BaseAgent {
     String? systemPrompt,
     String? resume,
     Map<String, String>? extraArgs,
+    AgentRunContext? runContext,
   });
+
+  /// Prepare per-run resources before CLI arguments are built.
+  Future<AgentRunContext?> prepareRun({
+    required String prompt,
+    String? model,
+    String? systemPrompt,
+    String? resume,
+    Map<String, String>? extraArgs,
+  }) async {
+    return null;
+  }
+
+  /// Parse CLI output into a normalized response.
+  ParsedResponse parseResponse(CLIResult result, AgentRunContext? runContext) {
+    return parser.parse(stdout: result.stdout, stderr: result.stderr);
+  }
+
+  /// Clean up per-run resources.
+  Future<void> cleanupRun(AgentRunContext? runContext) async {}
 
   /// Try to recover a response from CLI error output.
   /// Override in subclasses to handle specific error formats.
-  ParsedResponse? recoverFromError(CLIResult result) => null;
+  ParsedResponse? recoverFromError(
+    CLIResult result,
+    AgentRunContext? runContext,
+  ) => null;
 
   /// Execute the agent with the given prompt.
   Future<ParsedResponse> execute({
@@ -35,34 +65,58 @@ abstract class BaseAgent {
     String? resume,
     Map<String, String>? extraArgs,
   }) async {
-    final args = buildArgs(
+    final resolvedModel = model ?? config.defaultModel;
+    final runContext = await prepareRun(
       prompt: prompt,
-      model: model ?? config.defaultModel,
+      model: resolvedModel,
       systemPrompt: systemPrompt,
       resume: resume,
       extraArgs: extraArgs,
     );
 
-    final result = await _runCommand(args);
-
-    if (!result.success) {
-      final recovered = recoverFromError(result);
-      if (recovered != null) {
-        return _attachExecutionMetadata(recovered, result);
-      }
-      throw AgentExecutionException(result.failure!);
-    }
-
     try {
-      final response = parser.parse(
-        stdout: result.stdout,
-        stderr: result.stderr,
+      final args = buildArgs(
+        prompt: prompt,
+        model: resolvedModel,
+        systemPrompt: systemPrompt,
+        resume: resume,
+        extraArgs: extraArgs,
+        runContext: runContext,
       );
-      if (response.content.trim().isEmpty) {
+
+      final result = await _runCommand(args);
+
+      if (!result.success) {
+        final recovered = recoverFromError(result, runContext);
+        if (recovered != null) {
+          return _attachExecutionMetadata(recovered, result);
+        }
+        throw AgentExecutionException(result.failure!);
+      }
+
+      try {
+        final response = parseResponse(result, runContext);
+        if (response.content.trim().isEmpty) {
+          throw AgentExecutionException(
+            AgentFailure(
+              reason: AgentExitReason.emptyResponse,
+              message: '${config.name} returned an empty response.',
+              exitCode: result.exitCode,
+              stdoutSnippet: _snippet(result.stdout),
+              stderrSnippet: _snippet(result.stderr),
+              durationMs: result.durationMs,
+              hadPartialOutput:
+                  result.stdout.trim().isNotEmpty ||
+                  result.stderr.trim().isNotEmpty,
+            ),
+          );
+        }
+        return _attachExecutionMetadata(response, result);
+      } on ParserException catch (error) {
         throw AgentExecutionException(
           AgentFailure(
-            reason: AgentExitReason.emptyResponse,
-            message: '${config.name} returned an empty response.',
+            reason: error.reason,
+            message: error.message,
             exitCode: result.exitCode,
             stdoutSnippet: _snippet(result.stdout),
             stderrSnippet: _snippet(result.stderr),
@@ -73,21 +127,8 @@ abstract class BaseAgent {
           ),
         );
       }
-      return _attachExecutionMetadata(response, result);
-    } on ParserException catch (error) {
-      throw AgentExecutionException(
-        AgentFailure(
-          reason: error.reason,
-          message: error.message,
-          exitCode: result.exitCode,
-          stdoutSnippet: _snippet(result.stdout),
-          stderrSnippet: _snippet(result.stderr),
-          durationMs: result.durationMs,
-          hadPartialOutput:
-              result.stdout.trim().isNotEmpty ||
-              result.stderr.trim().isNotEmpty,
-        ),
-      );
+    } finally {
+      await cleanupRun(runContext);
     }
   }
 
@@ -104,11 +145,19 @@ abstract class BaseAgent {
       );
     }
 
-    return runner.runShellCommand(
-      commandPrefix: config.shellCommandPrefix!,
-      args: args,
-      shellExecutable: config.shellExecutable,
-      shellArgs: config.shellArgs,
+    final shellExecutable = config.shellExecutable ?? _defaultShellExecutable();
+    final shellArgs = config.shellArgs.isNotEmpty
+        ? config.shellArgs
+        : _defaultShellArgs(shellExecutable);
+    final command = _buildShellCommand(
+      config.shellCommandPrefix!,
+      args,
+      shellExecutable,
+    );
+
+    return runner.run(
+      executable: shellExecutable,
+      args: [...shellArgs, command],
       env: config.env.isNotEmpty ? config.env : null,
       hardTimeout: hardTimeout,
       idleTimeout: idleTimeout,
@@ -123,6 +172,40 @@ abstract class BaseAgent {
       content: response.content,
       metadata: {...response.metadata, 'duration_ms': result.durationMs},
     );
+  }
+
+  String _buildShellCommand(
+    String prefix,
+    List<String> args,
+    String shellExecutable,
+  ) {
+    final escapedArgs = args
+        .map((arg) => _shellEscape(arg, shellExecutable))
+        .join(' ');
+    final trimmedPrefix = prefix.trim();
+    if (escapedArgs.isEmpty) return trimmedPrefix;
+    return '$trimmedPrefix $escapedArgs';
+  }
+
+  String _shellEscape(String value, String shellExecutable) {
+    final lower = shellExecutable.toLowerCase();
+    if (lower.contains('cmd')) {
+      final escaped = value.replaceAll('"', '\\"');
+      return '"$escaped"';
+    }
+    final escaped = value.replaceAll("'", "'\\''");
+    return "'$escaped'";
+  }
+
+  String _defaultShellExecutable() {
+    if (Platform.isWindows) return 'cmd';
+    return '/bin/sh';
+  }
+
+  List<String> _defaultShellArgs(String shellExecutable) {
+    final lower = shellExecutable.toLowerCase();
+    if (lower.contains('cmd')) return ['/c'];
+    return ['-c'];
   }
 
   String? _snippet(String value) {

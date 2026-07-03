@@ -9,15 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added `antigravity` to `cag detect` and refreshed AGY model aliases.
 - Added stdin/pipe prompt input for prompt-based CLI commands, allowing usage such as `git diff | cag codex "review this"`.
 
 ### Changed
 
 - Centralized platform-aware shell command construction in `CLIRunner`, keeping agent execution code focused on agent arguments.
 - Improved MCP and `prime` guidance for `cag_agent` and `cag_models` so hosts know when to use them, when to prefer native tools, how IDs differ, and when to inspect model aliases.
+- Moved the open `TODO.useful.md` backlog into the Linear CAG project.
+- Synced refreshed `TODO.useful.md` research notes into the Linear CAG project.
 
 ### Fixed
 
+- Fixed Antigravity CLI integration to pass model overrides, preserve explicit conversation resume IDs, and capture new conversation IDs from per-run AGY logs.
 - Fixed CLI runner capturing agent stdout/stderr via temporary files instead of pipes, avoiding truncated JSON from Claude CLI and other agents on large responses (~192 KB+). Temporary capture files are deleted after each run.
 - Restored Linux release artifact publishing and Homebrew formula checksum updates for the Linux installer flow.
 

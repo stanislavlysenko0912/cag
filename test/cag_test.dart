@@ -220,6 +220,35 @@ void main() {
         AgentModelRegistry.findModel('antigravity', 'current')?.name,
         equals('configured'),
       );
+      expect(
+        AgentModelRegistry.findModel('antigravity', 'flash-low')?.name,
+        equals('gemini-3-5-flash-low'),
+      );
+      expect(
+        AgentModelRegistry.findModel('antigravity', 'sonnet')?.name,
+        equals('claude-sonnet-4-6-thinking'),
+      );
+      expect(
+        AgentModelRegistry.findModel(
+          'antigravity',
+          'gemini-3-5-flash-medium',
+        )?.name,
+        equals('gemini-3-5-flash-medium'),
+      );
+      expect(
+        AgentModelRegistry.findModel(
+          'antigravity',
+          'claude-sonnet-4-6-thinking',
+        )?.name,
+        equals('claude-sonnet-4-6-thinking'),
+      );
+      expect(
+        AgentModelRegistry.findModel(
+          'antigravity',
+          'gemini-3-5-flash-medium',
+        )?.resolvedModel,
+        equals('Gemini 3.5 Flash (Medium)'),
+      );
     });
   });
 
@@ -286,6 +315,20 @@ void main() {
       expect(config.idleTimeoutSeconds, equals(900));
 
       expect(config.additionalArgs, isEmpty);
+    });
+
+    test('ModelConfig preserves model override', () {
+      final config = ModelConfig.fromJson({
+        'name': 'gemini-3-5-flash-medium',
+        'model': 'Gemini 3.5 Flash (Medium)',
+        'description': 'Medium-tier Gemini model.',
+        'aliases': ['flash'],
+      });
+
+      expect(config.name, equals('gemini-3-5-flash-medium'));
+      expect(config.resolvedModel, equals('Gemini 3.5 Flash (Medium)'));
+      expect(config.matches('flash'), isTrue);
+      expect(config.toJson()['model'], equals('Gemini 3.5 Flash (Medium)'));
     });
   });
 
@@ -1113,7 +1156,7 @@ void main() {
       expect(args, contains('hello'));
     });
 
-    test('AntigravityAgent does not pass model flag to agy', () {
+    test('AntigravityAgent does not pass model flag for configured model', () {
       final agent = AntigravityAgent(
         config: const AgentConfig(
           name: 'antigravity',
@@ -1128,6 +1171,87 @@ void main() {
       expect(args, isNot(contains('--model')));
       expect(args, isNot(contains('-m')));
       expect(args, contains('hello'));
+      expect(args.where((arg) => arg == '--print'), hasLength(1));
+      expect(args[args.indexOf('--print') + 1], equals('hello'));
+    });
+
+    test('AntigravityAgent passes model flag for AGY models', () {
+      final agent = AntigravityAgent(
+        config: const AgentConfig(
+          name: 'antigravity',
+          executable: 'agy',
+          parser: 'antigravity',
+          additionalArgs: ['--print'],
+        ),
+      );
+      final model = AgentModelRegistry.findModel(
+        'antigravity',
+        'gemini-3-5-flash-low',
+      )?.resolvedModel;
+
+      final args = agent.buildArgs(prompt: 'hello', model: model);
+
+      expect(args, contains('--model'));
+      expect(args, contains('Gemini 3.5 Flash (Low)'));
+    });
+
+    test('AntigravityAgent resumes by explicit conversation id', () async {
+      final runner = _FakeCLIRunner(stdout: 'resumed\n');
+      final agent = AntigravityAgent(
+        config: const AgentConfig(
+          name: 'antigravity',
+          executable: 'agy',
+          parser: 'antigravity',
+          additionalArgs: ['--print'],
+        ),
+        runner: runner,
+      );
+
+      final response = await agent.execute(
+        prompt: 'continue',
+        resume: '7c110f84-b4a0-4c84-bd56-6badc97920c5',
+      );
+
+      expect(runner.lastArgs, contains('--conversation'));
+      expect(runner.lastArgs, contains('7c110f84-b4a0-4c84-bd56-6badc97920c5'));
+      expect(runner.lastArgs, isNot(contains('--log-file')));
+      expect(
+        response.metadata['session_id'],
+        equals('7c110f84-b4a0-4c84-bd56-6badc97920c5'),
+      );
+    });
+
+    test('AntigravityAgent extracts conversation id from temp log', () async {
+      const conversationId = '23b69d94-05d1-4c8d-96c8-5a3b20272aeb';
+      String? logPath;
+      final runner = _FakeCLIRunner(
+        stdout: 'done\n',
+        onRun: (args) {
+          final index = args.indexOf('--log-file');
+          expect(index, isNot(equals(-1)));
+          logPath = args[index + 1];
+          File(logPath!).writeAsStringSync(
+            'Created conversation $conversationId\n'
+            'Print mode: conversation=$conversationId, sending message\n',
+          );
+        },
+      );
+      final agent = AntigravityAgent(
+        config: const AgentConfig(
+          name: 'antigravity',
+          executable: 'agy',
+          parser: 'antigravity',
+          additionalArgs: ['--print'],
+        ),
+        runner: runner,
+      );
+
+      final response = await agent.execute(prompt: 'hello');
+
+      expect(response.content, equals('done'));
+      expect(response.metadata['session_id'], equals(conversationId));
+      expect(logPath, isNotNull);
+      expect(File(logPath!).existsSync(), isFalse);
     });
   });
 
@@ -1422,5 +1546,27 @@ class _FakeClaudeAgent extends ClaudeAgent {
     Map<String, String>? extraArgs,
   }) async {
     return response!;
+  }
+}
+
+class _FakeCLIRunner extends CLIRunner {
+  _FakeCLIRunner({required this.stdout, this.onRun});
+
+  final String stdout;
+  final void Function(List<String> args)? onRun;
+  List<String> lastArgs = const [];
+
+  @override
+  Future<CLIResult> run({
+    required String executable,
+    required List<String> args,
+    Map<String, String>? env,
+    Duration? hardTimeout,
+    Duration? idleTimeout,
+    String? workingDirectory,
+  }) async {
+    lastArgs = args;
+    onRun?.call(args);
+    return CLIResult(exitCode: 0, stdout: stdout, stderr: '', durationMs: 1);
   }
 }

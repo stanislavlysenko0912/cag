@@ -120,6 +120,54 @@ class AgentModelRegistry {
       isDefault: true,
       aliases: ['current', 'default'],
     ),
+    ModelConfig(
+      name: 'gemini-3-5-flash-medium',
+      model: 'Gemini 3.5 Flash (Medium)',
+      description: 'Medium-tier Gemini model.',
+      aliases: ['flash'],
+    ),
+    ModelConfig(
+      name: 'gemini-3-5-flash-high',
+      model: 'Gemini 3.5 Flash (High)',
+      description: 'Higher-reasoning Gemini Flash model.',
+      aliases: ['flash-high'],
+    ),
+    ModelConfig(
+      name: 'gemini-3-5-flash-low',
+      model: 'Gemini 3.5 Flash (Low)',
+      description: 'Fast Gemini Flash model.',
+      aliases: ['flash-low'],
+    ),
+    ModelConfig(
+      name: 'gemini-3-1-pro-high',
+      model: 'Gemini 3.1 Pro (High)',
+      description: 'Higher-reasoning Gemini Pro model.',
+      aliases: ['pro-high'],
+    ),
+    ModelConfig(
+      name: 'gemini-3-1-pro-low',
+      model: 'Gemini 3.1 Pro (Low)',
+      description: 'Lower-cost Gemini Pro model.',
+      aliases: ['pro-low'],
+    ),
+    ModelConfig(
+      name: 'claude-sonnet-4-6-thinking',
+      model: 'Claude Sonnet 4.6 (Thinking)',
+      description: 'Claude Sonnet thinking model.',
+      aliases: ['sonnet'],
+    ),
+    ModelConfig(
+      name: 'claude-opus-4-6-thinking',
+      model: 'Claude Opus 4.6 (Thinking)',
+      description: 'Claude Opus thinking model.',
+      aliases: ['opus'],
+    ),
+    ModelConfig(
+      name: 'gpt-oss-120b-medium',
+      model: 'GPT-OSS 120B (Medium)',
+      description: 'Open-weight GPT-OSS model.',
+      aliases: ['oss'],
+    ),
   ];
 
   static const byAgent = {

@@ -312,6 +312,40 @@ void main() {
       expect(result.stdout, contains('+new line'));
     });
   });
+
+  group('detect CLI', () {
+    late Directory tempDir;
+    late Map<String, String> environment;
+
+    setUp(() async {
+      tempDir = await Directory.systemTemp.createTemp('cag_cli_detect_');
+      environment = buildAppEnvironment(tempDir);
+    });
+
+    tearDown(() async {
+      await tempDir.delete(recursive: true);
+    });
+
+    test('detects antigravity and writes config enablement', () async {
+      await writeFakeExecutable(tempDir, 'agy');
+      environment['PATH'] = tempDir.path;
+      if (Platform.isWindows) {
+        environment['PATHEXT'] = '.cmd;.exe;.bat';
+      }
+
+      final result = await runCli(['detect'], environment);
+
+      expect(result.exitCode, equals(0));
+      expect(result.stdout, contains('  - antigravity: found'));
+
+      final configFile = File(p.join(appDataDirFor(tempDir), 'config.json'));
+      final config =
+          jsonDecode(await configFile.readAsString()) as Map<String, dynamic>;
+      final agents = config['agents'] as Map<String, dynamic>;
+      final antigravity = agents['antigravity'] as Map<String, dynamic>;
+      expect(antigravity['enabled'], isTrue);
+    });
+  });
 }
 
 Future<ProcessResult> runCli(
@@ -397,6 +431,17 @@ print(json.dumps({"type": "item.completed", "item": {"type": "agent_message", "t
 '
 ''');
   await Process.run('chmod', ['+x', file.path]);
+  return file;
+}
+
+Future<File> writeFakeExecutable(Directory tempDir, String name) async {
+  final executableName = Platform.isWindows ? '$name.cmd' : name;
+  final file = File(p.join(tempDir.path, executableName));
+  final body = Platform.isWindows ? '@echo off\r\n' : '#!/bin/sh\n';
+  await file.writeAsString(body);
+  if (!Platform.isWindows) {
+    await Process.run('chmod', ['+x', file.path]);
+  }
   return file;
 }
 

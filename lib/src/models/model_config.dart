@@ -3,12 +3,16 @@ class ModelConfig {
   const ModelConfig({
     required this.name,
     required this.description,
+    this.model,
     this.isDefault = false,
     this.aliases = const [],
   });
 
-  /// Model identifier used in CLI.
+  /// Stable model identifier exposed by CAG.
   final String name;
+
+  /// Model identifier passed to the wrapped agent when it differs from [name].
+  final String? model;
 
   /// Human-readable description of model capabilities.
   final String description;
@@ -24,9 +28,10 @@ class ModelConfig {
     return ModelConfig(
       name: json['name'] as String,
       description: json['description'] as String? ?? '',
+      model: json['model'] as String?,
       isDefault: json['is_default'] as bool? ?? false,
-      aliases: (json['aliases'] as List?)?.whereType<String>().toList() ??
-          const [],
+      aliases:
+          (json['aliases'] as List?)?.whereType<String>().toList() ?? const [],
     );
   }
 
@@ -34,9 +39,13 @@ class ModelConfig {
   Map<String, dynamic> toJson() => {
     'name': name,
     'description': description,
+    if (model != null) 'model': model,
     'is_default': isDefault,
     'aliases': aliases,
   };
+
+  /// Model identifier to pass to the wrapped agent.
+  String get resolvedModel => model ?? name;
 
   /// Check if given name matches this model.
   bool matches(String input) {

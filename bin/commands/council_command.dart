@@ -192,7 +192,7 @@ Council runs are persisted for inspection and follow-up.''';
           usage,
         );
       }
-      member.resolvedModel = modelConfig.name;
+      member.resolvedModel = modelConfig.resolvedModel;
     }
   }
 

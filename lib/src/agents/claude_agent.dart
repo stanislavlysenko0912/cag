@@ -33,6 +33,7 @@ class ClaudeAgent extends BaseAgent {
     String? systemPrompt,
     String? resume,
     Map<String, String>? extraArgs,
+    AgentRunContext? runContext,
   }) {
     final args = <String>[...config.additionalArgs];
 
@@ -60,7 +61,10 @@ class ClaudeAgent extends BaseAgent {
   }
 
   @override
-  ParsedResponse? recoverFromError(CLIResult result) {
+  ParsedResponse? recoverFromError(
+    CLIResult result,
+    AgentRunContext? runContext,
+  ) {
     try {
       return parser.parse(stdout: result.stdout, stderr: result.stderr);
     } catch (_) {

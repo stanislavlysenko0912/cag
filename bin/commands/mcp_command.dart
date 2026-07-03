@@ -1289,5 +1289,5 @@ String _resolveModel(String agentName, String modelInput, List<String> errors) {
     return modelInput;
   }
 
-  return modelConfig.name;
+  return modelConfig.resolvedModel;
 }

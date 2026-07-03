@@ -25,6 +25,7 @@ class DetectCommand extends Command<void> {
       'gemini': GeminiAgent.defaultConfig,
       'codex': CodexAgent.defaultConfig,
       'cursor': CursorAgent.defaultConfig,
+      'antigravity': AntigravityAgent.defaultConfig,
     };
 
     final detection = <String, bool>{};

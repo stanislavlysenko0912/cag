@@ -31,6 +31,7 @@ class GeminiAgent extends BaseAgent {
     String? systemPrompt,
     String? resume,
     Map<String, String>? extraArgs,
+    AgentRunContext? runContext,
   }) {
     final args = <String>[...config.additionalArgs];
 
@@ -76,7 +77,10 @@ class GeminiAgent extends BaseAgent {
   }
 
   @override
-  ParsedResponse? recoverFromError(CLIResult result) {
+  ParsedResponse? recoverFromError(
+    CLIResult result,
+    AgentRunContext? runContext,
+  ) {
     final combined = [
       result.stderr,
       result.stdout,

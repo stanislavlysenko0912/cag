@@ -163,8 +163,8 @@ This command runs the specified models in parallel with stance-based prompts.'''
               usage,
             );
           }
-          // Resolve alias to full model name
-          p.resolvedModel = modelConfig.name;
+          // Resolve public model name to the value expected by the agent CLI.
+          p.resolvedModel = modelConfig.resolvedModel;
         }
 
         result = await runner.run(
