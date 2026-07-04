@@ -1,3 +1,4 @@
+export 'agent_catalog.dart';
 export 'agent_registry.dart';
 export 'base_agent.dart';
 export 'claude_agent.dart';
@@ -5,3 +6,4 @@ export 'codex_agent.dart';
 export 'cursor_agent.dart';
 export 'gemini_agent.dart';
 export 'antigravity_agent.dart';
+export 'known_agents.dart';

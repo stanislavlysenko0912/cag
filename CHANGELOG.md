@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added `cag doctor` for read-only setup diagnostics across config, enabled agents, executables, versions, hints, and optional MCP HTTP reachability.
 - Added `antigravity` to `cag detect` and refreshed AGY model aliases.
 - Added stdin/pipe prompt input for prompt-based CLI commands, allowing usage such as `git diff | cag codex "review this"`.
 

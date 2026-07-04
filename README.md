@@ -292,6 +292,24 @@ cag detect
 
 This updates `enabled` flags in your config based on what executables are found on PATH.
 
+### doctor
+
+Check your CAG setup without changing config:
+
+```bash
+cag doctor
+```
+
+This reports config status, enabled agents, resolved executables, versions, and
+setup hints. Unlike `cag detect`, it is read-only and does not update `enabled`
+flags.
+
+Use JSON output when scripting:
+
+```bash
+cag doctor --json
+```
+
 ## Config
 
 Config is optional and auto-created on first run.

@@ -8,47 +8,26 @@ import 'commands/compare_command.dart';
 import 'commands/consensus_command.dart';
 import 'commands/council_command.dart';
 import 'commands/detect_command.dart';
+import 'commands/doctor_command.dart';
 import 'commands/mcp_command.dart';
 import 'commands/prime_command.dart';
 
 void main(List<String> args) async {
+  if (_isDoctorCommand(args)) {
+    await _runDoctor(args);
+    return;
+  }
+
   final configService = ConfigService();
   final config = await configService.loadOrCreate();
-
-  final claudeConfig = configService.applyOverrides(
-    ClaudeAgent.defaultConfig,
-    configService.overridesFor(config, 'claude'),
-  );
-  final geminiConfig = configService.applyOverrides(
-    GeminiAgent.defaultConfig,
-    configService.overridesFor(config, 'gemini'),
-  );
-  final codexConfig = configService.applyOverrides(
-    CodexAgent.defaultConfig,
-    configService.overridesFor(config, 'codex'),
-  );
-  final cursorConfig = configService.applyOverrides(
-    CursorAgent.defaultConfig,
-    configService.overridesFor(config, 'cursor'),
-  );
-  final antigravityConfig = configService.applyOverrides(
-    AntigravityAgent.defaultConfig,
-    configService.overridesFor(config, 'antigravity'),
-  );
-
-  final agentConfigs = {
-    'claude': claudeConfig,
-    'gemini': geminiConfig,
-    'codex': codexConfig,
-    'cursor': cursorConfig,
-    'antigravity': antigravityConfig,
-  };
+  final agentConfigs = AgentCatalog.resolveConfigs(configService, config);
 
   final runner = CommandRunner<void>('cag', 'CLI wrapper for AI agents')
     ..addCommand(ConsensusCommand(agentConfigs: agentConfigs))
     ..addCommand(CompareCommand(agentConfigs: agentConfigs))
     ..addCommand(CouncilCommand(agentConfigs: agentConfigs))
     ..addCommand(DetectCommand())
+    ..addCommand(DoctorCommand())
     ..addCommand(McpCommand())
     ..addCommand(PrimeCommand(agentConfigs: agentConfigs))
     ..argParser.addFlag(
@@ -58,84 +37,7 @@ void main(List<String> args) async {
       help: 'Print version',
     );
 
-  if (claudeConfig.enabled) {
-    runner.addCommand(
-      AgentCommand(
-        agentName: 'claude',
-        descriptionText: 'Run Claude CLI agent',
-        defaultModel:
-            claudeConfig.defaultModel ??
-            (AgentModelRegistry.defaultModelName('claude') ?? 'sonnet'),
-        agent: ClaudeAgent(config: claudeConfig),
-        metaPrinter: printClaudeMeta,
-        systemHelp: 'System prompt (appended)',
-        resumeHelp: 'Resume session (session_id)',
-      ),
-    );
-  }
-  if (geminiConfig.enabled) {
-    runner.addCommand(
-      AgentCommand(
-        agentName: 'gemini',
-        descriptionText: 'Run Gemini CLI agent',
-        defaultModel:
-            geminiConfig.defaultModel ??
-            (AgentModelRegistry.defaultModelName('gemini') ??
-                'gemini-3-flash-preview'),
-        agent: GeminiAgent(config: geminiConfig),
-        metaPrinter: printGeminiMeta,
-        systemHelp: 'System prompt',
-        resumeHelp: 'Resume session (session_id or "latest")',
-      ),
-    );
-  }
-  if (codexConfig.enabled) {
-    runner.addCommand(
-      AgentCommand(
-        agentName: 'codex',
-        descriptionText: 'Run Codex CLI agent',
-        defaultModel:
-            codexConfig.defaultModel ??
-            (AgentModelRegistry.defaultModelName('codex') ?? 'gpt-5.5'),
-        agent: CodexAgent(config: codexConfig),
-        metaPrinter: printCodexMeta,
-        systemHelp: 'System prompt',
-        resumeHelp: 'Resume session (thread_id)',
-      ),
-    );
-  }
-  if (cursorConfig.enabled) {
-    runner.addCommand(
-      AgentCommand(
-        agentName: 'cursor',
-        descriptionText: 'Run Cursor Agent CLI',
-        defaultModel:
-            cursorConfig.defaultModel ??
-            (AgentModelRegistry.defaultModelName('cursor') ??
-                'composer-2.5-fast'),
-        agent: CursorAgent(config: cursorConfig),
-        metaPrinter: printCursorMeta,
-        systemHelp: 'System prompt (prepended to prompt)',
-        resumeHelp: 'Resume session (session_id)',
-      ),
-    );
-  }
-  if (antigravityConfig.enabled) {
-    runner.addCommand(
-      AgentCommand(
-        agentName: 'antigravity',
-        descriptionText: 'Run Antigravity CLI agent',
-        defaultModel:
-            antigravityConfig.defaultModel ??
-            (AgentModelRegistry.defaultModelName('antigravity') ??
-                'configured'),
-        agent: AntigravityAgent(config: antigravityConfig),
-        metaPrinter: printAntigravityMeta,
-        systemHelp: 'System prompt',
-        resumeHelp: 'Resume session (conversation_id)',
-      ),
-    );
-  }
+  _addAgentCommands(runner, agentConfigs);
 
   try {
     final results = runner.argParser.parse(args);
@@ -151,6 +53,74 @@ void main(List<String> args) async {
     print('Error: $e');
     exit(1);
   }
+}
+
+void _addAgentCommands(
+  CommandRunner<void> runner,
+  Map<String, AgentConfig> agentConfigs,
+) {
+  for (final definition in AgentCatalog.definitions) {
+    final config = agentConfigs[definition.name];
+    if (config == null || !config.enabled) continue;
+
+    runner.addCommand(
+      AgentCommand(
+        agentName: definition.name,
+        descriptionText: definition.descriptionText,
+        defaultModel: definition.defaultModel(config),
+        agent: definition.createAgent(config),
+        metaPrinter: _metaPrinterFor(definition.name),
+        systemHelp: definition.systemHelp,
+        resumeHelp: definition.resumeHelp,
+      ),
+    );
+  }
+}
+
+MetaPrinter _metaPrinterFor(String agentName) {
+  return switch (agentName) {
+    KnownAgents.claude => printClaudeMeta,
+    KnownAgents.gemini => printGeminiMeta,
+    KnownAgents.codex => printCodexMeta,
+    KnownAgents.cursor => printCursorMeta,
+    KnownAgents.antigravity => printAntigravityMeta,
+    _ => throw ArgumentError('Unknown agent: $agentName'),
+  };
+}
+
+Future<void> _runDoctor(List<String> args) async {
+  final runner = CommandRunner<void>('cag', 'CLI wrapper for AI agents')
+    ..addCommand(DoctorCommand())
+    ..argParser.addFlag(
+      'version',
+      abbr: 'v',
+      negatable: false,
+      help: 'Print version',
+    );
+
+  try {
+    final results = runner.argParser.parse(args);
+    if (results['version'] as bool) {
+      print('cag ${AppInfo.version}');
+      return;
+    }
+    await runner.run(args);
+  } on UsageException catch (e) {
+    print(e);
+    exit(64);
+  } catch (e) {
+    print('Error: $e');
+    exit(1);
+  }
+}
+
+bool _isDoctorCommand(List<String> args) {
+  for (final arg in args) {
+    if (arg == '--') return false;
+    if (arg.startsWith('-')) continue;
+    return arg == 'doctor';
+  }
+  return false;
 }
 
 class AppInfo {

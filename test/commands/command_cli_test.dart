@@ -347,6 +347,132 @@ void main() {
       expect(antigravity['enabled'], isTrue);
     });
   });
+
+  group('doctor CLI', () {
+    late Directory tempDir;
+    late Map<String, String> environment;
+
+    setUp(() async {
+      tempDir = await Directory.systemTemp.createTemp('cag_cli_doctor_');
+      environment = buildAppEnvironment(tempDir);
+    });
+
+    tearDown(() async {
+      await tempDir.delete(recursive: true);
+    });
+
+    test('missing config reports path without creating config', () async {
+      final result = await runCli(['doctor'], environment);
+
+      final configFile = File(p.join(appDataDirFor(tempDir), 'config.json'));
+      expect(result.stdout, contains('Config: missing (${configFile.path})'));
+      expect(await configFile.exists(), isFalse);
+    });
+
+    test('reports found executable and version for configured agent', () async {
+      final fakeCodex = await writeVersionedFakeExecutable(
+        tempDir,
+        'fake-codex',
+        'fake codex 1.2.3',
+      );
+      await writeAgentConfig(
+        tempDir,
+        disabledAgentConfig({
+          'codex': {'enabled': true, 'executable': fakeCodex.path},
+        }),
+      );
+
+      final result = await runCli(['doctor'], environment);
+
+      expect(result.exitCode, equals(0));
+      expect(result.stdout, contains('codex: enabled, found'));
+      expect(result.stdout, contains('version: fake codex 1.2.3'));
+    });
+
+    test('enabled missing executable exits non-zero with hint', () async {
+      await writeAgentConfig(
+        tempDir,
+        disabledAgentConfig({
+          'codex': {'enabled': true, 'executable': 'missing-codex'},
+        }),
+      );
+
+      final result = await runCli(['doctor'], environment);
+
+      expect(result.exitCode, equals(1));
+      expect(result.stdout, contains('codex: enabled, missing'));
+      expect(
+        result.stdout,
+        contains('Install Codex CLI or set agents.codex.executable in config.'),
+      );
+    });
+
+    test('disabled missing executable does not fail', () async {
+      await writeAgentConfig(
+        tempDir,
+        disabledAgentConfig({
+          'codex': {'enabled': false, 'executable': 'missing-codex'},
+        }),
+      );
+
+      final result = await runCli(['doctor'], environment);
+
+      expect(result.exitCode, equals(0));
+      expect(result.stdout, contains('codex: disabled, disabled'));
+      expect(result.stdout, isNot(contains('agents.codex.executable')));
+    });
+
+    test('--json returns documented diagnostic shape', () async {
+      await writeAgentConfig(tempDir, disabledAgentConfig());
+
+      final result = await runCli(['doctor', '--json'], environment);
+
+      expect(result.exitCode, equals(0));
+      final payload =
+          jsonDecode(result.stdout as String) as Map<String, dynamic>;
+      expect(payload['config'], containsPair('exists', true));
+      expect(payload['config'], containsPair('valid', true));
+      expect(payload['agents'], isA<List<dynamic>>());
+      expect(payload['mcp'], containsPair('checked', false));
+      expect(payload['summary'], containsPair('fail', 0));
+    });
+
+    test('invalid config fails without rewriting file', () async {
+      final configFile = File(p.join(appDataDirFor(tempDir), 'config.json'));
+      await configFile.parent.create(recursive: true);
+      await configFile.writeAsString('{"agents": {"unknown": {}}}\n');
+
+      final result = await runCli(['doctor'], environment);
+
+      expect(result.exitCode, equals(1));
+      expect(result.stdout, contains('Config: invalid (${configFile.path})'));
+      expect(
+        await configFile.readAsString(),
+        equals('{"agents": {"unknown": {}}}\n'),
+      );
+    });
+
+    test('checks every known enabled agent', () async {
+      final agents = <String, Map<String, Object?>>{};
+      for (final name in AgentCatalog.names) {
+        final fake = await writeVersionedFakeExecutable(
+          tempDir,
+          'fake-$name',
+          '$name version',
+        );
+        agents[name] = {'enabled': true, 'executable': fake.path};
+      }
+      await writeAgentConfig(tempDir, agents);
+
+      final result = await runCli(['doctor'], environment);
+
+      expect(result.exitCode, equals(0));
+      for (final name in AgentCatalog.names) {
+        expect(result.stdout, contains('$name: enabled, found'));
+        expect(result.stdout, contains('version: $name version'));
+      }
+    });
+  });
 }
 
 Future<ProcessResult> runCli(
@@ -444,6 +570,41 @@ Future<File> writeFakeExecutable(Directory tempDir, String name) async {
     await Process.run('chmod', ['+x', file.path]);
   }
   return file;
+}
+
+Future<File> writeVersionedFakeExecutable(
+  Directory tempDir,
+  String name,
+  String version,
+) async {
+  final executableName = Platform.isWindows ? '$name.cmd' : name;
+  final file = File(p.join(tempDir.path, executableName));
+  final body = Platform.isWindows
+      ? '@echo off\r\nif "%1"=="--version" echo $version\r\n'
+      : '#!/bin/sh\nif [ "\$1" = "--version" ]; then echo "$version"; fi\n';
+  await file.writeAsString(body);
+  if (!Platform.isWindows) {
+    await Process.run('chmod', ['+x', file.path]);
+  }
+  return file;
+}
+
+Future<void> writeAgentConfig(
+  Directory tempDir,
+  Map<String, Map<String, Object?>> agents,
+) async {
+  final file = File(p.join(appDataDirFor(tempDir), 'config.json'));
+  await file.parent.create(recursive: true);
+  await file.writeAsString('${jsonEncode({'agents': agents})}\n');
+}
+
+Map<String, Map<String, Object?>> disabledAgentConfig([
+  Map<String, Map<String, Object?>> overrides = const {},
+]) {
+  return {
+    for (final name in AgentCatalog.names)
+      name: {'enabled': false, ...?overrides[name]},
+  };
 }
 
 Future<void> writeCodexConfig(Directory tempDir, String fakeCodexPath) async {

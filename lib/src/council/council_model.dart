@@ -1,3 +1,4 @@
+import '../agents/known_agents.dart';
 import '../models/models.dart';
 import '../utils/participant_parser.dart';
 
@@ -43,13 +44,7 @@ class CouncilMember {
   /// Parses a member from CLI format: `agent:model`.
   factory CouncilMember.parse(
     String input, {
-    Iterable<String> allowedAgents = const [
-      'gemini',
-      'codex',
-      'claude',
-      'cursor',
-      'antigravity',
-    ],
+    Iterable<String> allowedAgents = KnownAgents.all,
   }) {
     final parsed = ParticipantParser.parse(
       input: input,

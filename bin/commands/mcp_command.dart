@@ -11,7 +11,7 @@ const String _appVersion = String.fromEnvironment(
   'APP_VERSION',
   defaultValue: 'unknown',
 );
-const _knownAgents = ['claude', 'gemini', 'codex', 'cursor', 'antigravity'];
+final _knownAgents = AgentCatalog.names;
 const _agentToolDescription =
     'Ask one enabled CAG agent to inspect, reason about, or answer a task. '
     'Use CAG only when the user asks for CAG or a specific CAG agent/model, '
@@ -371,97 +371,20 @@ class McpCommand extends Command<void> {
 Future<McpServer> _buildServer() async {
   final configService = ConfigService();
   final config = await configService.loadOrCreate();
-
-  final claudeConfig = configService.applyOverrides(
-    ClaudeAgent.defaultConfig,
-    configService.overridesFor(config, 'claude'),
-  );
-  final geminiConfig = configService.applyOverrides(
-    GeminiAgent.defaultConfig,
-    configService.overridesFor(config, 'gemini'),
-  );
-  final codexConfig = configService.applyOverrides(
-    CodexAgent.defaultConfig,
-    configService.overridesFor(config, 'codex'),
-  );
-  final cursorConfig = configService.applyOverrides(
-    CursorAgent.defaultConfig,
-    configService.overridesFor(config, 'cursor'),
-  );
-  final antigravityConfig = configService.applyOverrides(
-    AntigravityAgent.defaultConfig,
-    configService.overridesFor(config, 'antigravity'),
-  );
-
-  final enabledAgents = <String>[
-    if (claudeConfig.enabled) 'claude',
-    if (geminiConfig.enabled) 'gemini',
-    if (codexConfig.enabled) 'codex',
-    if (cursorConfig.enabled) 'cursor',
-    if (antigravityConfig.enabled) 'antigravity',
-  ];
-
-  final agentDefaults = <String, String>{
-    if (claudeConfig.enabled)
-      'claude':
-          claudeConfig.defaultModel ??
-          (AgentModelRegistry.defaultModelName('claude') ?? 'sonnet'),
-    if (geminiConfig.enabled)
-      'gemini':
-          geminiConfig.defaultModel ??
-          (AgentModelRegistry.defaultModelName('gemini') ??
-              'gemini-3-flash-preview'),
-    if (codexConfig.enabled)
-      'codex':
-          codexConfig.defaultModel ??
-          (AgentModelRegistry.defaultModelName('codex') ?? 'gpt-5.5'),
-    if (cursorConfig.enabled)
-      'cursor':
-          cursorConfig.defaultModel ??
-          (AgentModelRegistry.defaultModelName('cursor') ??
-              'composer-2.5-fast'),
-    if (antigravityConfig.enabled)
-      'antigravity':
-          antigravityConfig.defaultModel ??
-          (AgentModelRegistry.defaultModelName('antigravity') ?? 'configured'),
+  final agentConfigs = AgentCatalog.resolveConfigs(configService, config);
+  final enabledAgents = AgentCatalog.enabledNames(agentConfigs);
+  final agentDefaults = {
+    for (final definition in AgentCatalog.definitions)
+      if (agentConfigs[definition.name]?.enabled == true)
+        definition.name: definition.defaultModel(
+          agentConfigs[definition.name]!,
+        ),
   };
+  final agents = AgentCatalog.createEnabledAgents(agentConfigs);
 
-  final agents = <String, BaseAgent>{
-    if (claudeConfig.enabled) 'claude': ClaudeAgent(config: claudeConfig),
-    if (geminiConfig.enabled) 'gemini': GeminiAgent(config: geminiConfig),
-    if (codexConfig.enabled) 'codex': CodexAgent(config: codexConfig),
-    if (cursorConfig.enabled) 'cursor': CursorAgent(config: cursorConfig),
-    if (antigravityConfig.enabled)
-      'antigravity': AntigravityAgent(config: antigravityConfig),
-  };
-
-  final compareRunner = CompareRunner(
-    agentConfigs: {
-      'claude': claudeConfig,
-      'gemini': geminiConfig,
-      'codex': codexConfig,
-      'cursor': cursorConfig,
-      'antigravity': antigravityConfig,
-    },
-  );
-  final consensusRunner = ConsensusRunner(
-    agentConfigs: {
-      'claude': claudeConfig,
-      'gemini': geminiConfig,
-      'codex': codexConfig,
-      'cursor': cursorConfig,
-      'antigravity': antigravityConfig,
-    },
-  );
-  final councilRunner = CouncilRunner(
-    agentConfigs: {
-      'claude': claudeConfig,
-      'gemini': geminiConfig,
-      'codex': codexConfig,
-      'cursor': cursorConfig,
-      'antigravity': antigravityConfig,
-    },
-  );
+  final compareRunner = CompareRunner(agentConfigs: agentConfigs);
+  final consensusRunner = ConsensusRunner(agentConfigs: agentConfigs);
+  final councilRunner = CouncilRunner(agentConfigs: agentConfigs);
 
   final modelsSection = _buildModelsSection(enabledAgents);
   final server = McpServer(

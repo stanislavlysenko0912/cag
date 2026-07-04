@@ -4,6 +4,7 @@ import 'package:args/command_runner.dart';
 import 'package:cag/cag.dart';
 import 'package:cag/src/config/agent_config_override.dart';
 import 'package:cag/src/config/app_config.dart';
+import 'package:cag/src/utils/agent_executable_resolver.dart';
 import 'package:cag/src/utils/app_paths.dart';
 import 'package:cag/src/utils/executable_checker.dart';
 
@@ -20,19 +21,14 @@ class DetectCommand extends Command<void> {
     final configService = ConfigService();
     final config = await configService.loadOrCreate();
 
-    final agents = <String, AgentConfig>{
-      'claude': ClaudeAgent.defaultConfig,
-      'gemini': GeminiAgent.defaultConfig,
-      'codex': CodexAgent.defaultConfig,
-      'cursor': CursorAgent.defaultConfig,
-      'antigravity': AntigravityAgent.defaultConfig,
-    };
-
     final detection = <String, bool>{};
-    for (final entry in agents.entries) {
-      final override = config.agents[entry.key];
-      final executable = _resolveExecutable(entry.value, override);
-      detection[entry.key] = isExecutableAvailable(executable);
+    for (final definition in AgentCatalog.definitions) {
+      final override = config.agents[definition.name];
+      final executable = resolveAgentExecutable(
+        definition.defaultConfig,
+        override,
+      );
+      detection[definition.name] = isExecutableAvailable(executable);
     }
 
     final updated = _applyDetection(config, detection);
@@ -69,20 +65,6 @@ class DetectCommand extends Command<void> {
       );
     }
     return AppConfig(agents: agents);
-  }
-
-  String _resolveExecutable(AgentConfig base, AgentConfigOverride? override) {
-    final shellPrefix = override?.shellCommandPrefix ?? base.shellCommandPrefix;
-    if (shellPrefix != null && shellPrefix.trim().isNotEmpty) {
-      return override?.shellExecutable ??
-          base.shellExecutable ??
-          _defaultShellExecutable();
-    }
-    return override?.executable ?? base.executable;
-  }
-
-  String _defaultShellExecutable() {
-    return Platform.isWindows ? 'cmd' : '/bin/sh';
   }
 
   void _printSummary(Map<String, bool> detection) {
