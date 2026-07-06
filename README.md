@@ -253,6 +253,7 @@ Available MCP tools:
 - `cag_consensus` – run consensus across multiple agents
 - `cag_council` – run multi-stage council (answers, reviews, chairman)
 - `cag_models` – list supported models
+- `cag_task` – manage background tasks started with `cag_agent` `mode: background`
 
 > [!NOTE]
 > All tools use about ~3k context tokens. If you very care about context tokens, you can use `cag prime` with hooks, or directly tell agent to run prime command before start working (if your agent don't support hooks) to get the usage guide, instead of mcp tools.

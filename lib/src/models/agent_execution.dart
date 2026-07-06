@@ -101,6 +101,8 @@ class AgentExecutionResult {
     required this.stderr,
     required this.durationMs,
     this.failure,
+    this.stdoutPath,
+    this.stderrPath,
   });
 
   /// Process exit code when available.
@@ -118,16 +120,46 @@ class AgentExecutionResult {
   /// Structured failure when execution did not complete cleanly.
   final AgentFailure? failure;
 
+  /// Path to retained stdout capture, when available.
+  final String? stdoutPath;
+
+  /// Path to retained stderr capture, when available.
+  final String? stderrPath;
+
   /// Whether the process finished cleanly.
   bool get success => failure == null && exitCode == 0;
+
+  /// Returns a copy with selected fields replaced.
+  AgentExecutionResult copyWith({
+    int? exitCode,
+    String? stdout,
+    String? stderr,
+    int? durationMs,
+    AgentFailure? failure,
+    String? stdoutPath,
+    String? stderrPath,
+  }) {
+    return AgentExecutionResult(
+      exitCode: exitCode ?? this.exitCode,
+      stdout: stdout ?? this.stdout,
+      stderr: stderr ?? this.stderr,
+      durationMs: durationMs ?? this.durationMs,
+      failure: failure ?? this.failure,
+      stdoutPath: stdoutPath ?? this.stdoutPath,
+      stderrPath: stderrPath ?? this.stderrPath,
+    );
+  }
 }
 
 /// Exception thrown when agent execution fails.
 class AgentExecutionException implements Exception {
-  AgentExecutionException(this.failure);
+  AgentExecutionException(this.failure, {this.result});
 
   /// Structured failure payload.
   final AgentFailure failure;
+
+  /// Raw execution result when the process started.
+  final AgentExecutionResult? result;
 
   @override
   String toString() => 'AgentExecutionException: ${failure.toString()}';

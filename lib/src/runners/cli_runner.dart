@@ -6,6 +6,22 @@ import '../models/models.dart';
 /// Result of running a CLI command.
 typedef CLIResult = AgentExecutionResult;
 
+/// Callback invoked after a process starts.
+typedef ProcessStarted = void Function(RunningProcess process);
+
+/// Handle for a running CLI process.
+class RunningProcess {
+  RunningProcess(this._process);
+
+  final Process _process;
+
+  /// Process identifier.
+  int get pid => _process.pid;
+
+  /// Stops the process, escalating after a short grace period.
+  Future<int?> kill() => CLIRunner.killProcess(_process);
+}
+
 /// Runs external CLI commands.
 class CLIRunner {
   /// Execute a CLI command and return the result.
@@ -16,6 +32,8 @@ class CLIRunner {
     Duration? hardTimeout,
     Duration? idleTimeout,
     String? workingDirectory,
+    ProcessStarted? onProcessStarted,
+    bool keepCapture = false,
   }) async {
     final resolvedExecutable = _resolveExecutable(executable);
     try {
@@ -26,6 +44,8 @@ class CLIRunner {
         hardTimeout: hardTimeout,
         idleTimeout: idleTimeout,
         workingDirectory: workingDirectory,
+        onProcessStarted: onProcessStarted,
+        keepCapture: keepCapture,
       );
     } on ProcessException catch (error) {
       return CLIResult(
@@ -55,6 +75,8 @@ class CLIRunner {
     Duration? hardTimeout,
     Duration? idleTimeout,
     String? workingDirectory,
+    ProcessStarted? onProcessStarted,
+    bool keepCapture = false,
   }) {
     final shell = _ShellCommand.forExecutable(shellExecutable);
     final resolvedShellArgs = shellArgs.isNotEmpty ? shellArgs : shell.args;
@@ -67,6 +89,8 @@ class CLIRunner {
       hardTimeout: hardTimeout,
       idleTimeout: idleTimeout,
       workingDirectory: workingDirectory,
+      onProcessStarted: onProcessStarted,
+      keepCapture: keepCapture,
     );
   }
 
@@ -77,20 +101,34 @@ class CLIRunner {
     Duration? hardTimeout,
     Duration? idleTimeout,
     String? workingDirectory,
+    ProcessStarted? onProcessStarted,
+    bool keepCapture = false,
   }) async {
     final capture = await _CaptureDirectory.create();
+    var deleteCapture = true;
     try {
-      return await _runProcessWithCapture(
+      final result = await _runProcessWithCapture(
         executable: executable,
         args: args,
         env: env,
         hardTimeout: hardTimeout,
         idleTimeout: idleTimeout,
         workingDirectory: workingDirectory,
+        onProcessStarted: onProcessStarted,
         capture: capture,
       );
+      if (keepCapture) {
+        deleteCapture = false;
+        return result.copyWith(
+          stdoutPath: capture.stdoutFile.path,
+          stderrPath: capture.stderrFile.path,
+        );
+      }
+      return result;
     } finally {
-      await capture.delete();
+      if (deleteCapture) {
+        await capture.delete();
+      }
     }
   }
 
@@ -101,6 +139,7 @@ class CLIRunner {
     Duration? hardTimeout,
     Duration? idleTimeout,
     String? workingDirectory,
+    ProcessStarted? onProcessStarted,
     required _CaptureDirectory capture,
   }) async {
     final stopwatch = Stopwatch()..start();
@@ -111,6 +150,7 @@ class CLIRunner {
       workingDirectory: workingDirectory,
       runInShell: false,
     );
+    onProcessStarted?.call(RunningProcess(process));
     final outputCapture = capture.writeProcessOutput(process);
     await process.stdin.close();
 
@@ -137,9 +177,7 @@ class CLIRunner {
     ]);
     monitor.cancel();
 
-    final exitCode = outcome is int
-        ? outcome
-        : await _killAndCollectExitCode(process);
+    final exitCode = outcome is int ? outcome : await killProcess(process);
     await outputCapture;
     final output = await capture.readOutput();
     stopwatch.stop();
@@ -188,7 +226,8 @@ class CLIRunner {
     );
   }
 
-  Future<int?> _killAndCollectExitCode(Process process) async {
+  /// Stops a process, escalating to SIGKILL after a short grace period.
+  static Future<int?> killProcess(Process process) async {
     process.kill();
     final exited = await Future.any<bool>([
       process.exitCode.then((_) => true),

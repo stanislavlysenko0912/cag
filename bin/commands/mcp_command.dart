@@ -6,6 +6,7 @@ import 'package:cag/cag.dart';
 import 'package:cag/src/doctor/doctor.dart';
 import 'package:mcp_dart/mcp_dart.dart';
 
+import 'mcp_agent_tasks.dart';
 import 'output_formatter.dart';
 
 const String _appVersion = String.fromEnvironment(
@@ -58,6 +59,19 @@ ToolInputSchema _buildAgentInputSchema(List<String> enabledAgents) {
         description:
             'Optional session_id returned by cag_agent for the same agent. Do not pass compare_id, consensus_id, or council_id here.',
       ),
+      'cwd': JsonSchema.string(
+        description:
+            'Optional working directory for the agent process. Omit to use the MCP server working directory.',
+      ),
+      'name': JsonSchema.string(
+        description:
+            'Optional human-readable label for task-capable clients and cag://tasks resources.',
+      ),
+      'mode': JsonSchema.string(
+        description:
+            'sync waits for the agent result. background returns a task handle immediately; check progress and fetch the result with cag_task. task_id is not a session_id.',
+        enumValues: ['sync', 'background'],
+      ),
       'verbose': JsonSchema.boolean(
         description:
             'Optional expanded output. Avoid unless raw metadata or a full structured payload is specifically needed.',
@@ -72,6 +86,32 @@ final ToolOutputSchema _agentOutputSchema = JsonSchema.object(
   properties: {
     'result': JsonSchema.string(description: 'CLI-like output string.'),
     'session_id': JsonSchema.string(description: 'Session ID, if available.'),
+    'task_id': JsonSchema.string(
+      description: 'Background task ID, only when mode=background.',
+    ),
+    'status': JsonSchema.string(
+      description: 'Background task status, only when mode=background.',
+    ),
+    'agent': JsonSchema.string(
+      description: 'Background task agent, only when mode=background.',
+    ),
+    'model': JsonSchema.string(
+      description: 'Background task model, only when mode=background.',
+    ),
+    'cwd': JsonSchema.string(
+      description: 'Background task working directory, only when set.',
+    ),
+    'name': JsonSchema.string(
+      description: 'Background task label, only when set.',
+    ),
+    'started_at': JsonSchema.string(
+      description:
+          'Background task start timestamp, only when mode=background.',
+    ),
+    'message': JsonSchema.string(
+      description:
+          'Latest background task status message, only when mode=background.',
+    ),
     'verbose_data': JsonSchema.object(
       description:
           'Expanded structured payload returned only when verbose=true.',
@@ -255,6 +295,47 @@ final ToolOutputSchema _modelsOutputSchema = JsonSchema.object(
   additionalProperties: false,
 );
 
+final ToolInputSchema _taskInputSchema = JsonSchema.object(
+  properties: {
+    'action': JsonSchema.string(
+      description: 'Task action.',
+      enumValues: ['list', 'get', 'result', 'wait', 'wait_any', 'cancel'],
+    ),
+    'task_id': JsonSchema.string(
+      description: 'Task ID for get, result, wait, or cancel.',
+    ),
+    'task_ids': JsonSchema.array(
+      description: 'Task IDs for wait_any.',
+      items: JsonSchema.string(),
+    ),
+    'timeout_ms': JsonSchema.integer(
+      description:
+          'Timeout for wait and wait_any. Defaults to 30000 and is clamped to 1000..120000.',
+    ),
+    'include_log': JsonSchema.boolean(
+      description:
+          'Include stdout/stderr logs for get, result, wait, and wait_any when one task is returned. Defaults to false.',
+    ),
+  },
+  required: ['action'],
+  additionalProperties: false,
+);
+
+final ToolOutputSchema _taskOutputSchema = JsonSchema.object(
+  properties: {
+    'result': JsonSchema.string(description: 'Compact task action summary.'),
+    'task': JsonSchema.object(description: 'Single task payload.'),
+    'tasks': JsonSchema.array(
+      description: 'Task list payload.',
+      items: JsonSchema.object(),
+    ),
+    'log': JsonSchema.object(description: 'Opt-in stdout/stderr log payload.'),
+    'timed_out': JsonSchema.boolean(description: 'Whether a wait timed out.'),
+  },
+  required: ['result'],
+  additionalProperties: false,
+);
+
 // ignore: unused_element
 final ToolOutputSchema _agentsStatusOutputSchema = JsonSchema.object(
   properties: {
@@ -430,81 +511,97 @@ Future<McpServer> _buildServer() async {
     ),
   );
 
-  server.registerTool(
+  final taskManager = CagAgentTaskManager(
+    resolveRequest: (args) => _buildAgentRequest(
+      args,
+      enabledAgents: enabledAgents,
+      agentDefaults: agentDefaults,
+      agents: agents,
+      agentConfigs: agentConfigs,
+    ),
+  );
+
+  server.experimental.onListTasks((extra) {
+    return taskManager.listTasks();
+  });
+  server.experimental.onGetTask((taskId, extra) {
+    return taskManager.getTask(taskId);
+  });
+  server.experimental.onTaskResult((taskId, extra) {
+    return taskManager.getTaskResult(taskId);
+  });
+  server.experimental.onCancelTask((taskId, extra) {
+    return taskManager.cancelTask(taskId);
+  });
+
+  server.registerResource(
+    'CAG tasks',
+    'cag://tasks',
+    (
+      description: 'Compact list of CAG agent tasks.',
+      mimeType: 'application/json',
+    ),
+    (uri, extra) async => _jsonResource(uri, await taskManager.readTasksJson()),
+  );
+  server.registerResourceTemplate(
+    'CAG task detail',
+    ResourceTemplateRegistration(
+      'cag://tasks/{id}',
+      listCallback: (extra) => taskManager.listResources(),
+    ),
+    (
+      description: 'CAG task metadata and status.',
+      mimeType: 'application/json',
+    ),
+    (uri, variables, extra) async {
+      final taskId = variables['id'] as String;
+      return _jsonResource(uri, await taskManager.readTaskJson(taskId));
+    },
+  );
+  server.registerResourceTemplate(
+    'CAG task log',
+    ResourceTemplateRegistration('cag://tasks/{id}/log', listCallback: null),
+    (
+      description: 'Full stdout and stderr for a CAG task.',
+      mimeType: 'application/json',
+    ),
+    (uri, variables, extra) async {
+      final taskId = variables['id'] as String;
+      return _jsonResource(uri, await taskManager.readTaskLog(taskId));
+    },
+  );
+  server.registerResourceTemplate(
+    'CAG task result',
+    ResourceTemplateRegistration('cag://tasks/{id}/result', listCallback: null),
+    (
+      description: 'Compact result or failure for a CAG task.',
+      mimeType: 'application/json',
+    ),
+    (uri, variables, extra) async {
+      final taskId = variables['id'] as String;
+      return _jsonResource(uri, await taskManager.readTaskResultJson(taskId));
+    },
+  );
+
+  server.experimental.registerToolTask(
     'cag_agent',
     description: _agentToolDescription,
     inputSchema: _buildAgentInputSchema(enabledAgents),
     outputSchema: _agentOutputSchema,
-    callback: (args, extra) async {
-      final errors = <String>[];
-      final agentName = _readStringArg(
-        args,
-        'agent',
-        errors,
-        required: true,
-      )?.toLowerCase();
-      final prompt = _readStringArg(args, 'prompt', errors, required: true);
-      final modelInput = _readStringArg(args, 'model', errors);
-      final systemPrompt = _readStringArg(args, 'system', errors);
-      final resume = _readStringArg(args, 'resume', errors);
-      final verbose = args['verbose'] == true;
+    execution: const ToolExecution(taskSupport: 'optional'),
+    handler: CagAgentToolTaskHandler(taskManager),
+  );
 
-      if (errors.isNotEmpty) {
-        return _errorResult(errors.join(' '));
-      }
-
-      if (agentName == null) {
-        return _errorResult(_agentRequiredMessage(enabledAgents));
-      }
-
-      if (!_knownAgents.contains(agentName)) {
-        return _errorResult(_agentUnknownMessage(agentName, enabledAgents));
-      }
-
-      if (!enabledAgents.contains(agentName)) {
-        return _errorResult(_agentDisabledMessage(agentName, enabledAgents));
-      }
-
-      final agent = agents[agentName];
-      if (agent == null) {
-        return _errorResult(_agentUnknownMessage(agentName, enabledAgents));
-      }
-
-      final model = modelInput ?? agentDefaults[agentName];
-      if (model == null || model.isEmpty) {
-        return _errorResult('Model is required for agent "$agentName".');
-      }
-
-      final resolvedModel = _resolveModel(
-        agentName,
-        model,
-        agentConfigs,
-        errors,
-      );
-      if (errors.isNotEmpty) {
-        return _errorResult(errors.join(' '));
-      }
-
-      try {
-        final response = await agent.execute(
-          prompt: prompt!,
-          model: resolvedModel,
-          systemPrompt: systemPrompt,
-          resume: resume,
-        );
-
-        final output = {
-          'result': response.content,
-          if (response.sessionId != null) 'session_id': response.sessionId,
-          if (verbose) 'verbose_data': _minimalResponse(response),
-        };
-        return CallToolResult.fromStructuredContent(output);
-      } on AgentExecutionException catch (e) {
-        return _errorResult(
-          'Execution error [${e.failure.summary}]: ${e.failure.message}',
-        );
-      }
-    },
+  server.registerTool(
+    'cag_task',
+    description:
+        'Manage background tasks started with cag_agent mode=background. '
+        'Use cag_task to list, inspect, wait for, cancel, or fetch those task results. '
+        'Logs are opt-in with include_log=true. task_id is not a session_id. '
+        'Prefer action=wait over tight polling loops.',
+    inputSchema: _taskInputSchema,
+    outputSchema: _taskOutputSchema,
+    callback: (args, extra) => taskManager.handleTaskTool(args),
   );
 
   server.registerTool(
@@ -941,6 +1038,98 @@ Future<McpServer> _buildServer() async {
 
 CallToolResult _errorResult(String message) {
   return CallToolResult(content: [TextContent(text: message)], isError: true);
+}
+
+ReadResourceResult _jsonResource(Uri uri, String text) {
+  return ReadResourceResult(
+    contents: [
+      TextResourceContents(
+        uri: uri.toString(),
+        mimeType: 'application/json',
+        text: text,
+      ),
+    ],
+  );
+}
+
+CagAgentRequest _buildAgentRequest(
+  Map<String, dynamic>? args, {
+  required List<String> enabledAgents,
+  required Map<String, String> agentDefaults,
+  required Map<String, BaseAgent> agents,
+  required Map<String, AgentConfig> agentConfigs,
+}) {
+  final input = args ?? <String, dynamic>{};
+  final errors = <String>[];
+  final agentName = _readStringArg(
+    input,
+    'agent',
+    errors,
+    required: true,
+  )?.toLowerCase();
+  final prompt = _readStringArg(input, 'prompt', errors, required: true);
+  final modelInput = _readStringArg(input, 'model', errors);
+  final systemPrompt = _readStringArg(input, 'system', errors);
+  final resume = _readStringArg(input, 'resume', errors);
+  final cwd = _readStringArg(input, 'cwd', errors);
+  final name = _readStringArg(input, 'name', errors);
+  final modeInput = _readStringArg(input, 'mode', errors) ?? 'sync';
+  final verbose = input['verbose'] == true;
+
+  if (errors.isNotEmpty) {
+    _throwInvalidParams(errors.join(' '));
+  }
+
+  if (agentName == null) {
+    _throwInvalidParams(_agentRequiredMessage(enabledAgents));
+  }
+  if (!_knownAgents.contains(agentName)) {
+    _throwInvalidParams(_agentUnknownMessage(agentName, enabledAgents));
+  }
+  if (!enabledAgents.contains(agentName)) {
+    _throwInvalidParams(_agentDisabledMessage(agentName, enabledAgents));
+  }
+
+  final agent = agents[agentName];
+  if (agent == null) {
+    _throwInvalidParams(_agentUnknownMessage(agentName, enabledAgents));
+  }
+
+  final model = modelInput ?? agentDefaults[agentName];
+  if (model == null || model.isEmpty) {
+    _throwInvalidParams('Model is required for agent "$agentName".');
+  }
+
+  final mode = switch (modeInput) {
+    'sync' => CagAgentMode.sync,
+    'background' => CagAgentMode.background,
+    _ => null,
+  };
+  if (mode == null) {
+    _throwInvalidParams('mode must be "sync" or "background".');
+  }
+
+  final resolvedModel = _resolveModel(agentName, model, agentConfigs, errors);
+  if (errors.isNotEmpty) {
+    _throwInvalidParams(errors.join(' '));
+  }
+
+  return CagAgentRequest(
+    agentName: agentName,
+    agent: agent,
+    prompt: prompt!,
+    model: resolvedModel,
+    mode: mode,
+    systemPrompt: systemPrompt,
+    resume: resume,
+    cwd: cwd,
+    name: name,
+    verbose: verbose,
+  );
+}
+
+Never _throwInvalidParams(String message) {
+  throw McpError(ErrorCode.invalidParams.value, message);
 }
 
 Map<String, dynamic> _minimalResponse(ParsedResponse response) {

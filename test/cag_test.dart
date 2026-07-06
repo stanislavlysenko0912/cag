@@ -1,9 +1,13 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:cag/cag.dart';
 import 'package:cag/src/utils/app_paths.dart';
+import 'package:mcp_dart/mcp_dart.dart';
 import 'package:test/test.dart';
+
+import '../bin/commands/mcp_agent_tasks.dart';
 
 void main() {
   group('GeminiParser', () {
@@ -1448,6 +1452,341 @@ void main() {
       expect(path, endsWith('${Platform.pathSeparator}council.jsonl'));
     });
   });
+
+  group('CagAgentTaskManager', () {
+    late Directory tempDir;
+    late CagAgentTaskManager manager;
+
+    setUp(() async {
+      tempDir = await Directory.systemTemp.createTemp('cag_task_test_');
+      final fakeCodex = await _writeTaskFakeCodex(tempDir);
+      final agent = CodexAgent(
+        config: AgentConfig(
+          name: 'codex',
+          executable: Platform.resolvedExecutable,
+          parser: 'codex_jsonl',
+          defaultModel: 'mini',
+          additionalArgs: [fakeCodex.path],
+          hardTimeoutSeconds: 30,
+          idleTimeoutSeconds: 30,
+        ),
+      );
+
+      manager = CagAgentTaskManager(
+        resolveRequest: (args) {
+          final prompt = args?['prompt'] as String? ?? 'ok';
+          return CagAgentRequest(
+            agentName: 'codex',
+            agent: agent,
+            prompt: prompt,
+            model: 'mini',
+            mode: args?['mode'] == 'background'
+                ? CagAgentMode.background
+                : CagAgentMode.sync,
+            cwd: args?['cwd'] as String?,
+            name: args?['name'] as String?,
+            verbose: args?['verbose'] == true,
+          );
+        },
+        perAgentConcurrencyLimit: 3,
+      );
+    });
+
+    tearDown(() async {
+      await manager.dispose();
+      await tempDir.delete(recursive: true);
+    });
+
+    test('background mode returns a handle immediately', () async {
+      final created = await manager.createTask({
+        'prompt': 'slow background',
+        'mode': 'background',
+        'name': 'slow task',
+      }, null);
+
+      final launcherResult = await manager.getTaskResult(created.task.taskId);
+      final realTaskId = launcherResult.structuredContent?['task_id'] as String;
+      final realTask = await manager.getTask(realTaskId);
+
+      expect(created.task.status, equals(TaskStatus.completed));
+      expect(launcherResult.isError, isFalse);
+      expect(launcherResult.structuredContent?['status'], equals('working'));
+      expect(launcherResult.structuredContent?['name'], equals('slow task'));
+      expect(realTask.status, equals(TaskStatus.working));
+
+      await manager.cancelTask(realTaskId);
+    });
+
+    test('cag_task waits for any task and retrieves each result', () async {
+      final taskIds = await Future.wait([
+        _startBackgroundTask(manager, 'first'),
+        _startBackgroundTask(manager, 'second'),
+        _startBackgroundTask(manager, 'third'),
+      ]);
+
+      final waitAny = await manager.handleTaskTool({
+        'action': 'wait_any',
+        'task_ids': taskIds,
+        'timeout_ms': 5000,
+      });
+
+      expect(waitAny.isError, isFalse);
+      expect(waitAny.structuredContent?['task'], isNotNull);
+
+      for (final taskId in taskIds) {
+        await _waitForTaskStatus(manager, taskId, TaskStatus.completed);
+        final result = await manager.handleTaskTool({
+          'action': 'result',
+          'task_id': taskId,
+        });
+
+        expect(result.isError, isFalse);
+        expect(result.structuredContent, isNot(contains('log')));
+        expect(
+          result.structuredContent?['task'],
+          containsPair('result', containsPair('session_id', 'fake-thread')),
+        );
+      }
+    });
+
+    test(
+      'background mode rejects a fourth running task for the same agent',
+      () async {
+        await Future.wait([
+          _startBackgroundTask(manager, 'slow one'),
+          _startBackgroundTask(manager, 'slow two'),
+          _startBackgroundTask(manager, 'slow three'),
+        ]);
+
+        expect(
+          () => manager.createTask({
+            'prompt': 'slow four',
+            'mode': 'background',
+          }, null),
+          throwsA(isA<McpError>()),
+        );
+      },
+    );
+
+    test('cag_task wait timeout and cancel return status payloads', () async {
+      final taskId = await _startBackgroundTask(manager, 'slow wait');
+
+      final wait = await manager.handleTaskTool({
+        'action': 'wait',
+        'task_id': taskId,
+        'timeout_ms': 1,
+      });
+      expect(wait.isError, isFalse);
+      expect(wait.structuredContent?['timed_out'], isTrue);
+      expect(
+        wait.structuredContent?['task'],
+        containsPair('status', 'working'),
+      );
+
+      final cancel = await manager.handleTaskTool({
+        'action': 'cancel',
+        'task_id': taskId,
+      });
+      expect(cancel.isError, isFalse);
+      expect(
+        cancel.structuredContent?['task'],
+        containsPair('status', 'cancelled'),
+      );
+    });
+
+    test('include_log is opt-in for cag_task result', () async {
+      final taskId = await _startBackgroundTask(manager, 'log please');
+      await _waitForTaskStatus(manager, taskId, TaskStatus.completed);
+
+      final compact = await manager.handleTaskTool({
+        'action': 'result',
+        'task_id': taskId,
+      });
+      expect(compact.structuredContent, isNot(contains('log')));
+
+      final withLog = await manager.handleTaskTool({
+        'action': 'result',
+        'task_id': taskId,
+        'include_log': true,
+      });
+      expect(
+        withLog.structuredContent,
+        containsPair('log', containsPair('stdout', contains('agent_message'))),
+      );
+    });
+
+    test('launcher tasks stay hidden from lists and resources', () async {
+      final created = await manager.createTask({
+        'prompt': 'slow hidden launcher',
+        'mode': 'background',
+      }, null);
+      final launcherId = created.task.taskId;
+      final launcherResult = await manager.getTaskResult(launcherId);
+      final realTaskId = launcherResult.structuredContent?['task_id'] as String;
+
+      final taskList = await manager.listTasks();
+      expect(taskList.tasks.map((task) => task.taskId), contains(realTaskId));
+      expect(
+        taskList.tasks.map((task) => task.taskId),
+        isNot(contains(launcherId)),
+      );
+
+      final resources = await manager.listResources();
+      final resourceUris = resources.resources.map((resource) => resource.uri);
+      expect(resourceUris, contains('cag://tasks/$realTaskId'));
+      expect(resourceUris, isNot(contains('cag://tasks/$launcherId')));
+
+      final toolList = await manager.handleTaskTool({'action': 'list'});
+      final tasks = toolList.structuredContent?['tasks'] as List;
+      expect(tasks.map((task) => task['task_id']), contains(realTaskId));
+      expect(tasks.map((task) => task['task_id']), isNot(contains(launcherId)));
+
+      await manager.cancelTask(realTaskId);
+    });
+
+    test(
+      'cancel issued before process start kills the process on start',
+      () async {
+        await manager.dispose();
+        final fakeProcess = await _writeLongRunningDartProcess(tempDir);
+        final agent = _DelayedStartAgent(fakeProcess.path);
+        manager = CagAgentTaskManager(
+          resolveRequest: (args) {
+            return CagAgentRequest(
+              agentName: 'codex',
+              agent: agent,
+              prompt: 'delayed',
+              model: 'mini',
+              mode: CagAgentMode.sync,
+              verbose: false,
+            );
+          },
+        );
+
+        final created = await manager.createTask({'prompt': 'delayed'}, null);
+        await manager.cancelTask(created.task.taskId);
+        await agent.started.future;
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+
+        expect(Process.killPid(agent.pid!, ProcessSignal.sigkill), isFalse);
+        final task = await manager.getTask(created.task.taskId);
+        expect(task.status, equals(TaskStatus.cancelled));
+      },
+    );
+
+    test(
+      'runs concurrent tasks with compact results and opt-in logs',
+      () async {
+        final created = await Future.wait([
+          manager.createTask({'prompt': 'first'}, null),
+          manager.createTask({'prompt': 'second'}, null),
+          manager.createTask({'prompt': 'third'}, null),
+        ]);
+
+        for (final task in created) {
+          await _waitForTaskStatus(
+            manager,
+            task.task.taskId,
+            TaskStatus.completed,
+          );
+          final result = await manager.getTaskResult(task.task.taskId);
+          expect(result.isError, isFalse);
+          expect(result.structuredContent?['result'], isNotNull);
+
+          final resultJson =
+              jsonDecode(await manager.readTaskResultJson(task.task.taskId))
+                  as Map<String, dynamic>;
+          expect(resultJson.containsKey('stdout'), isFalse);
+          expect(resultJson.containsKey('stderr'), isFalse);
+
+          final logJson =
+              jsonDecode(await manager.readTaskLog(task.task.taskId))
+                  as Map<String, dynamic>;
+          expect(logJson['stdout'], contains('agent_message'));
+        }
+      },
+    );
+
+    test('rejects a fourth running task for the same agent', () async {
+      await Future.wait([
+        manager.createTask({'prompt': 'slow one'}, null),
+        manager.createTask({'prompt': 'slow two'}, null),
+        manager.createTask({'prompt': 'slow three'}, null),
+      ]);
+
+      expect(
+        () => manager.createTask({'prompt': 'slow four'}, null),
+        throwsA(isA<McpError>()),
+      );
+    });
+
+    test('tasks/result errors before terminal status', () async {
+      final created = await manager.createTask({'prompt': 'slow'}, null);
+
+      expect(
+        () => manager.getTaskResult(created.task.taskId),
+        throwsA(isA<McpError>()),
+      );
+    });
+
+    test('cancels a running process', () async {
+      final created = await manager.createTask({'prompt': 'slow'}, null);
+
+      await manager.cancelTask(created.task.taskId);
+      final task = await manager.getTask(created.task.taskId);
+
+      expect(task.status, equals(TaskStatus.cancelled));
+      final result = await manager.getTaskResult(created.task.taskId);
+      expect(result.isError, isTrue);
+    });
+
+    test('evicts terminal tasks and removes retained capture files', () async {
+      await manager.dispose();
+      final fakeCodex = await _writeTaskFakeCodex(tempDir);
+      final agent = CodexAgent(
+        config: AgentConfig(
+          name: 'codex',
+          executable: Platform.resolvedExecutable,
+          parser: 'codex_jsonl',
+          defaultModel: 'mini',
+          additionalArgs: [fakeCodex.path],
+          hardTimeoutSeconds: 30,
+          idleTimeoutSeconds: 30,
+        ),
+      );
+      manager = CagAgentTaskManager(
+        resolveRequest: (args) {
+          return CagAgentRequest(
+            agentName: 'codex',
+            agent: agent,
+            prompt: args?['prompt'] as String? ?? 'ok',
+            model: 'mini',
+            mode: CagAgentMode.sync,
+            verbose: false,
+          );
+        },
+        retention: const Duration(seconds: 1),
+      );
+
+      final created = await manager.createTask({'prompt': 'evict me'}, null);
+      await _waitForTaskStatus(
+        manager,
+        created.task.taskId,
+        TaskStatus.completed,
+      );
+      final stdoutPath = await _taskStdoutPath(manager, created.task.taskId);
+      expect(stdoutPath, isNotNull);
+
+      await Future<void>.delayed(const Duration(milliseconds: 1100));
+      await manager.sweepExpiredTasks();
+
+      expect(
+        () => manager.getTask(created.task.taskId),
+        throwsA(isA<McpError>()),
+      );
+      expect(await File(stdoutPath!).exists(), isFalse);
+    });
+  });
 }
 
 CouncilRun _buildCouncilRun({
@@ -1504,6 +1843,121 @@ CouncilRun _buildCouncilRun({
     createdAt: DateTime.now(),
     updatedAt: DateTime.now(),
   );
+}
+
+Future<File> _writeTaskFakeCodex(Directory tempDir) async {
+  final file = File('${tempDir.path}${Platform.pathSeparator}fake_codex.dart');
+  await file.writeAsString(r'''
+import 'dart:async';
+import 'dart:convert';
+
+Future<void> main(List<String> args) async {
+  final prompt = args.isEmpty ? '' : args.last;
+  if (prompt.contains('slow')) {
+    await Future<void>.delayed(const Duration(seconds: 10));
+  }
+  print(jsonEncode({'type': 'thread.started', 'thread_id': 'fake-thread'}));
+  print(jsonEncode({
+    'type': 'item.completed',
+    'item': {'type': 'agent_message', 'text': prompt},
+  }));
+}
+''');
+  return file;
+}
+
+Future<Task> _waitForTaskStatus(
+  CagAgentTaskManager manager,
+  String taskId,
+  TaskStatus status,
+) async {
+  final deadline = DateTime.now().add(const Duration(seconds: 5));
+  while (DateTime.now().isBefore(deadline)) {
+    final task = await manager.getTask(taskId);
+    if (task.status == status) {
+      return task;
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+  }
+  return manager.getTask(taskId);
+}
+
+Future<String?> _taskStdoutPath(CagAgentTaskManager manager, String taskId) {
+  return manager.debugStdoutPath(taskId);
+}
+
+Future<String> _startBackgroundTask(
+  CagAgentTaskManager manager,
+  String prompt,
+) async {
+  final created = await manager.createTask({
+    'prompt': prompt,
+    'mode': 'background',
+  }, null);
+  final launcherResult = await manager.getTaskResult(created.task.taskId);
+  return launcherResult.structuredContent?['task_id'] as String;
+}
+
+Future<File> _writeLongRunningDartProcess(Directory tempDir) async {
+  final file = File(
+    '${tempDir.path}${Platform.pathSeparator}long_running.dart',
+  );
+  await file.writeAsString(r'''
+import 'dart:async';
+
+Future<void> main() async {
+  await Future<void>.delayed(const Duration(seconds: 30));
+}
+''');
+  return file;
+}
+
+class _DelayedStartAgent extends CodexAgent {
+  _DelayedStartAgent(this.processScript)
+    : super(
+        config: AgentConfig(
+          name: 'codex',
+          executable: Platform.resolvedExecutable,
+          parser: 'codex_jsonl',
+          defaultModel: 'mini',
+        ),
+      );
+
+  final String processScript;
+  final Completer<void> started = Completer<void>();
+  int? pid;
+
+  @override
+  Future<AgentDetailedExecution> executeDetailed({
+    required String prompt,
+    String? model,
+    String? systemPrompt,
+    String? resume,
+    Map<String, String>? extraArgs,
+    String? workingDirectory,
+    ProcessStarted? onProcessStarted,
+    bool keepCapture = false,
+  }) async {
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    final process = await Process.start(Platform.resolvedExecutable, [
+      processScript,
+    ]);
+    pid = process.pid;
+    onProcessStarted?.call(RunningProcess(process));
+    if (!started.isCompleted) {
+      started.complete();
+    }
+    final exitCode = await process.exitCode;
+    return AgentDetailedExecution(
+      response: ParsedResponse(content: 'done'),
+      result: AgentExecutionResult(
+        exitCode: exitCode,
+        stdout: '',
+        stderr: '',
+        durationMs: 0,
+      ),
+    );
+  }
 }
 
 class _FakeGeminiAgent extends GeminiAgent {
@@ -1576,6 +2030,8 @@ class _FakeCLIRunner extends CLIRunner {
     Duration? hardTimeout,
     Duration? idleTimeout,
     String? workingDirectory,
+    ProcessStarted? onProcessStarted,
+    bool keepCapture = false,
   }) async {
     lastArgs = args;
     onRun?.call(args);

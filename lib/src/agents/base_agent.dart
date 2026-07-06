@@ -9,6 +9,17 @@ class AgentRunContext {
   const AgentRunContext();
 }
 
+/// Parsed agent response with raw execution details.
+class AgentDetailedExecution {
+  const AgentDetailedExecution({required this.response, required this.result});
+
+  /// Parsed response.
+  final ParsedResponse response;
+
+  /// Raw CLI execution result.
+  final CLIResult result;
+}
+
 /// Base class for CLI agents.
 abstract class BaseAgent {
   BaseAgent({required this.config, required this.parser, CLIRunner? runner})
@@ -65,6 +76,27 @@ abstract class BaseAgent {
     String? resume,
     Map<String, String>? extraArgs,
   }) async {
+    final execution = await executeDetailed(
+      prompt: prompt,
+      model: model,
+      systemPrompt: systemPrompt,
+      resume: resume,
+      extraArgs: extraArgs,
+    );
+    return execution.response;
+  }
+
+  /// Execute the agent and retain raw execution details.
+  Future<AgentDetailedExecution> executeDetailed({
+    required String prompt,
+    String? model,
+    String? systemPrompt,
+    String? resume,
+    Map<String, String>? extraArgs,
+    String? workingDirectory,
+    ProcessStarted? onProcessStarted,
+    bool keepCapture = false,
+  }) async {
     final resolvedModel = model ?? config.defaultModel;
     final runContext = await prepareRun(
       prompt: prompt,
@@ -84,39 +116,30 @@ abstract class BaseAgent {
         runContext: runContext,
       );
 
-      final result = await _runCommand(args);
+      final result = await _runCommand(
+        args,
+        workingDirectory: workingDirectory,
+        onProcessStarted: onProcessStarted,
+        keepCapture: keepCapture,
+      );
 
       if (!result.success) {
         final recovered = recoverFromError(result, runContext);
         if (recovered != null) {
-          return _attachExecutionMetadata(recovered, result);
+          return AgentDetailedExecution(
+            response: _attachExecutionMetadata(recovered, result),
+            result: result,
+          );
         }
-        throw AgentExecutionException(result.failure!);
+        throw AgentExecutionException(result.failure!, result: result);
       }
 
       try {
         final response = parseResponse(result, runContext);
         if (response.content.trim().isEmpty) {
-          throw AgentExecutionException(
-            AgentFailure(
-              reason: AgentExitReason.emptyResponse,
-              message: '${config.name} returned an empty response.',
-              exitCode: result.exitCode,
-              stdoutSnippet: _snippet(result.stdout),
-              stderrSnippet: _snippet(result.stderr),
-              durationMs: result.durationMs,
-              hadPartialOutput:
-                  result.stdout.trim().isNotEmpty ||
-                  result.stderr.trim().isNotEmpty,
-            ),
-          );
-        }
-        return _attachExecutionMetadata(response, result);
-      } on ParserException catch (error) {
-        throw AgentExecutionException(
-          AgentFailure(
-            reason: error.reason,
-            message: error.message,
+          final failure = AgentFailure(
+            reason: AgentExitReason.emptyResponse,
+            message: '${config.name} returned an empty response.',
             exitCode: result.exitCode,
             stdoutSnippet: _snippet(result.stdout),
             stderrSnippet: _snippet(result.stderr),
@@ -124,15 +147,38 @@ abstract class BaseAgent {
             hadPartialOutput:
                 result.stdout.trim().isNotEmpty ||
                 result.stderr.trim().isNotEmpty,
-          ),
+          );
+          throw AgentExecutionException(failure, result: result);
+        }
+        return AgentDetailedExecution(
+          response: _attachExecutionMetadata(response, result),
+          result: result,
         );
+      } on ParserException catch (error) {
+        final failure = AgentFailure(
+          reason: error.reason,
+          message: error.message,
+          exitCode: result.exitCode,
+          stdoutSnippet: _snippet(result.stdout),
+          stderrSnippet: _snippet(result.stderr),
+          durationMs: result.durationMs,
+          hadPartialOutput:
+              result.stdout.trim().isNotEmpty ||
+              result.stderr.trim().isNotEmpty,
+        );
+        throw AgentExecutionException(failure, result: result);
       }
     } finally {
       await cleanupRun(runContext);
     }
   }
 
-  Future<CLIResult> _runCommand(List<String> args) {
+  Future<CLIResult> _runCommand(
+    List<String> args, {
+    String? workingDirectory,
+    ProcessStarted? onProcessStarted,
+    bool keepCapture = false,
+  }) {
     final hardTimeout = Duration(seconds: config.hardTimeoutSeconds);
     final idleTimeout = Duration(seconds: config.idleTimeoutSeconds);
     if (config.shellCommandPrefix == null) {
@@ -142,6 +188,9 @@ abstract class BaseAgent {
         env: config.env.isNotEmpty ? config.env : null,
         hardTimeout: hardTimeout,
         idleTimeout: idleTimeout,
+        workingDirectory: workingDirectory,
+        onProcessStarted: onProcessStarted,
+        keepCapture: keepCapture,
       );
     }
 
@@ -161,6 +210,9 @@ abstract class BaseAgent {
       env: config.env.isNotEmpty ? config.env : null,
       hardTimeout: hardTimeout,
       idleTimeout: idleTimeout,
+      workingDirectory: workingDirectory,
+      onProcessStarted: onProcessStarted,
+      keepCapture: keepCapture,
     );
   }
 
