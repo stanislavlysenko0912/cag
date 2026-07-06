@@ -15,9 +15,19 @@ import '../utils/executable_checker.dart';
 import 'doctor_report.dart';
 
 class DoctorService {
-  Future<DoctorReport> inspect({String? mcpUrl}) async {
+  DoctorService({String? configPath}) : _configPath = configPath;
+
+  final String? _configPath;
+
+  Future<DoctorReport> inspect({
+    String? mcpUrl,
+    bool includeVersions = true,
+  }) async {
     final config = await _readConfig();
-    final agents = await _inspectAgents(config.appConfig);
+    final agents = await _inspectAgents(
+      config.appConfig,
+      includeVersions: includeVersions,
+    );
     final mcp = await _checkMcp(mcpUrl);
     final summary = _buildSummary(config, agents, mcp);
 
@@ -30,7 +40,7 @@ class DoctorService {
   }
 
   Future<ConfigDiagnostic> _readConfig() async {
-    final path = AppPaths.configPath();
+    final path = _configPath ?? AppPaths.configPath();
     final file = File(path);
     if (!await file.exists()) {
       return ConfigDiagnostic(
@@ -92,8 +102,11 @@ class DoctorService {
         .join('; ');
   }
 
-  Future<List<AgentDiagnostic>> _inspectAgents(AppConfig appConfig) async {
-    final configService = ConfigService();
+  Future<List<AgentDiagnostic>> _inspectAgents(
+    AppConfig appConfig, {
+    required bool includeVersions,
+  }) async {
+    final configService = ConfigService(configPath: _configPath);
     final diagnostics = <AgentDiagnostic>[];
 
     for (final definition in AgentCatalog.definitions) {
@@ -107,7 +120,7 @@ class DoctorService {
         override,
       );
       final available = isExecutableAvailable(executable);
-      final version = config.enabled && available
+      final version = includeVersions && config.enabled && available
           ? await _detectVersion(config: config, executable: executable)
           : null;
 
@@ -117,6 +130,10 @@ class DoctorService {
           enabled: config.enabled,
           executable: executable,
           available: available,
+          defaultModel: definition.defaultModel(config),
+          modelCount: config.availableModels.length,
+          authStatus: 'not_checked',
+          executionMode: _executionMode(config),
           version: version,
           status: _agentStatus(enabled: config.enabled, available: available),
           hint: _agentHint(
@@ -130,6 +147,13 @@ class DoctorService {
     }
 
     return diagnostics;
+  }
+
+  String _executionMode(AgentConfig config) {
+    final shellPrefix = config.shellCommandPrefix;
+    return shellPrefix == null || shellPrefix.trim().isEmpty
+        ? 'direct'
+        : 'shell';
   }
 
   Future<String?> _detectVersion({

@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:args/command_runner.dart';
 import 'package:cag/cag.dart';
+import 'package:cag/src/doctor/doctor.dart';
 import 'package:mcp_dart/mcp_dart.dart';
 
 import 'output_formatter.dart';
@@ -27,6 +28,11 @@ const _modelsToolDescription =
     'List enabled CAG agent IDs, default models, supported model names, aliases, '
     'and short model guidance. Call this before cag_agent when you need the exact '
     'agent ID/model alias, want to choose an appropriate model, or receive a model error.';
+// ignore: unused_element
+const _agentsStatusToolDescription =
+    'Report CAG agent runtime status without running model calls. '
+    'Use this to see which known agents are enabled, whether their executable is found, '
+    'which default model CAG will use, and why an agent is not currently runnable.';
 
 ToolInputSchema _buildAgentInputSchema(List<String> enabledAgents) {
   return JsonSchema.object(
@@ -249,6 +255,26 @@ final ToolOutputSchema _modelsOutputSchema = JsonSchema.object(
   additionalProperties: false,
 );
 
+// ignore: unused_element
+final ToolOutputSchema _agentsStatusOutputSchema = JsonSchema.object(
+  properties: {
+    'result': JsonSchema.string(description: 'Compact agent status summary.'),
+    'config': JsonSchema.object(description: 'Config file status.'),
+    'agents': JsonSchema.array(
+      description: 'Per-agent runtime status rows.',
+      items: JsonSchema.object(),
+    ),
+    'summary': JsonSchema.object(description: 'Runtime status counts.'),
+  },
+  required: ['result', 'config', 'agents', 'summary'],
+  additionalProperties: false,
+);
+
+// ignore: unused_element
+final ToolInputSchema _emptyInputSchema = JsonSchema.object(
+  additionalProperties: false,
+);
+
 final ToolInputSchema _modelsInputSchema = JsonSchema.object(
   properties: {
     'verbose': JsonSchema.boolean(
@@ -386,7 +412,7 @@ Future<McpServer> _buildServer() async {
   final consensusRunner = ConsensusRunner(agentConfigs: agentConfigs);
   final councilRunner = CouncilRunner(agentConfigs: agentConfigs);
 
-  final modelsSection = _buildModelsSection(enabledAgents);
+  final modelsSection = _buildModelsSection(agentConfigs);
   final server = McpServer(
     Implementation(name: 'cag', version: _appVersion),
     options: McpServerOptions(
@@ -449,7 +475,12 @@ Future<McpServer> _buildServer() async {
         return _errorResult('Model is required for agent "$agentName".');
       }
 
-      final resolvedModel = _resolveModel(agentName, model, errors);
+      final resolvedModel = _resolveModel(
+        agentName,
+        model,
+        agentConfigs,
+        errors,
+      );
       if (errors.isNotEmpty) {
         return _errorResult(errors.join(' '));
       }
@@ -523,10 +554,15 @@ Future<McpServer> _buildServer() async {
           return _errorResult(_agentDisabledMessage(agentName!, enabledAgents));
         }
 
-        final participant = CompareParticipant(
-          agent: agentName!,
-          model: model!,
-        ).copyWith(resolvedModel: _resolveModel(agentName, model, errors));
+        final participant = CompareParticipant(agent: agentName!, model: model!)
+            .copyWith(
+              resolvedModel: _resolveModel(
+                agentName,
+                model,
+                agentConfigs,
+                errors,
+              ),
+            );
         if (errors.isNotEmpty) {
           return _errorResult(errors.join(' '));
         }
@@ -640,7 +676,12 @@ Future<McpServer> _buildServer() async {
               sessionId: sessionId,
               stancePrompt: stancePrompt,
             );
-            participant.resolvedModel = _resolveModel(agentName, model, errors);
+            participant.resolvedModel = _resolveModel(
+              agentName,
+              model,
+              agentConfigs,
+              errors,
+            );
             if (errors.isNotEmpty) {
               return _errorResult(errors.join(' '));
             }
@@ -759,7 +800,12 @@ Future<McpServer> _buildServer() async {
         }
 
         final member = CouncilMember(agent: agentName!, model: model!);
-        member.resolvedModel = _resolveModel(agentName, model, errors);
+        member.resolvedModel = _resolveModel(
+          agentName,
+          model,
+          agentConfigs,
+          errors,
+        );
         if (errors.isNotEmpty) {
           return _errorResult(errors.join(' '));
         }
@@ -802,6 +848,7 @@ Future<McpServer> _buildServer() async {
       chairman.resolvedModel = _resolveModel(
         chairmanAgent,
         chairmanModel,
+        agentConfigs,
         errors,
       );
       if (errors.isNotEmpty) {
@@ -833,6 +880,27 @@ Future<McpServer> _buildServer() async {
     },
   );
 
+  /*
+  server.registerTool(
+    'cag_agents_status',
+    description: _agentsStatusToolDescription,
+    inputSchema: _emptyInputSchema,
+    outputSchema: _agentsStatusOutputSchema,
+    callback: (args, extra) async {
+      final report = await DoctorService().inspect(includeVersions: false);
+      final agents = _mcpAgentStatusRows(report.agents);
+      final summary = _mcpStatusSummary(config: report.config, agents: agents);
+
+      return CallToolResult.fromStructuredContent({
+        'result': _formatAgentsStatusOutput(report.config, agents, summary),
+        'config': _mcpConfigStatus(report.config),
+        'agents': agents,
+        'summary': summary,
+      });
+    },
+  );
+  */
+
   server.registerTool(
     'cag_models',
     description: _modelsToolDescription,
@@ -840,24 +908,7 @@ Future<McpServer> _buildServer() async {
     outputSchema: _modelsOutputSchema,
     callback: (args, extra) async {
       final verbose = args['verbose'] == true;
-      final agentsInfo = CommandDefinitions.all
-          .where((c) => c.models.isNotEmpty)
-          .where((c) => enabledAgents.contains(c.name))
-          .map((cmd) {
-            return {
-              'agent': cmd.name,
-              'default_model': cmd.defaultModel?.name,
-              'models': cmd.models.map((model) {
-                return {
-                  'name': model.name,
-                  'aliases': model.aliases,
-                  'description': model.description,
-                  'is_default': model.isDefault,
-                };
-              }).toList(),
-            };
-          })
-          .toList();
+      final agentsInfo = _modelAgentsInfo(agentConfigs, enabledAgents);
 
       return CallToolResult.fromStructuredContent({
         'result': _formatModelsOutput(agentsInfo),
@@ -974,6 +1025,129 @@ String _formatModelsOutput(List<Map<String, Object?>> agentsInfo) {
   return lines.join(' | ');
 }
 
+List<Map<String, Object?>> _modelAgentsInfo(
+  Map<String, AgentConfig> agentConfigs,
+  List<String> enabledAgents,
+) {
+  return [
+    for (final definition in AgentCatalog.definitions)
+      if (enabledAgents.contains(definition.name))
+        if (agentConfigs[definition.name] case final config?)
+          if (config.availableModels.isNotEmpty)
+            {
+              'agent': definition.name,
+              'default_model': definition.defaultModel(config),
+              'models': config.availableModels.map((model) {
+                final defaultModel = definition.defaultModel(config);
+                return {
+                  'name': model.name,
+                  'aliases': model.aliases,
+                  'description': model.description,
+                  'is_default': model.matches(defaultModel),
+                };
+              }).toList(),
+            },
+  ];
+}
+
+// ignore: unused_element
+Map<String, dynamic> _mcpConfigStatus(ConfigDiagnostic config) {
+  return {
+    'path': config.path,
+    'exists': config.exists,
+    'valid': config.valid,
+    'status': config.status,
+    if (config.error != null) 'error': config.error,
+  };
+}
+
+// ignore: unused_element
+List<Map<String, dynamic>> _mcpAgentStatusRows(List<AgentDiagnostic> agents) {
+  return agents.map((agent) {
+    final status = _mcpAgentStatus(agent);
+    final reason = _mcpAgentReason(agent, status);
+    return {
+      'agent': agent.name,
+      'enabled': agent.enabled,
+      'status': status,
+      if (reason != null) 'reason': reason,
+      'executable': agent.executable,
+      'executable_found': agent.available,
+      'default_model': agent.defaultModel,
+      'model_count': agent.modelCount,
+      'auth_status': agent.authStatus,
+      'execution_mode': agent.executionMode,
+    };
+  }).toList();
+}
+
+String _mcpAgentStatus(AgentDiagnostic agent) {
+  if (!agent.enabled) return 'disabled';
+  if (!agent.available) return 'missing_executable';
+  return 'available';
+}
+
+String? _mcpAgentReason(AgentDiagnostic agent, String status) {
+  return switch (status) {
+    'disabled' => 'disabled in CAG config',
+    'missing_executable' => agent.hint,
+    _ => null,
+  };
+}
+
+// ignore: unused_element
+Map<String, dynamic> _mcpStatusSummary({
+  required ConfigDiagnostic config,
+  required List<Map<String, dynamic>> agents,
+}) {
+  var available = 0;
+  var disabled = 0;
+  var missingExecutable = 0;
+
+  for (final agent in agents) {
+    switch (agent['status']) {
+      case 'available':
+        available++;
+      case 'disabled':
+        disabled++;
+      case 'missing_executable':
+        missingExecutable++;
+    }
+  }
+
+  return {
+    'total': agents.length,
+    'available': available,
+    'disabled': disabled,
+    'missing_executable': missingExecutable,
+    'config_valid': config.valid,
+  };
+}
+
+// ignore: unused_element
+String _formatAgentsStatusOutput(
+  ConfigDiagnostic config,
+  List<Map<String, dynamic>> agents,
+  Map<String, dynamic> summary,
+) {
+  final parts = <String>[
+    'config: ${config.status}',
+    'available: ${summary['available']}/${summary['total']}',
+    'disabled: ${summary['disabled']}',
+    'missing_executable: ${summary['missing_executable']}',
+  ];
+
+  final unavailable = agents
+      .where((agent) => agent['status'] != 'available')
+      .map((agent) => '${agent['agent']}=${agent['status']}')
+      .join(', ');
+  if (unavailable.isNotEmpty) {
+    parts.add('attention: $unavailable');
+  }
+
+  return parts.join(' | ');
+}
+
 String _formatConsensusOutput(ConsensusResult result) {
   final buffer = StringBuffer();
   buffer.writeln('consensus_id: ${result.session.consensusId}');
@@ -1080,13 +1254,15 @@ String _formatCouncilOutput(CouncilRun result, {required bool includeAnswers}) {
   return buffer.toString().trimRight();
 }
 
-String _buildModelsSection(List<String> enabledAgents) {
+String _buildModelsSection(Map<String, AgentConfig> agentConfigs) {
   final buffer = StringBuffer();
-  for (final agentName in enabledAgents) {
-    final cmdDef = CommandDefinitions.find(agentName);
-    if (cmdDef == null || cmdDef.models.isEmpty) continue;
-    buffer.writeln('$agentName:');
-    for (final m in cmdDef.models) {
+  for (final definition in AgentCatalog.definitions) {
+    final config = agentConfigs[definition.name];
+    if (config == null || !config.enabled || config.availableModels.isEmpty) {
+      continue;
+    }
+    buffer.writeln('${definition.name}:');
+    for (final m in config.availableModels) {
       final alias = m.aliases.isNotEmpty ? ' (${m.aliases.join(', ')})' : '';
       final desc = m.description.isNotEmpty ? ' - ${m.description}' : '';
       buffer.writeln('  ${m.name}$alias$desc');
@@ -1197,15 +1373,22 @@ Future<String?> _validateConsensusResume(
   return null;
 }
 
-String _resolveModel(String agentName, String modelInput, List<String> errors) {
-  final cmdDef = CommandDefinitions.find(agentName);
-  if (cmdDef == null || cmdDef.models.isEmpty) {
+String _resolveModel(
+  String agentName,
+  String modelInput,
+  Map<String, AgentConfig> agentConfigs,
+  List<String> errors,
+) {
+  final config = agentConfigs[agentName];
+  if (config == null || config.availableModels.isEmpty) {
     return modelInput;
   }
 
-  final modelConfig = cmdDef.findModel(modelInput);
+  final modelConfig = config.availableModels
+      .where((model) => model.matches(modelInput))
+      .firstOrNull;
   if (modelConfig == null) {
-    final available = cmdDef.models.map((m) => m.name).join(', ');
+    final available = config.availableModels.map((m) => m.name).join(', ');
     errors.add(
       'Unknown model "$modelInput" for $agentName. Available: $available',
     );

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:cag/cag.dart';
+import 'package:cag/src/doctor/doctor.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
@@ -472,6 +473,72 @@ void main() {
         expect(result.stdout, contains('version: $name version'));
       }
     });
+
+    test('lightweight diagnostics include MCP runtime fields', () async {
+      final fakeCodex = await writeFakeExecutable(tempDir, 'fake-codex');
+      await writeAgentConfig(
+        tempDir,
+        disabledAgentConfig({
+          'codex': {
+            'enabled': true,
+            'executable': fakeCodex.path,
+            'default_model': 'custom-codex',
+            'models': [
+              {'name': 'custom-codex', 'description': 'Custom Codex'},
+            ],
+          },
+          'claude': {'enabled': true, 'executable': 'missing-claude'},
+        }),
+      );
+
+      final report = await DoctorService(
+        configPath: p.join(appDataDirFor(tempDir), 'config.json'),
+      ).inspect(includeVersions: false);
+
+      final codex = report.agents.singleWhere((agent) {
+        return agent.name == 'codex';
+      });
+      expect(codex.enabled, isTrue);
+      expect(codex.available, isTrue);
+      expect(codex.defaultModel, equals('custom-codex'));
+      expect(codex.modelCount, equals(4));
+      expect(codex.authStatus, equals('not_checked'));
+      expect(codex.executionMode, equals('direct'));
+      expect(codex.version, isNull);
+
+      final claude = report.agents.singleWhere((agent) {
+        return agent.name == 'claude';
+      });
+      expect(claude.enabled, isTrue);
+      expect(claude.available, isFalse);
+      expect(claude.hint, contains('agents.claude.executable'));
+    });
+
+    test('lightweight diagnostics do not probe executable versions', () async {
+      final marker = File(p.join(tempDir.path, 'version-called.txt'));
+      final fakeCodex = await writeTrackedVersionExecutable(
+        tempDir,
+        'tracked-codex',
+        marker,
+      );
+      await writeAgentConfig(
+        tempDir,
+        disabledAgentConfig({
+          'codex': {'enabled': true, 'executable': fakeCodex.path},
+        }),
+      );
+
+      final report = await DoctorService(
+        configPath: p.join(appDataDirFor(tempDir), 'config.json'),
+      ).inspect(includeVersions: false);
+
+      final codex = report.agents.singleWhere((agent) {
+        return agent.name == 'codex';
+      });
+      expect(codex.available, isTrue);
+      expect(codex.version, isNull);
+      expect(await marker.exists(), isFalse);
+    });
   });
 }
 
@@ -582,6 +649,23 @@ Future<File> writeVersionedFakeExecutable(
   final body = Platform.isWindows
       ? '@echo off\r\nif "%1"=="--version" echo $version\r\n'
       : '#!/bin/sh\nif [ "\$1" = "--version" ]; then echo "$version"; fi\n';
+  await file.writeAsString(body);
+  if (!Platform.isWindows) {
+    await Process.run('chmod', ['+x', file.path]);
+  }
+  return file;
+}
+
+Future<File> writeTrackedVersionExecutable(
+  Directory tempDir,
+  String name,
+  File marker,
+) async {
+  final executableName = Platform.isWindows ? '$name.cmd' : name;
+  final file = File(p.join(tempDir.path, executableName));
+  final body = Platform.isWindows
+      ? '@echo off\r\necho called>>"${marker.path}"\r\necho tracked version\r\n'
+      : '#!/bin/sh\necho called >> "${marker.path}"\necho "tracked version"\n';
   await file.writeAsString(body);
   if (!Platform.isWindows) {
     await Process.run('chmod', ['+x', file.path]);

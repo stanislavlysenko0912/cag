@@ -66,6 +66,10 @@ class AgentDiagnostic {
     required this.enabled,
     required this.executable,
     required this.available,
+    required this.defaultModel,
+    required this.modelCount,
+    required this.authStatus,
+    required this.executionMode,
     required this.status,
     this.version,
     this.hint,
@@ -75,6 +79,10 @@ class AgentDiagnostic {
   final bool enabled;
   final String executable;
   final bool available;
+  final String defaultModel;
+  final int modelCount;
+  final String authStatus;
+  final String executionMode;
   final String? version;
   final String status;
   final String? hint;
@@ -84,6 +92,10 @@ class AgentDiagnostic {
     'enabled': enabled,
     'executable': executable,
     'available': available,
+    'default_model': defaultModel,
+    'model_count': modelCount,
+    'auth_status': authStatus,
+    'execution_mode': executionMode,
     if (version != null) 'version': version,
     'status': status,
     if (hint != null) 'hint': hint,

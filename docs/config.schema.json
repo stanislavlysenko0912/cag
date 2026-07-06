@@ -32,6 +32,38 @@
             "type": "string",
             "description": "Default model name used when none is provided on the command line."
           },
+          "models": {
+            "type": "array",
+            "description": "Additional or replacement model definitions exposed by CAG for this agent.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "name"
+              ],
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "model": {
+                  "type": "string",
+                  "description": "Model identifier passed to the wrapped agent when it differs from name."
+                },
+                "is_default": {
+                  "type": "boolean"
+                },
+                "aliases": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
           "additional_args": {
             "type": "array",
             "description": "Arguments always appended to the command.",
