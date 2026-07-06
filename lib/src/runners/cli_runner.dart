@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import '../models/models.dart';
 
@@ -104,8 +106,8 @@ class CLIRunner {
     ProcessStarted? onProcessStarted,
     bool keepCapture = false,
   }) async {
-    final capture = await _CaptureDirectory.create();
-    var deleteCapture = true;
+    final capture = await _OutputCapture.create(retainFiles: keepCapture);
+    var retainCapture = false;
     try {
       final result = await _runProcessWithCapture(
         executable: executable,
@@ -118,15 +120,15 @@ class CLIRunner {
         capture: capture,
       );
       if (keepCapture) {
-        deleteCapture = false;
+        retainCapture = true;
         return result.copyWith(
-          stdoutPath: capture.stdoutFile.path,
-          stderrPath: capture.stderrFile.path,
+          stdoutPath: capture.stdoutPath,
+          stderrPath: capture.stderrPath,
         );
       }
       return result;
     } finally {
-      if (deleteCapture) {
+      if (!retainCapture) {
         await capture.delete();
       }
     }
@@ -140,7 +142,7 @@ class CLIRunner {
     Duration? idleTimeout,
     String? workingDirectory,
     ProcessStarted? onProcessStarted,
-    required _CaptureDirectory capture,
+    required _OutputCapture capture,
   }) async {
     final stopwatch = Stopwatch()..start();
     final process = await Process.start(
@@ -154,19 +156,17 @@ class CLIRunner {
     final outputCapture = capture.writeProcessOutput(process);
     await process.stdin.close();
 
-    final activity = _OutputActivityTracker(capture: capture);
     final timeoutReason = Completer<AgentExitReason>();
     final monitor = Timer.periodic(const Duration(seconds: 1), (_) {
       if (timeoutReason.isCompleted) {
         return;
       }
-      activity.recordChanges();
       if (hardTimeout != null && stopwatch.elapsed >= hardTimeout) {
         timeoutReason.complete(AgentExitReason.timeoutHard);
         return;
       }
       if (idleTimeout != null &&
-          DateTime.now().difference(activity.lastActivityAt) >= idleTimeout) {
+          DateTime.now().difference(capture.lastActivityAt) >= idleTimeout) {
         timeoutReason.complete(AgentExitReason.timeoutIdle);
       }
     });
@@ -417,20 +417,37 @@ enum _ShellDialect {
   }
 }
 
-class _CaptureDirectory {
-  _CaptureDirectory({
-    required this.directory,
-    required this.stdoutFile,
-    required this.stderrFile,
-  });
+class _OutputCapture {
+  _OutputCapture._({
+    required this.stdoutBuffer,
+    required this.stderrBuffer,
+    this.directory,
+    this.stdoutFile,
+    this.stderrFile,
+  }) : lastActivityAt = DateTime.now();
 
-  final Directory directory;
-  final File stdoutFile;
-  final File stderrFile;
+  final BytesBuilder stdoutBuffer;
+  final BytesBuilder stderrBuffer;
+  final Directory? directory;
+  final File? stdoutFile;
+  final File? stderrFile;
+  DateTime lastActivityAt;
 
-  static Future<_CaptureDirectory> create() async {
+  String? get stdoutPath => stdoutFile?.path;
+  String? get stderrPath => stderrFile?.path;
+
+  static Future<_OutputCapture> create({required bool retainFiles}) async {
+    if (!retainFiles) {
+      return _OutputCapture._(
+        stdoutBuffer: BytesBuilder(copy: false),
+        stderrBuffer: BytesBuilder(copy: false),
+      );
+    }
+
     final directory = await Directory.systemTemp.createTemp('cag_cli_');
-    return _CaptureDirectory(
+    return _OutputCapture._(
+      stdoutBuffer: BytesBuilder(copy: false),
+      stderrBuffer: BytesBuilder(copy: false),
       directory: directory,
       stdoutFile: File('${directory.path}/stdout'),
       stderrFile: File('${directory.path}/stderr'),
@@ -438,72 +455,59 @@ class _CaptureDirectory {
   }
 
   Future<({String stdout, String stderr})> readOutput() async {
-    final stdout = await _readIfExists(stdoutFile);
-    final stderr = await _readIfExists(stderrFile);
-    return (stdout: stdout, stderr: stderr);
+    final stdout = stdoutFile == null
+        ? stdoutBuffer.takeBytes()
+        : await stdoutFile!.readAsBytes();
+    final stderr = stderrFile == null
+        ? stderrBuffer.takeBytes()
+        : await stderrFile!.readAsBytes();
+    return (stdout: _decode(stdout), stderr: _decode(stderr));
   }
 
   Future<void> writeProcessOutput(Process process) async {
-    final stdoutSink = stdoutFile.openWrite();
-    final stderrSink = stderrFile.openWrite();
+    final stdoutSink = stdoutFile?.openWrite();
+    final stderrSink = stderrFile?.openWrite();
     try {
       await Future.wait([
-        stdoutSink.addStream(process.stdout),
-        stderrSink.addStream(process.stderr),
+        _captureStream(process.stdout, stdoutBuffer, stdoutSink),
+        _captureStream(process.stderr, stderrBuffer, stderrSink),
       ]);
     } finally {
-      await Future.wait([stdoutSink.close(), stderrSink.close()]);
+      await Future.wait([
+        if (stdoutSink != null) stdoutSink.close(),
+        if (stderrSink != null) stderrSink.close(),
+      ]);
     }
   }
 
-  Future<String> _readIfExists(File file) async {
-    if (!await file.exists()) {
-      return '';
+  Future<void> _captureStream(
+    Stream<List<int>> stream,
+    BytesBuilder buffer,
+    IOSink? fileSink,
+  ) async {
+    await for (final chunk in stream) {
+      buffer.add(chunk);
+      fileSink?.add(chunk);
+      lastActivityAt = DateTime.now();
     }
-    return file.readAsString();
+  }
+
+  String _decode(List<int> bytes) {
+    return utf8.decode(bytes, allowMalformed: true);
   }
 
   Future<void> delete() async {
+    final directory = this.directory;
+    if (directory == null) {
+      return;
+    }
+
     try {
-      if (await stdoutFile.exists()) {
-        await stdoutFile.delete();
-      }
-      if (await stderrFile.exists()) {
-        await stderrFile.delete();
-      }
       if (await directory.exists()) {
         await directory.delete(recursive: true);
       }
     } on FileSystemException {
       // Best-effort cleanup; temp dir is removed by the OS eventually.
     }
-  }
-}
-
-class _OutputActivityTracker {
-  _OutputActivityTracker({required _CaptureDirectory capture})
-    : _capture = capture,
-      lastActivityAt = DateTime.now();
-
-  final _CaptureDirectory _capture;
-  DateTime lastActivityAt;
-  var _stdoutSize = 0;
-  var _stderrSize = 0;
-
-  void recordChanges() {
-    final stdoutSize = _fileSize(_capture.stdoutFile);
-    final stderrSize = _fileSize(_capture.stderrFile);
-    if (stdoutSize > _stdoutSize || stderrSize > _stderrSize) {
-      _stdoutSize = stdoutSize;
-      _stderrSize = stderrSize;
-      lastActivityAt = DateTime.now();
-    }
-  }
-
-  int _fileSize(File file) {
-    if (!file.existsSync()) {
-      return 0;
-    }
-    return file.lengthSync();
   }
 }

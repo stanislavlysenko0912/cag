@@ -453,7 +453,26 @@ void main() {
       expect(result.stdout.length, greaterThan(200000));
     });
 
-    test('run deletes temporary capture files after completion', () async {
+    test('run decodes malformed UTF-8 output', () async {
+      final runner = CLIRunner();
+      final result = Platform.isWindows
+          ? await runner.run(
+              executable: 'python',
+              args: ['-c', 'import sys; sys.stdout.buffer.write(bytes([255]))'],
+            )
+          : await runner.run(
+              executable: '/bin/sh',
+              args: [
+                '-c',
+                r'python3 -c "import sys; sys.stdout.buffer.write(bytes([255]))"',
+              ],
+            );
+
+      expect(result.exitCode, equals(0));
+      expect(result.stdout, isNotEmpty);
+    });
+
+    test('run does not create retained capture files by default', () async {
       final runner = CLIRunner();
       final before = Directory.systemTemp
           .listSync()
