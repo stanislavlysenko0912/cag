@@ -311,9 +311,17 @@ Use JSON output when scripting:
 cag doctor --json
 ```
 
+### Setup (TUI)
+
+For interactive setup and model configuration, launch the terminal UI:
+
+```bash
+cag --tui
+```
+
 ## Config
 
-Config is optional and auto-created on first run.
+Config is optional and auto-created on first run. For interactive editing, prefer `cag --tui` over hand-editing `config.json`.
 
 Paths:
 - macOS: `~/.cag/config.json`
