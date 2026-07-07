@@ -1,4 +1,4 @@
-import '../agents/known_agents.dart';
+import '../agents/agent_id.dart';
 import '../utils/participant_parser.dart';
 
 /// Stance for a model in consensus.
@@ -65,7 +65,7 @@ class ConsensusParticipant {
   /// Parse from CLI format: "agent:model:stance"
   factory ConsensusParticipant.parse(
     String input, {
-    Iterable<String> allowedAgents = KnownAgents.all,
+    Iterable<String> allowedAgents = AgentId.all,
   }) {
     final parsed = ParticipantParser.parse(
       input: input,

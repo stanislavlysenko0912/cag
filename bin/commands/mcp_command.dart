@@ -27,7 +27,12 @@ const _agentToolDescription =
     'compare_id, consensus_id, and council_id are CAG wrapper IDs, not agent sessions.';
 const _modelsToolDescription =
     'List enabled CAG agent IDs, default models, supported model names, aliases, '
-    'and short model guidance. Call this before cag_agent when you need the exact '
+    'scores, and short model guidance. Scores are 1-10, higher is better; '
+    'cost reflects effective cost, intelligence is unsupervised problem difficulty, '
+    'taste covers UI/UX, code quality, API design, and copy. '
+    'Use cost only as a tie-breaker; for shipping work prefer intelligence, then taste, then cost. '
+    'Do not let cost prevent using the right model; use cheaper models to gather information before moving work to a more expensive model. '
+    'Call this before cag_agent when you need the exact '
     'agent ID/model alias, want to choose an appropriate model, or receive a model error.';
 // ignore: unused_element
 const _agentsStatusToolDescription =
@@ -507,6 +512,9 @@ Future<McpServer> _buildServer() async {
           'Any other returned ID belongs to a CAG wrapper flow and is not interchangeable with session_id. '
           'Provide detailed prompts with full context, constraints, and goals — short prompts produce weak results.\n\n'
           'Agent conversations are not just question-answer — use multi-turn dialogue (resume via session_id) to iterate, challenge ideas, and reach better solutions together.\n\n'
+          'Model scores are 1-10, higher is better. Cost reflects effective cost, intelligence is unsupervised problem difficulty, and taste covers UI/UX, code quality, API design, and copy. '
+          'Use cost only as a tie-breaker; for shipping work prefer intelligence, then taste, then cost. User-facing UI, copy, and API design should use taste 7+. '
+          'Do not let cost prevent using the right model; use cheaper models to gather information and try things before moving work to a more expensive model.\n\n'
           'Available models:\n$modelsSection',
     ),
   );
@@ -1194,14 +1202,21 @@ String _formatModelsOutput(List<Map<String, Object?>> agentsInfo) {
           final name = model['name'] as String;
           final modelAliases = (model['aliases'] as List).cast<String>();
           final description = model['description'] as String? ?? '';
+          final scores = _scoreMapText(model['scores']);
           final parts = <String>[name];
           if (modelAliases.isEmpty) {
+            if (scores.isNotEmpty) {
+              parts.add('[$scores]');
+            }
             if (description.isNotEmpty) {
               parts.add('- $description');
             }
             return parts.join(' ');
           }
           parts.add('(${modelAliases.join(', ')})');
+          if (scores.isNotEmpty) {
+            parts.add('[$scores]');
+          }
           if (description.isNotEmpty) {
             parts.add('- $description');
           }
@@ -1228,10 +1243,12 @@ List<Map<String, Object?>> _modelAgentsInfo(
               'default_model': definition.defaultModel(config),
               'models': config.availableModels.map((model) {
                 final defaultModel = definition.defaultModel(config);
+                final description = _modelHint(model);
                 return {
                   'name': model.name,
                   'aliases': model.aliases,
-                  'description': model.description,
+                  if (description != null) 'description': description,
+                  if (model.scores != null) 'scores': model.scores!.toJson(),
                   'is_default': model.matches(defaultModel),
                 };
               }).toList(),
@@ -1453,11 +1470,37 @@ String _buildModelsSection(Map<String, AgentConfig> agentConfigs) {
     buffer.writeln('${definition.name}:');
     for (final m in config.availableModels) {
       final alias = m.aliases.isNotEmpty ? ' (${m.aliases.join(', ')})' : '';
-      final desc = m.description.isNotEmpty ? ' - ${m.description}' : '';
-      buffer.writeln('  ${m.name}$alias$desc');
+      final scores = _modelScoreText(m);
+      final hint = _modelHint(m);
+      final desc = hint == null ? '' : ' - $hint';
+      buffer.writeln('  ${m.name}$alias$scores$desc');
     }
   }
   return buffer.toString().trimRight();
+}
+
+String _modelScoreText(ModelConfig model) {
+  final scores = model.scores;
+  if (scores == null) return '';
+  return ' [C${scores.cost} I${scores.intelligence} S${scores.speed} T${scores.taste}]';
+}
+
+String _scoreMapText(Object? value) {
+  if (value is! Map) return '';
+  final cost = value['cost'];
+  final intelligence = value['intelligence'];
+  final speed = value['speed'];
+  final taste = value['taste'];
+  if (cost == null || intelligence == null || speed == null || taste == null) {
+    return '';
+  }
+  return 'C$cost I$intelligence S$speed T$taste';
+}
+
+String? _modelHint(ModelConfig model) {
+  final hint = model.description?.trim();
+  if (hint == null || hint.isEmpty) return null;
+  return hint;
 }
 
 String _normalizePath(String value) {

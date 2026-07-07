@@ -1,12 +1,7 @@
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
-import 'package:cag/cag.dart';
-import 'package:cag/src/config/agent_config_override.dart';
-import 'package:cag/src/config/app_config.dart';
-import 'package:cag/src/utils/agent_executable_resolver.dart';
-import 'package:cag/src/utils/app_paths.dart';
-import 'package:cag/src/utils/executable_checker.dart';
+import 'package:cag/src/detect/detect.dart';
 
 class DetectCommand extends Command<void> {
   @override
@@ -18,53 +13,9 @@ class DetectCommand extends Command<void> {
 
   @override
   Future<void> run() async {
-    final configService = ConfigService();
-    final config = await configService.loadOrCreate();
-
-    final detection = <String, bool>{};
-    for (final definition in AgentCatalog.definitions) {
-      final override = config.agents[definition.name];
-      final executable = resolveAgentExecutable(
-        definition.defaultConfig,
-        override,
-      );
-      detection[definition.name] = isExecutableAvailable(executable);
-    }
-
-    final updated = _applyDetection(config, detection);
-    await configService.save(updated);
-
-    _printSummary(detection);
-    stdout.writeln('Updated config: ${AppPaths.configPath()}');
-  }
-
-  AgentConfigOverride _mergeOverride({
-    required AgentConfigOverride? current,
-    required bool enabled,
-  }) {
-    return AgentConfigOverride(
-      executable: current?.executable,
-      enabled: enabled,
-      defaultModel: current?.defaultModel,
-      additionalArgs: current?.additionalArgs,
-      env: current?.env,
-      hardTimeoutSeconds: current?.hardTimeoutSeconds,
-      idleTimeoutSeconds: current?.idleTimeoutSeconds,
-      shellExecutable: current?.shellExecutable,
-      shellArgs: current?.shellArgs,
-      shellCommandPrefix: current?.shellCommandPrefix,
-    );
-  }
-
-  AppConfig _applyDetection(AppConfig config, Map<String, bool> detection) {
-    final agents = Map<String, AgentConfigOverride>.from(config.agents);
-    for (final entry in detection.entries) {
-      agents[entry.key] = _mergeOverride(
-        current: agents[entry.key],
-        enabled: entry.value,
-      );
-    }
-    return AppConfig(agents: agents);
+    final result = await DetectService().detectAndSave();
+    _printSummary(result.agents);
+    stdout.writeln('Updated config: ${result.configPath}');
   }
 
   void _printSummary(Map<String, bool> detection) {

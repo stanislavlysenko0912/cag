@@ -196,40 +196,40 @@ void main() {
   group('AgentModelRegistry', () {
     test('resolves model aliases to canonical names', () {
       expect(
-        AgentModelRegistry.findModel('claude', 'sonnet')?.name,
+        AgentModelRegistry.findModel(AgentId.claude, 'sonnet')?.name,
         equals('claude-sonnet-4-6'),
       );
       expect(
-        AgentModelRegistry.findModel('claude', 'haiku')?.name,
+        AgentModelRegistry.findModel(AgentId.claude, 'haiku')?.name,
         equals('claude-haiku-4-5'),
       );
       expect(
-        AgentModelRegistry.findModel('gemini', 'pro')?.name,
+        AgentModelRegistry.findModel(AgentId.gemini, 'pro')?.name,
         equals('gemini-3.1-pro-preview'),
       );
       expect(
-        AgentModelRegistry.findModel('gemini', 'flash')?.name,
+        AgentModelRegistry.findModel(AgentId.gemini, 'flash')?.name,
         equals('gemini-3-flash-preview'),
       );
       expect(
-        AgentModelRegistry.findModel('codex', 'gpt')?.name,
+        AgentModelRegistry.findModel(AgentId.codex, 'gpt')?.name,
         equals('gpt-5.5'),
       );
       expect(
-        AgentModelRegistry.findModel('codex', 'mini')?.name,
+        AgentModelRegistry.findModel(AgentId.codex, 'mini')?.name,
         equals('gpt-5.5-mini'),
       );
-      expect(AgentModelRegistry.findModel('cursor', 'auto'), isNull);
+      expect(AgentModelRegistry.findModel(AgentId.cursor, 'auto'), isNull);
       expect(
-        AgentModelRegistry.findModel('antigravity', 'current')?.name,
-        equals('configured'),
+        AgentModelRegistry.findModel(AgentId.antigravity, 'current'),
+        isNull,
       );
       expect(
-        AgentModelRegistry.findModel('antigravity', 'flash-low')?.name,
+        AgentModelRegistry.findModel(AgentId.antigravity, 'flash-low')?.name,
         equals('gemini-3-5-flash-low'),
       );
       expect(
-        AgentModelRegistry.findModel('antigravity', 'sonnet')?.name,
+        AgentModelRegistry.findModel(AgentId.antigravity, 'sonnet')?.name,
         equals('claude-sonnet-4-6-thinking'),
       );
       expect(
@@ -254,6 +254,178 @@ void main() {
         equals('Gemini 3.5 Flash (Medium)'),
       );
     });
+  });
+
+  group('ModelSettingsService', () {
+    test('toggles agents and models', () async {
+      final tempDir = await Directory.systemTemp.createTemp(
+        'cag_model_settings_',
+      );
+      addTearDown(() => tempDir.delete(recursive: true));
+
+      final configPath = '${tempDir.path}/config.json';
+      final service = ModelSettingsService(configPath: configPath);
+
+      await service.setAgentEnabled(agentName: AgentId.codex, enabled: false);
+      await service.setModelEnabled(
+        agentName: AgentId.codex,
+        modelName: 'gpt-5.5',
+        enabled: false,
+      );
+      await service.addCustomModel(
+        agentName: AgentId.codex,
+        name: 'local-codex',
+        providerModel: 'provider-codex',
+        description: 'Local Codex model',
+      );
+      await service.setDefaultModel(
+        agentName: AgentId.codex,
+        modelName: 'local-codex',
+      );
+      await service.setModelEnabled(
+        agentName: AgentId.codex,
+        modelName: 'local-codex',
+        enabled: false,
+      );
+
+      final snapshot = await service.load();
+      final codex = snapshot.agents.firstWhere(
+        (agent) => agent.name == AgentId.codex,
+      );
+
+      expect(codex.enabled, isFalse);
+      expect(codex.defaultModel, equals('local-codex'));
+      expect(
+        codex.standardModels
+            .firstWhere((model) => model.name == 'gpt-5.5')
+            .enabled,
+        isFalse,
+      );
+      expect(codex.customModels.single.name, equals('local-codex'));
+      expect(codex.customModels.single.enabled, isFalse);
+      expect(codex.customModels.single.resolvedModel, equals('provider-codex'));
+
+      final appConfig = await ConfigService(
+        configPath: configPath,
+      ).loadOrCreate();
+      final resolved = ConfigService().applyOverrides(
+        CodexAgent.defaultConfig,
+        appConfig.agents[AgentId.codex],
+      );
+
+      expect(resolved.enabled, isFalse);
+      expect(
+        resolved.availableModels.any((model) => model.name == 'gpt-5.5'),
+        isFalse,
+      );
+
+      final rawConfig =
+          jsonDecode(await File(configPath).readAsString())
+              as Map<String, dynamic>;
+      final codexConfig =
+          (rawConfig['agents'] as Map<String, dynamic>)['codex']
+              as Map<String, dynamic>;
+
+      expect(codexConfig['enabled'], isFalse);
+      expect(codexConfig['default_model'], equals('local-codex'));
+      expect(codexConfig['models'], hasLength(2));
+    });
+
+    test('allows custom models without hints', () async {
+      final tempDir = await Directory.systemTemp.createTemp(
+        'cag_model_settings_hint_',
+      );
+      addTearDown(() => tempDir.delete(recursive: true));
+
+      final configPath = '${tempDir.path}/config.json';
+      final service = ModelSettingsService(configPath: configPath);
+
+      await service.addCustomModel(
+        agentName: AgentId.codex,
+        name: 'local-codex',
+        providerModel: 'provider-codex',
+        description: ' ',
+      );
+      await service.updateCustomModel(
+        agentName: AgentId.codex,
+        originalName: 'local-codex',
+        name: 'local-codex-renamed',
+        providerModel: 'provider-codex',
+        description: '',
+      );
+
+      final snapshot = await service.load();
+      final codex = snapshot.agents.firstWhere(
+        (agent) => agent.name == AgentId.codex,
+      );
+      expect(codex.customModels.single.name, equals('local-codex-renamed'));
+      expect(codex.customModels.single.description, isNull);
+
+      final rawConfig =
+          jsonDecode(await File(configPath).readAsString())
+              as Map<String, dynamic>;
+      final model =
+          (((rawConfig['agents'] as Map<String, dynamic>)['codex']
+                          as Map<String, dynamic>)['models']
+                      as List)
+                  .single
+              as Map<String, dynamic>;
+      expect(model, isNot(contains('description')));
+    });
+
+    test(
+      'merges standard model overrides with base hints and scores',
+      () async {
+        final tempDir = await Directory.systemTemp.createTemp(
+          'cag_model_settings_merge_',
+        );
+        addTearDown(() => tempDir.delete(recursive: true));
+
+        final configPath = '${tempDir.path}/config.json';
+        final file = File(configPath);
+        await file.parent.create(recursive: true);
+        await file.writeAsString(
+          jsonEncode({
+            'agents': {
+              'codex': {
+                'models': [
+                  {
+                    'name': 'gpt-5.3-codex',
+                    'description': '',
+                    'scores': {
+                      'cost': 10,
+                      'intelligence': 6,
+                      'speed': 10,
+                      'taste': 7,
+                    },
+                  },
+                  {'name': 'gpt-5.5-mini', 'description': ''},
+                ],
+              },
+            },
+          }),
+        );
+
+        final service = ModelSettingsService(configPath: configPath);
+        final snapshot = await service.load();
+        final codex = snapshot.agents.firstWhere(
+          (agent) => agent.name == AgentId.codex,
+        );
+        final codexReview = codex.standardModels.firstWhere(
+          (model) => model.name == 'gpt-5.3-codex',
+        );
+        final mini = codex.standardModels.firstWhere(
+          (model) => model.name == 'gpt-5.5-mini',
+        );
+
+        expect(codexReview.description, equals('finding subtle bugs'));
+        expect(codexReview.scores?.cost, equals(10));
+        expect(mini.scores?.cost, equals(10));
+        expect(mini.scores?.intelligence, equals(6));
+        expect(mini.scores?.speed, equals(8));
+        expect(mini.scores?.taste, equals(4));
+      },
+    );
   });
 
   group('ConsensusParticipant', () {
@@ -334,6 +506,105 @@ void main() {
       expect(config.matches('flash'), isTrue);
       expect(config.toJson()['model'], equals('Gemini 3.5 Flash (Medium)'));
     });
+
+    test('ModelScores round trips through JSON', () {
+      final scores = ModelScores(cost: 8, intelligence: 7, speed: 9, taste: 6);
+
+      expect(
+        ModelScores.fromJson(scores.toJson()).toJson(),
+        equals({'cost': 8, 'intelligence': 7, 'speed': 9, 'taste': 6}),
+      );
+    });
+
+    test('ModelScores validates score range', () {
+      expect(
+        () => ModelScores(cost: 0, intelligence: 7, speed: 9, taste: 6),
+        throwsArgumentError,
+      );
+      expect(
+        () => ModelScores(cost: 8, intelligence: 11, speed: 9, taste: 6),
+        throwsArgumentError,
+      );
+      expect(
+        () => ModelScores(cost: 8, intelligence: 7, speed: 9, taste: 11),
+        throwsArgumentError,
+      );
+    });
+
+    test('ModelConfig omits blank hints and serializes scores', () {
+      final config = ModelConfig.fromJson({
+        'name': 'custom',
+        'description': '  ',
+        'scores': {'cost': 6, 'intelligence': 7, 'speed': 8, 'taste': 9},
+      });
+
+      expect(config.description, isNull);
+      expect(config.scores?.cost, equals(6));
+      expect(config.scores?.intelligence, equals(7));
+      expect(config.scores?.speed, equals(8));
+      expect(config.scores?.taste, equals(9));
+      expect(config.toJson(), isNot(contains('description')));
+      expect(
+        config.toJson()['scores'],
+        equals({'cost': 6, 'intelligence': 7, 'speed': 8, 'taste': 9}),
+      );
+    });
+
+    test(
+      'ConfigService merges model overrides with base hints and scores',
+      () async {
+        final tempDir = await Directory.systemTemp.createTemp(
+          'cag_config_model_merge_',
+        );
+        addTearDown(() => tempDir.delete(recursive: true));
+
+        final configPath = '${tempDir.path}/config.json';
+        final file = File(configPath);
+        await file.parent.create(recursive: true);
+        await file.writeAsString(
+          jsonEncode({
+            'agents': {
+              'codex': {
+                'models': [
+                  {
+                    'name': 'gpt-5.3-codex',
+                    'description': '',
+                    'scores': {
+                      'cost': 10,
+                      'intelligence': 6,
+                      'speed': 10,
+                      'taste': 7,
+                    },
+                  },
+                  {'name': 'gpt-5.5-mini', 'description': ''},
+                ],
+              },
+            },
+          }),
+        );
+
+        final appConfig = await ConfigService(
+          configPath: configPath,
+        ).loadOrCreate();
+        final resolved = ConfigService().applyOverrides(
+          CodexAgent.defaultConfig,
+          appConfig.agents[AgentId.codex],
+        );
+        final codexReview = resolved.availableModels.firstWhere(
+          (model) => model.name == 'gpt-5.3-codex',
+        );
+        final mini = resolved.availableModels.firstWhere(
+          (model) => model.name == 'gpt-5.5-mini',
+        );
+
+        expect(codexReview.description, equals('finding subtle bugs'));
+        expect(codexReview.scores?.cost, equals(10));
+        expect(codexReview.scores?.taste, equals(7));
+        expect(mini.description, isNull);
+        expect(mini.scores?.cost, equals(10));
+        expect(mini.scores?.taste, equals(4));
+      },
+    );
   });
 
   group('CompareParticipant', () {
@@ -525,12 +796,97 @@ void main() {
       expect(output, contains('`m1` ⭐'));
     });
 
+    test('generate renders score columns and optional hints', () {
+      const generator = PrimeGenerator();
+
+      final commands = [
+        CommandMetadata(
+          name: 'codex',
+          description: 'Codex agent',
+          models: [
+            ModelConfig(
+              name: 'gpt-5.3-codex',
+              description: 'finding subtle bugs',
+              scores: ModelScores(cost: 9, intelligence: 8, speed: 5, taste: 6),
+              isDefault: true,
+            ),
+          ],
+        ),
+      ];
+
+      final output = generator.generate(
+        commands,
+        agentConfigs: {
+          'codex': const AgentConfig(
+            name: 'codex',
+            executable: 'codex',
+            parser: 'codex',
+          ),
+        },
+      );
+
+      expect(
+        output,
+        contains('| Model | Alias | Cost | Int | Speed | Taste | Hint |'),
+      );
+      expect(
+        output,
+        contains(
+          '| `gpt-5.3-codex` ⭐ | — | 9 | 8 | 5 | 6 | finding subtle bugs |',
+        ),
+      );
+      expect(output, contains('taste covers UI/UX'));
+      expect(output, contains('prefer intelligence, then taste, then cost'));
+      expect(output, contains('Do not let cost prevent using the right model'));
+    });
+
+    test('generate omits hint column when models have no hints', () {
+      const generator = PrimeGenerator();
+
+      final commands = [
+        CommandMetadata(
+          name: 'codex',
+          description: 'Codex agent',
+          models: [
+            ModelConfig(
+              name: 'gpt-5.5-mini',
+              scores: ModelScores(
+                cost: 10,
+                intelligence: 6,
+                speed: 8,
+                taste: 4,
+              ),
+              isDefault: true,
+            ),
+          ],
+        ),
+      ];
+
+      final output = generator.generate(
+        commands,
+        agentConfigs: {
+          'codex': const AgentConfig(
+            name: 'codex',
+            executable: 'codex',
+            parser: 'codex',
+          ),
+        },
+      );
+
+      expect(
+        output,
+        contains('| Model | Alias | Cost | Int | Speed | Taste |'),
+      );
+      expect(output, isNot(contains('| Hint |')));
+      expect(output, contains('| `gpt-5.5-mini` ⭐ | — | 10 | 6 | 8 | 4 |'));
+    });
+
     test('generate includes compare section when compare command exists', () {
       const generator = PrimeGenerator();
 
       final commands = [
         const CommandMetadata(
-          name: 'claude',
+          name: AgentId.claude,
           description: 'Claude agent',
           models: [
             ModelConfig(
@@ -546,8 +902,8 @@ void main() {
       final output = generator.generate(
         commands,
         agentConfigs: {
-          'claude': const AgentConfig(
-            name: 'claude',
+          AgentId.claude: const AgentConfig(
+            name: AgentId.claude,
             executable: 'claude',
             parser: 'claude',
           ),
@@ -563,7 +919,7 @@ void main() {
 
       final commands = [
         const CommandMetadata(
-          name: 'claude',
+          name: AgentId.claude,
           description: 'Claude agent',
           models: [
             ModelConfig(name: 'sonnet', description: 'Base', isDefault: true),
@@ -574,8 +930,8 @@ void main() {
       final output = generator.generate(
         commands,
         agentConfigs: {
-          'claude': const AgentConfig(
-            name: 'claude',
+          AgentId.claude: const AgentConfig(
+            name: AgentId.claude,
             executable: 'claude',
             parser: 'claude',
             availableModels: [
@@ -599,7 +955,7 @@ void main() {
 
       final commands = [
         const CommandMetadata(
-          name: 'codex',
+          name: AgentId.codex,
           description: 'Codex agent',
           models: [
             ModelConfig(
@@ -611,7 +967,7 @@ void main() {
           ],
         ),
         const CommandMetadata(
-          name: 'claude',
+          name: AgentId.claude,
           description: 'Claude agent',
           models: [
             ModelConfig(
@@ -627,13 +983,13 @@ void main() {
       final output = generator.generate(
         commands,
         agentConfigs: {
-          'codex': const AgentConfig(
-            name: 'codex',
+          AgentId.codex: const AgentConfig(
+            name: AgentId.codex,
             executable: 'codex',
             parser: 'codex',
           ),
-          'claude': const AgentConfig(
-            name: 'claude',
+          AgentId.claude: const AgentConfig(
+            name: AgentId.claude,
             executable: 'claude',
             parser: 'claude',
           ),
@@ -659,7 +1015,7 @@ void main() {
 
       final commands = [
         const CommandMetadata(
-          name: 'codex',
+          name: AgentId.codex,
           description: 'Codex agent',
           models: [
             ModelConfig(
@@ -674,8 +1030,8 @@ void main() {
       final output = generator.generate(
         commands,
         agentConfigs: {
-          'codex': const AgentConfig(
-            name: 'codex',
+          AgentId.codex: const AgentConfig(
+            name: AgentId.codex,
             executable: 'codex',
             parser: 'codex',
           ),
@@ -695,7 +1051,7 @@ void main() {
 
       final commands = [
         const CommandMetadata(
-          name: 'codex',
+          name: AgentId.codex,
           description: 'Codex agent',
           models: [
             ModelConfig(
@@ -710,8 +1066,8 @@ void main() {
       final output = generator.generate(
         commands,
         agentConfigs: {
-          'codex': const AgentConfig(
-            name: 'codex',
+          AgentId.codex: const AgentConfig(
+            name: AgentId.codex,
             executable: 'codex',
             parser: 'codex',
           ),
@@ -737,7 +1093,7 @@ void main() {
 
       final commands = [
         const CommandMetadata(
-          name: 'codex',
+          name: AgentId.codex,
           description: 'Codex agent',
           models: [
             ModelConfig(
@@ -752,8 +1108,8 @@ void main() {
       final output = generator.generate(
         commands,
         agentConfigs: {
-          'codex': const AgentConfig(
-            name: 'codex',
+          AgentId.codex: const AgentConfig(
+            name: AgentId.codex,
             executable: 'codex',
             parser: 'codex',
           ),
@@ -779,7 +1135,7 @@ void main() {
 
       final commands = [
         const CommandMetadata(
-          name: 'codex',
+          name: AgentId.codex,
           description: 'Codex agent',
           models: [
             ModelConfig(
@@ -794,8 +1150,8 @@ void main() {
       final output = generator.generate(
         commands,
         agentConfigs: {
-          'codex': const AgentConfig(
-            name: 'codex',
+          AgentId.codex: const AgentConfig(
+            name: AgentId.codex,
             executable: 'codex',
             parser: 'codex',
           ),
@@ -1141,15 +1497,15 @@ void main() {
     test('get uses configured agent instances built from agent configs', () {
       final registry = AgentRegistry(
         agentConfigs: {
-          'claude': const AgentConfig(
-            name: 'claude',
+          AgentId.claude: const AgentConfig(
+            name: AgentId.claude,
             executable: '/tmp/custom-claude',
             parser: 'claude_json',
           ),
         },
       );
 
-      final agent = registry.get('claude');
+      final agent = registry.get(AgentId.claude);
 
       expect(agent, isA<ClaudeAgent>());
       expect(agent.config.executable, equals('/tmp/custom-claude'));
@@ -1160,7 +1516,7 @@ void main() {
     test('ClaudeAgent uses config additionalArgs as the base arguments', () {
       final agent = ClaudeAgent(
         config: const AgentConfig(
-          name: 'claude',
+          name: AgentId.claude,
           executable: 'claude',
           parser: 'claude_json',
           additionalArgs: ['--custom-flag', '1'],
@@ -1177,7 +1533,7 @@ void main() {
     test('GeminiAgent uses config additionalArgs as the base arguments', () {
       final agent = GeminiAgent(
         config: const AgentConfig(
-          name: 'gemini',
+          name: AgentId.gemini,
           executable: 'gemini',
           parser: 'gemini_json',
           additionalArgs: ['--custom-output', 'json'],
@@ -1191,20 +1547,21 @@ void main() {
       expect(args, contains('hello'));
     });
 
-    test('AntigravityAgent does not pass model flag for configured model', () {
+    test('AntigravityAgent passes default model flag', () {
       final agent = AntigravityAgent(
         config: const AgentConfig(
-          name: 'antigravity',
+          name: AgentId.antigravity,
           executable: 'agy',
           parser: 'antigravity',
+          defaultModel: 'Gemini 3.5 Flash (Medium)',
           additionalArgs: ['--print'],
         ),
       );
 
-      final args = agent.buildArgs(prompt: 'hello', model: 'configured');
+      final args = agent.buildArgs(prompt: 'hello');
 
-      expect(args, isNot(contains('--model')));
-      expect(args, isNot(contains('-m')));
+      expect(args, contains('--model'));
+      expect(args, contains('Gemini 3.5 Flash (Medium)'));
       expect(args, contains('hello'));
       expect(args.where((arg) => arg == '--print'), hasLength(1));
       expect(args[args.indexOf('--print') + 1], equals('hello'));
@@ -1213,9 +1570,10 @@ void main() {
     test('AntigravityAgent passes model flag for AGY models', () {
       final agent = AntigravityAgent(
         config: const AgentConfig(
-          name: 'antigravity',
+          name: AgentId.antigravity,
           executable: 'agy',
           parser: 'antigravity',
+          defaultModel: 'Gemini 3.5 Flash (Medium)',
           additionalArgs: ['--print'],
         ),
       );
@@ -1234,9 +1592,10 @@ void main() {
       final runner = _FakeCLIRunner(stdout: 'resumed\n');
       final agent = AntigravityAgent(
         config: const AgentConfig(
-          name: 'antigravity',
+          name: AgentId.antigravity,
           executable: 'agy',
           parser: 'antigravity',
+          defaultModel: 'Gemini 3.5 Flash (Medium)',
           additionalArgs: ['--print'],
         ),
         runner: runner,
@@ -1273,9 +1632,10 @@ void main() {
       );
       final agent = AntigravityAgent(
         config: const AgentConfig(
-          name: 'antigravity',
+          name: AgentId.antigravity,
           executable: 'agy',
           parser: 'antigravity',
+          defaultModel: 'Gemini 3.5 Flash (Medium)',
           additionalArgs: ['--print'],
         ),
         runner: runner,
@@ -1481,7 +1841,7 @@ void main() {
       final fakeCodex = await _writeTaskFakeCodex(tempDir);
       final agent = CodexAgent(
         config: AgentConfig(
-          name: 'codex',
+          name: AgentId.codex,
           executable: Platform.resolvedExecutable,
           parser: 'codex_jsonl',
           defaultModel: 'mini',
@@ -1495,7 +1855,7 @@ void main() {
         resolveRequest: (args) {
           final prompt = args?['prompt'] as String? ?? 'ok';
           return CagAgentRequest(
-            agentName: 'codex',
+            agentName: AgentId.codex,
             agent: agent,
             prompt: prompt,
             model: 'mini',
@@ -1672,7 +2032,7 @@ void main() {
         manager = CagAgentTaskManager(
           resolveRequest: (args) {
             return CagAgentRequest(
-              agentName: 'codex',
+              agentName: AgentId.codex,
               agent: agent,
               prompt: 'delayed',
               model: 'mini',
@@ -1764,7 +2124,7 @@ void main() {
       final fakeCodex = await _writeTaskFakeCodex(tempDir);
       final agent = CodexAgent(
         config: AgentConfig(
-          name: 'codex',
+          name: AgentId.codex,
           executable: Platform.resolvedExecutable,
           parser: 'codex_jsonl',
           defaultModel: 'mini',
@@ -1776,7 +2136,7 @@ void main() {
       manager = CagAgentTaskManager(
         resolveRequest: (args) {
           return CagAgentRequest(
-            agentName: 'codex',
+            agentName: AgentId.codex,
             agent: agent,
             prompt: args?['prompt'] as String? ?? 'ok',
             model: 'mini',
@@ -1935,7 +2295,7 @@ class _DelayedStartAgent extends CodexAgent {
   _DelayedStartAgent(this.processScript)
     : super(
         config: AgentConfig(
-          name: 'codex',
+          name: AgentId.codex,
           executable: Platform.resolvedExecutable,
           parser: 'codex_jsonl',
           defaultModel: 'mini',

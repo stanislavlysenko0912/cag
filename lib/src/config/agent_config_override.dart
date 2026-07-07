@@ -32,8 +32,9 @@ class AgentConfigOverride {
       executable: json['executable'] as String?,
       enabled: json['enabled'] is bool ? json['enabled'] as bool : null,
       defaultModel: json['default_model'] as String?,
-      additionalArgs:
-          (json['additional_args'] as List?)?.whereType<String>().toList(),
+      additionalArgs: (json['additional_args'] as List?)
+          ?.whereType<String>()
+          .toList(),
       env: (json['env'] as Map?)?.map(
         (key, value) => MapEntry(key.toString(), value.toString()),
       ),
@@ -59,10 +60,8 @@ class AgentConfigOverride {
     if (defaultModel != null) 'default_model': defaultModel,
     if (additionalArgs != null) 'additional_args': additionalArgs,
     if (env != null) 'env': env,
-    if (hardTimeoutSeconds != null)
-      'hard_timeout_seconds': hardTimeoutSeconds,
-    if (idleTimeoutSeconds != null)
-      'idle_timeout_seconds': idleTimeoutSeconds,
+    if (hardTimeoutSeconds != null) 'hard_timeout_seconds': hardTimeoutSeconds,
+    if (idleTimeoutSeconds != null) 'idle_timeout_seconds': idleTimeoutSeconds,
     if (shellExecutable != null) 'shell_executable': shellExecutable,
     if (shellArgs != null) 'shell_args': shellArgs,
     if (shellCommandPrefix != null) 'shell_command_prefix': shellCommandPrefix,

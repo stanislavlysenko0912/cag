@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:cag/cag.dart';
@@ -185,6 +186,71 @@ void main() {
         );
       },
     );
+
+    test('schema accepts model scores without description', () async {
+      final file = File(configPath);
+      await file.parent.create(recursive: true);
+      await file.writeAsString(
+        jsonEncode({
+          'agents': {
+            'codex': {
+              'models': [
+                {
+                  'name': 'custom-codex',
+                  'scores': {
+                    'cost': 8,
+                    'intelligence': 7,
+                    'speed': 9,
+                    'taste': 6,
+                  },
+                },
+              ],
+            },
+          },
+        }),
+      );
+
+      final config = await configService.loadOrCreate();
+
+      final scores = config.agents['codex']?.models?.single.scores;
+      expect(scores?.cost, equals(8));
+      expect(scores?.intelligence, equals(7));
+      expect(scores?.speed, equals(9));
+      expect(scores?.taste, equals(6));
+      expect(warningSink.toString(), isEmpty);
+    });
+
+    test('schema rejects out-of-range model scores', () async {
+      final file = File(configPath);
+      await file.parent.create(recursive: true);
+      await file.writeAsString(
+        jsonEncode({
+          'agents': {
+            'codex': {
+              'models': [
+                {
+                  'name': 'custom-codex',
+                  'scores': {
+                    'cost': 11,
+                    'intelligence': 7,
+                    'speed': 9,
+                    'taste': 6,
+                  },
+                },
+              ],
+            },
+          },
+        }),
+      );
+
+      final config = await configService.loadOrCreate();
+
+      expect(config.agents, isEmpty);
+      expect(
+        warningSink.toString(),
+        contains('Config validation failed at $configPath:'),
+      );
+    });
 
     test('legacy timeout migration rewrites only valid config', () async {
       final file = File(configPath);

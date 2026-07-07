@@ -1,69 +1,64 @@
+import '../agents/agent_id.dart';
 import 'model_config.dart';
 
 /// Canonical model definitions for all agents.
 class AgentModelRegistry {
   const AgentModelRegistry._();
 
-  static const claudeModels = [
+  static final claudeModels = [
     ModelConfig(
       name: 'claude-sonnet-4-6',
-      description:
-          'Top-tier, fast all-rounder. Use for: general tasks, code review, discussions',
+      scores: ModelScores(cost: 5, intelligence: 5, speed: 7, taste: 7),
       isDefault: true,
       aliases: ['sonnet'],
     ),
     ModelConfig(
       name: 'claude-opus-4-8',
-      description:
-          'Top-tier, strongest reasoning. Use for: architecture, complex debugging, deep code review',
+      scores: ModelScores(cost: 4, intelligence: 7, speed: 4, taste: 8),
       aliases: ['opus'],
     ),
     ModelConfig(
       name: 'claude-haiku-4-5',
-      description:
-          'Light-tier, fastest. Use for: quick lookups, simple questions',
+      scores: ModelScores(cost: 10, intelligence: 3, speed: 10, taste: 2),
       aliases: ['haiku'],
     ),
   ];
 
-  static const geminiModels = [
+  static final geminiModels = [
     ModelConfig(
       name: 'gemini-3-flash-preview',
-      description: 'Mid-tier, fast. Use for: general search, code analysis',
+      scores: ModelScores(cost: 8, intelligence: 7, speed: 8, taste: 5),
       isDefault: true,
       aliases: ['flash'],
     ),
     ModelConfig(
       name: 'gemini-3.1-pro-preview',
-      description:
-          'Top-tier, strong analysis. Use for: complex analysis, architecture, deep code review',
+      scores: ModelScores(cost: 4, intelligence: 9, speed: 5, taste: 6),
       aliases: ['pro'],
     ),
     ModelConfig(
       name: 'gemini-3.1-flash-lite-preview',
-      description: 'Light-tier, fastest. Use for: quick search, simple lookups',
+      scores: ModelScores(cost: 10, intelligence: 5, speed: 10, taste: 3),
       aliases: ['flash-lite'],
     ),
   ];
 
-  static const codexModels = [
+  static final codexModels = [
     ModelConfig(
       name: 'gpt-5.5',
-      description:
-          'Top-tier, versatile frontier model. Use for: general tasks, discussions, broad coding',
+      scores: ModelScores(cost: 9, intelligence: 8, speed: 6, taste: 5),
       isDefault: true,
       aliases: ['gpt'],
     ),
     ModelConfig(
       name: 'gpt-5.3-codex',
-      description:
-          'Top-tier code reviewer. Use for: code review, finding subtle bugs',
+      description: 'finding subtle bugs',
+      scores: ModelScores(cost: 9, intelligence: 8, speed: 5, taste: 6),
       aliases: ['codex'],
     ),
     ModelConfig(
       name: 'gpt-5.5-mini',
-      description:
-          'Mid-tier, fast. Use for: quick code questions, simple fixes',
+      scores: ModelScores(cost: 10, intelligence: 6, speed: 8, taste: 4),
       aliases: ['mini'],
     ),
   ];
@@ -73,109 +68,97 @@ class AgentModelRegistry {
   /// Discover the full account-specific slug list with
   /// `cursor-agent models` (alias: `cursor-agent --list-models`).
   /// Refresh this curated list when new slugs appear there.
-  static const cursorModels = [
+  static final cursorModels = [
     ModelConfig(
       name: 'composer-2.5-fast',
-      description:
-          'Solid-tier agent model, fast variant. Use for: interactive work, delegated tasks, quick research',
+      scores: ModelScores(cost: 7, intelligence: 7, speed: 9, taste: 6),
       isDefault: true,
     ),
     ModelConfig(
       name: 'composer-2.5',
-      description:
-          'Solid-tier agent model, standard variant (lower cost). Use for: longer sessions, background tasks',
+      scores: ModelScores(cost: 8, intelligence: 7, speed: 7, taste: 6),
     ),
     ModelConfig(
       name: 'gemini-3.5-flash',
-      description:
-          'Solid-tier, fast and capable. Use for: advice, brainstorming, everyday discussion',
+      scores: ModelScores(cost: 8, intelligence: 7, speed: 8, taste: 5),
     ),
     ModelConfig(
       name: 'gemini-3.1-pro',
-      description:
-          'Top-tier analysis. Use for: complex reasoning, architecture, deep code review',
+      scores: ModelScores(cost: 4, intelligence: 9, speed: 5, taste: 6),
     ),
     ModelConfig(
       name: 'gpt-5.5-high',
-      description:
-          'Front-tier frontier model. Use for: hardest problems, broad coding, high-stakes decisions',
+      scores: ModelScores(cost: 8, intelligence: 9, speed: 4, taste: 5),
     ),
     ModelConfig(
       name: 'grok-4.3',
-      description:
-          'Mid-tier alternative viewpoint. Use for: second opinions, contrasting takes',
+      description: 'contrasting second opinion',
+      scores: ModelScores(cost: 5, intelligence: 8, speed: 6, taste: 6),
     ),
     ModelConfig(
       name: 'claude-opus-4-8-thinking-max',
-      description:
-          'Front-tier, deepest reasoning. Use for: architecture, complex debugging, critical decisions',
+      scores: ModelScores(cost: 4, intelligence: 7, speed: 3, taste: 8),
     ),
   ];
 
-  static const antigravityModels = [
-    ModelConfig(
-      name: 'configured',
-      description:
-          'Uses the reasoning model currently selected in Antigravity CLI via /model or settings.',
-      isDefault: true,
-      aliases: ['current', 'default'],
-    ),
+  static final antigravityModels = [
     ModelConfig(
       name: 'gemini-3-5-flash-medium',
       model: 'Gemini 3.5 Flash (Medium)',
-      description: 'Medium-tier Gemini model.',
+      scores: ModelScores(cost: 7, intelligence: 7, speed: 7, taste: 5),
+      isDefault: true,
       aliases: ['flash'],
     ),
     ModelConfig(
       name: 'gemini-3-5-flash-high',
       model: 'Gemini 3.5 Flash (High)',
-      description: 'Higher-reasoning Gemini Flash model.',
+      scores: ModelScores(cost: 5, intelligence: 8, speed: 6, taste: 5),
       aliases: ['flash-high'],
     ),
     ModelConfig(
       name: 'gemini-3-5-flash-low',
       model: 'Gemini 3.5 Flash (Low)',
-      description: 'Fast Gemini Flash model.',
+      scores: ModelScores(cost: 9, intelligence: 6, speed: 9, taste: 4),
       aliases: ['flash-low'],
     ),
     ModelConfig(
       name: 'gemini-3-1-pro-high',
       model: 'Gemini 3.1 Pro (High)',
-      description: 'Higher-reasoning Gemini Pro model.',
+      scores: ModelScores(cost: 4, intelligence: 9, speed: 5, taste: 6),
       aliases: ['pro-high'],
     ),
     ModelConfig(
       name: 'gemini-3-1-pro-low',
       model: 'Gemini 3.1 Pro (Low)',
-      description: 'Lower-cost Gemini Pro model.',
+      scores: ModelScores(cost: 7, intelligence: 8, speed: 6, taste: 5),
       aliases: ['pro-low'],
     ),
     ModelConfig(
       name: 'claude-sonnet-4-6-thinking',
       model: 'Claude Sonnet 4.6 (Thinking)',
-      description: 'Claude Sonnet thinking model.',
+      scores: ModelScores(cost: 5, intelligence: 5, speed: 5, taste: 7),
       aliases: ['sonnet'],
     ),
     ModelConfig(
       name: 'claude-opus-4-6-thinking',
       model: 'Claude Opus 4.6 (Thinking)',
-      description: 'Claude Opus thinking model.',
+      scores: ModelScores(cost: 4, intelligence: 7, speed: 3, taste: 8),
       aliases: ['opus'],
     ),
     ModelConfig(
       name: 'gpt-oss-120b-medium',
       model: 'GPT-OSS 120B (Medium)',
-      description: 'Open-weight GPT-OSS model.',
+      scores: ModelScores(cost: 9, intelligence: 6, speed: 6, taste: 4),
       aliases: ['oss'],
     ),
   ];
 
-  static const byAgent = {
-    'claude': claudeModels,
-    'gemini': geminiModels,
-    'codex': codexModels,
-    'cursor': cursorModels,
-    'antigravity': antigravityModels,
+  static final byAgent = {
+    AgentId.claude: claudeModels,
+    AgentId.gemini: geminiModels,
+    AgentId.codex: codexModels,
+    AgentId.cursor: cursorModels,
+    AgentId.antigravity: antigravityModels,
   };
 
   static List<ModelConfig> modelsFor(String agent) {

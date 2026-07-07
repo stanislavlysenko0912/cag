@@ -1,4 +1,4 @@
-import '../agents/known_agents.dart';
+import '../agents/agent_id.dart';
 import '../models/models.dart';
 import '../utils/participant_parser.dart';
 
@@ -39,7 +39,7 @@ class CompareParticipant {
   /// Parse from CLI format: "agent:model".
   factory CompareParticipant.parse(
     String input, {
-    Iterable<String> allowedAgents = KnownAgents.all,
+    Iterable<String> allowedAgents = AgentId.all,
   }) {
     final parsed = ParticipantParser.parse(
       input: input,

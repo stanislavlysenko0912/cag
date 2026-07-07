@@ -1,6 +1,7 @@
 import '../models/models.dart';
 import '../parsers/codex_parser.dart';
 import '../runners/runners.dart';
+import 'agent_id.dart';
 import 'base_agent.dart';
 
 /// Codex CLI agent.
@@ -9,10 +10,11 @@ class CodexAgent extends BaseAgent {
     : super(config: config ?? _defaultConfig, parser: parser ?? CodexParser());
 
   static final defaultConfig = AgentConfig(
-    name: 'codex',
+    name: AgentId.codex,
     executable: 'codex',
     parser: 'codex_jsonl',
-    defaultModel: AgentModelRegistry.defaultModelName('codex') ?? 'gpt-5.5',
+    defaultModel:
+        AgentModelRegistry.defaultModelName(AgentId.codex) ?? 'gpt-5.5',
     additionalArgs: [
       '--dangerously-bypass-approvals-and-sandbox',
       '--search',

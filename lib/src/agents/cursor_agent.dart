@@ -1,5 +1,6 @@
 import '../models/models.dart';
 import '../parsers/cursor_parser.dart';
+import 'agent_id.dart';
 import 'base_agent.dart';
 
 /// Cursor CLI agent.
@@ -11,11 +12,12 @@ class CursorAgent extends BaseAgent {
     : super(config: config ?? _defaultConfig, parser: parser ?? CursorParser());
 
   static final defaultConfig = AgentConfig(
-    name: 'cursor',
+    name: AgentId.cursor,
     executable: 'cursor-agent',
     parser: 'cursor_json',
     defaultModel:
-        AgentModelRegistry.defaultModelName('cursor') ?? 'composer-2.5-fast',
+        AgentModelRegistry.defaultModelName(AgentId.cursor) ??
+        'composer-2.5-fast',
     additionalArgs: ['--print', '--output-format', 'json', '--force'],
     hardTimeoutSeconds: 1800,
     idleTimeoutSeconds: 900,

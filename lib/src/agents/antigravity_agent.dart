@@ -3,6 +3,7 @@ import 'dart:io';
 import '../models/models.dart';
 import '../parsers/parsers.dart';
 import '../runners/runners.dart';
+import 'agent_id.dart';
 import 'base_agent.dart';
 
 /// Antigravity CLI agent (successor to Gemini CLI).
@@ -17,12 +18,13 @@ class AntigravityAgent extends BaseAgent {
        );
 
   static final defaultConfig = AgentConfig(
-    name: 'antigravity',
+    name: AgentId.antigravity,
     enabled: false,
     executable: 'agy',
-    parser: 'antigravity',
+    parser: AgentId.antigravity,
     defaultModel:
-        AgentModelRegistry.defaultModelName('antigravity') ?? 'configured',
+        AgentModelRegistry.defaultModelName(AgentId.antigravity) ??
+        'gemini-3-5-flash-medium',
     additionalArgs: ['--print', '--dangerously-skip-permissions'],
     hardTimeoutSeconds: 1800,
     idleTimeoutSeconds: 900,
@@ -46,9 +48,11 @@ class AntigravityAgent extends BaseAgent {
 
     args.addAll(['--print-timeout', '${config.hardTimeoutSeconds}s']);
 
-    if (_shouldPassModel(model)) {
-      args.addAll(['--model', model!]);
+    final selectedModel = model ?? config.defaultModel;
+    if (selectedModel == null || selectedModel.isEmpty) {
+      throw ArgumentError('Antigravity model is required.');
     }
+    args.addAll(['--model', selectedModel]);
 
     if (resume != null) {
       args.addAll(['--conversation', resume]);
@@ -140,11 +144,6 @@ class AntigravityAgent extends BaseAgent {
     } catch (_) {
       return null;
     }
-  }
-
-  bool _shouldPassModel(String? model) {
-    if (model == null) return false;
-    return !const {'configured', 'current', 'default'}.contains(model);
   }
 
   bool _isPrintFlag(String arg) {

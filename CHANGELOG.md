@@ -9,15 +9,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added the initial `--tui` entrypoint with a Nocterm-backed terminal UI shell.
+- Added a global `Ctrl+C` shortcut to quit the `--tui` from any screen, including while editing custom model form fields; the hint is shown only on the main menu.
+- Added TUI menu actions for status diagnostics and agent CLI detection.
+- Added TUI model management for enabled agents, default model selection, and custom model creation.
 - Added `cag doctor` for read-only setup diagnostics across config, enabled agents, executables, versions, hints, and optional MCP HTTP reachability.
 - Added `antigravity` to `cag detect` and refreshed AGY model aliases.
 - Added stdin/pipe prompt input for prompt-based CLI commands, allowing usage such as `git diff | cag codex "review this"`.
 - Added MCP Task-backed `cag_agent` execution and the `cag_task` fallback tool for `mode: background`, with compact task resources, opt-in logs, non-graceful cancellation, and one-hour in-memory task retention.
+- Added a `d` shortcut in the `--tui` agent detail view to set the highlighted model (standard or custom) as that agent's default; the `★` moves to it and it does not change the model's enabled state.
+- Added structured model scores for cost, intelligence, speed, and taste across built-in CAG models.
+- Added an `edited` tag on `--tui` built-in model rows whose definition (provider id, hint, scores, or aliases) is overridden by config, so config-level customization is visible at a glance.
+- Added editable per-model routing scores (cost, intelligence, speed, taste, each 1-10) to the `--tui` custom model form as four optional, all-or-nothing fields.
 
 ### Changed
 
+- Redesigned the `--tui` interface around a single, selection-driven interaction model: arrows or the mouse move a highlight, Enter opens the row, Space toggles it, and Esc goes back or quits. Every navigational action (Back, Add custom model) is now a highlighted row, and framed panels with titles replace the previous key-hint clutter.
+- Replaced the `[x]`/`[ ]` toggle markers with a colored status dot so enabled and disabled agents and models read at a glance.
+- Made the `--tui` Detect screen a preview: it now shows a diff of what applying detection would change and requires an explicit "Apply changes" action instead of writing config on open.
+- Separated custom models from included models in the `--tui` model list, and made custom models editable and deletable from a dedicated form.
+- Clarified the `--tui` custom model form with per-field guidance (name, optional hint, optional provider model); provider model and hint are now optional while name is required.
+- Changed model guidance in `prime`, MCP, and the TUI from prose-first descriptions to comparable score columns with optional short hints and model-selection guidance.
+- Reworked the `--tui` custom model form fields into single-line rows: labels sit in an aligned column, required fields are marked with a colored `*`, and per-field guidance now appears as in-field placeholder hints instead of a separate line.
+- Refined `--tui` layout polish: aligned header with panel titles, added a title/subtitle separator, and gave panels consistent top spacing.
+- Dropped the default model column from the `--tui` Status screen for a cleaner diagnostic list.
+- Changed the `--tui` model list to hide the hint and scores on unselected rows and expand them into a fully labeled detail block (`cost N · intelligence N · speed N · taste N`) beneath the highlighted row, replacing the cryptic per-row abbreviation.
+- Changed `--tui` error handling to show errors as an inline banner above the current screen instead of replacing the whole screen, so the view stays navigable (and mutation failures no longer discard the model list or form).
 - Centralized platform-aware shell command construction in `CLIRunner`, keeping agent execution code focused on agent arguments.
 - Improved MCP and `prime` guidance for `cag_agent` and `cag_models` so hosts know when to use them, when to prefer native tools, how IDs differ, and when to inspect model aliases.
+- Removed Antigravity's `configured` model alias so CAG always passes an explicit AGY model.
+- Renamed the built-in agent ID namespace to `AgentId` and reused it across implementation code.
 - Moved the open `TODO.useful.md` backlog into the Linear CAG project.
 - Synced refreshed `TODO.useful.md` research notes into the Linear CAG project.
 

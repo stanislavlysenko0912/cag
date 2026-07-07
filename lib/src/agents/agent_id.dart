@@ -1,5 +1,5 @@
-class KnownAgents {
-  KnownAgents._();
+class AgentId {
+  AgentId._();
 
   static const claude = 'claude';
   static const gemini = 'gemini';

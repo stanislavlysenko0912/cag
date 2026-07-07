@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:args/command_runner.dart';
 import 'package:cag/cag.dart';
+import 'package:cag/src/tui/cag_tui.dart';
 
 import 'commands/agent_command.dart';
 import 'commands/compare_command.dart';
@@ -13,7 +14,7 @@ import 'commands/mcp_command.dart';
 import 'commands/prime_command.dart';
 
 void main(List<String> args) async {
-  if (_isDoctorCommand(args)) {
+  if (!_isTuiRequested(args) && _isDoctorCommand(args)) {
     await _runDoctor(args);
     return;
   }
@@ -35,6 +36,11 @@ void main(List<String> args) async {
       abbr: 'v',
       negatable: false,
       help: 'Print version',
+    )
+    ..argParser.addFlag(
+      'tui',
+      negatable: false,
+      help: 'Open the terminal user interface.',
     );
 
   _addAgentCommands(runner, agentConfigs);
@@ -43,6 +49,10 @@ void main(List<String> args) async {
     final results = runner.argParser.parse(args);
     if (results['version'] as bool) {
       print('cag ${AppInfo.version}');
+      return;
+    }
+    if (results['tui'] as bool) {
+      await runCagTui(commandArgs: _withoutTuiFlag(args));
       return;
     }
     await runner.run(args);
@@ -79,11 +89,11 @@ void _addAgentCommands(
 
 MetaPrinter _metaPrinterFor(String agentName) {
   return switch (agentName) {
-    KnownAgents.claude => printClaudeMeta,
-    KnownAgents.gemini => printGeminiMeta,
-    KnownAgents.codex => printCodexMeta,
-    KnownAgents.cursor => printCursorMeta,
-    KnownAgents.antigravity => printAntigravityMeta,
+    AgentId.claude => printClaudeMeta,
+    AgentId.gemini => printGeminiMeta,
+    AgentId.codex => printCodexMeta,
+    AgentId.cursor => printCursorMeta,
+    AgentId.antigravity => printAntigravityMeta,
     _ => throw ArgumentError('Unknown agent: $agentName'),
   };
 }
@@ -121,6 +131,21 @@ bool _isDoctorCommand(List<String> args) {
     return arg == 'doctor';
   }
   return false;
+}
+
+bool _isTuiRequested(List<String> args) {
+  for (final arg in args) {
+    if (arg == '--') return false;
+    if (arg == '--tui') return true;
+  }
+  return false;
+}
+
+List<String> _withoutTuiFlag(List<String> args) {
+  return [
+    for (final arg in args)
+      if (arg != '--tui') arg,
+  ];
 }
 
 class AppInfo {

@@ -17,6 +17,9 @@ Wait for the user's answer before proceeding.
 Once you know the topic:
 - Gather relevant context from project files if needed
 - Start the dialogue with the agent
+- Use model scores as defaults, not limits. Scores are 1-10, higher is better: cost reflects effective cost, intelligence is unsupervised problem difficulty, and taste covers UI/UX, code quality, API design, and copy.
+- Cost is only a tie-breaker. For anything that ships, prefer intelligence, then taste, then cost; user-facing UI, copy, and API design should use taste 7+.
+- Do not let cost prevent using the right model for the job. Use cheaper models to gather information and try things before moving the work to a more expensive model.
 
 ### First message to the agent
 Give the agent **detailed context**: what we're working on, what the task is, what the constraints are. They should understand the task as well as you do. Tell them you're colleagues solving this together.

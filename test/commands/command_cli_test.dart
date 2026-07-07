@@ -7,6 +7,28 @@ import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
 void main() {
+  group('main CLI', () {
+    late Directory tempDir;
+    late Map<String, String> environment;
+
+    setUp(() async {
+      tempDir = await Directory.systemTemp.createTemp('cag_cli_main_');
+      environment = buildAppEnvironment(tempDir);
+    });
+
+    tearDown(() async {
+      await tempDir.delete(recursive: true);
+    });
+
+    test('--help includes tui flag', () async {
+      final result = await runCli(['--help'], environment);
+
+      expect(result.exitCode, equals(0));
+      expect(result.stdout, contains('--tui'));
+      expect(result.stdout, contains('Open the terminal user interface.'));
+    });
+  });
+
   group('consensus CLI', () {
     late Directory tempDir;
     late Map<String, String> environment;
@@ -496,7 +518,7 @@ void main() {
       ).inspect(includeVersions: false);
 
       final codex = report.agents.singleWhere((agent) {
-        return agent.name == 'codex';
+        return agent.name == AgentId.codex;
       });
       expect(codex.enabled, isTrue);
       expect(codex.available, isTrue);
@@ -507,7 +529,7 @@ void main() {
       expect(codex.version, isNull);
 
       final claude = report.agents.singleWhere((agent) {
-        return agent.name == 'claude';
+        return agent.name == AgentId.claude;
       });
       expect(claude.enabled, isTrue);
       expect(claude.available, isFalse);
@@ -533,7 +555,7 @@ void main() {
       ).inspect(includeVersions: false);
 
       final codex = report.agents.singleWhere((agent) {
-        return agent.name == 'codex';
+        return agent.name == AgentId.codex;
       });
       expect(codex.available, isTrue);
       expect(codex.version, isNull);

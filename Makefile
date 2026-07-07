@@ -32,6 +32,8 @@ endif
 BUILD_BIN := $(BUILD_DIR)/$(NAME)$(EXE_EXT)
 INSTALL_BIN := $(BIN_DIR)/$(NAME)$(EXE_EXT)
 
+ARGS ?=
+
 gen:
 	@fvm dart run tool/gen_schema.dart
 
@@ -41,7 +43,7 @@ build: gen
 	@echo "Built: $(BUILD_BIN)"
 
 run:
-	fvm dart run bin/$(NAME).dart
+	fvm dart run bin/$(NAME).dart $(ARGS)
 
 test: gen
 	fvm dart test

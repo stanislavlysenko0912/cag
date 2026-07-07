@@ -108,7 +108,7 @@ Models and aliases:
 
 - **claude**: `claude-sonnet-4-6` (alias `sonnet`, default), `claude-opus-4-8` (alias `opus`), `claude-haiku-4-5` (alias `haiku`)
 - **gemini** (deprecated): `gemini-3-flash-preview` (alias `flash`, default), `gemini-3.1-pro-preview` (alias `pro`), `gemini-3.1-flash-lite-preview` (alias `flash-lite`)
-- **antigravity**: `configured` (alias `current`, default) uses AGY CLI settings; CAG can also pass AGY model labels through aliases such as `gemini-3-5-flash-medium`, `flash-low`, and `sonnet`
+- **antigravity**: `gemini-3-5-flash-medium` (alias `flash`, default), `gemini-3-5-flash-high` (alias `flash-high`), `gemini-3-5-flash-low` (alias `flash-low`), `gemini-3-1-pro-high` (alias `pro-high`), `gemini-3-1-pro-low` (alias `pro-low`), `claude-sonnet-4-6-thinking` (alias `sonnet`), `claude-opus-4-6-thinking` (alias `opus`), `gpt-oss-120b-medium` (alias `oss`)
 - **codex**: `gpt-5.5` (alias `gpt`, default), `gpt-5.3-codex` (alias `codex`), `gpt-5.5-mini` (alias `mini`)
 - **cursor**: curated slugs below; run `cursor-agent models` for the full account list
   - `composer-2.5-fast` (default), `composer-2.5` — solid-tier agent models

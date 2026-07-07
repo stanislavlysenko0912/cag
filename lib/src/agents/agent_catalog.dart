@@ -7,7 +7,7 @@ import 'claude_agent.dart';
 import 'codex_agent.dart';
 import 'cursor_agent.dart';
 import 'gemini_agent.dart';
-import 'known_agents.dart';
+import 'agent_id.dart';
 
 typedef AgentFactory = BaseAgent Function(AgentConfig? config);
 
@@ -31,7 +31,11 @@ class AgentDefinition {
   final AgentFactory createAgent;
 
   String defaultModel(AgentConfig config) {
-    return config.defaultModel ?? defaultConfig.defaultModel ?? 'configured';
+    final model = config.defaultModel ?? defaultConfig.defaultModel;
+    if (model == null || model.isEmpty) {
+      throw StateError('No default model configured for $name.');
+    }
+    return model;
   }
 }
 
@@ -40,7 +44,7 @@ class AgentCatalog {
 
   static final definitions = [
     AgentDefinition(
-      name: KnownAgents.claude,
+      name: AgentId.claude,
       displayName: 'Claude Code',
       defaultConfig: ClaudeAgent.defaultConfig,
       descriptionText: 'Run Claude CLI agent',
@@ -49,7 +53,7 @@ class AgentCatalog {
       createAgent: (config) => ClaudeAgent(config: config),
     ),
     AgentDefinition(
-      name: KnownAgents.gemini,
+      name: AgentId.gemini,
       displayName: 'Gemini CLI',
       defaultConfig: GeminiAgent.defaultConfig,
       descriptionText: 'Run Gemini CLI agent',
@@ -58,7 +62,7 @@ class AgentCatalog {
       createAgent: (config) => GeminiAgent(config: config),
     ),
     AgentDefinition(
-      name: KnownAgents.codex,
+      name: AgentId.codex,
       displayName: 'Codex CLI',
       defaultConfig: CodexAgent.defaultConfig,
       descriptionText: 'Run Codex CLI agent',
@@ -67,7 +71,7 @@ class AgentCatalog {
       createAgent: (config) => CodexAgent(config: config),
     ),
     AgentDefinition(
-      name: KnownAgents.cursor,
+      name: AgentId.cursor,
       displayName: 'Cursor Agent CLI',
       defaultConfig: CursorAgent.defaultConfig,
       descriptionText: 'Run Cursor Agent CLI',
@@ -76,7 +80,7 @@ class AgentCatalog {
       createAgent: (config) => CursorAgent(config: config),
     ),
     AgentDefinition(
-      name: KnownAgents.antigravity,
+      name: AgentId.antigravity,
       displayName: 'Antigravity CLI',
       defaultConfig: AntigravityAgent.defaultConfig,
       descriptionText: 'Run Antigravity CLI agent',

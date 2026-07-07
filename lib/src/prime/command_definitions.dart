@@ -1,3 +1,4 @@
+import '../agents/agent_id.dart';
 import '../models/models.dart';
 import 'command_metadata.dart';
 
@@ -5,8 +6,8 @@ import 'command_metadata.dart';
 class CommandDefinitions {
   const CommandDefinitions._();
 
-  static const claude = CommandMetadata(
-    name: 'claude',
+  static final claude = CommandMetadata(
+    name: AgentId.claude,
     description:
         'Run ClaudeCode CLI agent from Anthropic. Use for code review, second opinions, complex reasoning.',
     models: AgentModelRegistry.claudeModels,
@@ -19,8 +20,8 @@ class CommandDefinitions {
     ],
   );
 
-  static const gemini = CommandMetadata(
-    name: 'gemini',
+  static final gemini = CommandMetadata(
+    name: AgentId.gemini,
     description:
         'Run Gemini CLI agent from Google. Use for quick code lookup and analysis.',
     models: AgentModelRegistry.geminiModels,
@@ -33,8 +34,8 @@ class CommandDefinitions {
     ],
   );
 
-  static const codex = CommandMetadata(
-    name: 'codex',
+  static final codex = CommandMetadata(
+    name: AgentId.codex,
     description:
         'Run Codex CLI agent from OpenAI. Use for architectural advice, alternative perspective.',
     models: AgentModelRegistry.codexModels,
@@ -47,8 +48,8 @@ class CommandDefinitions {
     ],
   );
 
-  static const cursor = CommandMetadata(
-    name: 'cursor',
+  static final cursor = CommandMetadata(
+    name: AgentId.cursor,
     description: 'Run Cursor Agent CLI. Use for Cursor Composer workflows.',
     models: AgentModelRegistry.cursorModels,
     flags: [
@@ -60,10 +61,10 @@ class CommandDefinitions {
     ],
   );
 
-  static const antigravity = CommandMetadata(
-    name: 'antigravity',
+  static final antigravity = CommandMetadata(
+    name: AgentId.antigravity,
     description:
-        'Run Antigravity CLI agent. Model selection comes from AGY CLI /model or settings.',
+        'Run Antigravity CLI agent with an explicit AGY model selection.',
     models: AgentModelRegistry.antigravityModels,
     flags: [
       CommandFlag(
@@ -258,7 +259,7 @@ cag council -a "agent:model" -a "..." -c "agent:model" "<prompt>"
   );
 
   /// All commands for iteration.
-  static const all = [
+  static final all = [
     claude,
     gemini,
     codex,

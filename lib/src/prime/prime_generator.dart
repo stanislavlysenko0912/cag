@@ -44,6 +44,18 @@ class PrimeGenerator {
       '> Always provide a detailed task description (context, constraints, goals, and expected output). Short prompts lead to weak results.',
     );
     buffer.writeln();
+    buffer.writeln(
+      '> Model scores are 1-10, higher is better. Cost reflects effective cost, intelligence is how hard a problem the model can handle unsupervised, taste covers UI/UX, code quality, API design, and copy.',
+    );
+    buffer.writeln();
+    buffer.writeln(
+      '> Use cost as a tie-breaker only. When axes conflict for anything that ships, prefer intelligence, then taste, then cost. User-facing UI, copy, and API design should use taste 7+.',
+    );
+    buffer.writeln();
+    buffer.writeln(
+      '> Do not let cost prevent using the right model for the job. Use cheaper models to gather information and try things before moving the work to a more expensive model.',
+    );
+    buffer.writeln();
     _writeCommandSyntax(buffer, agentExamples);
 
     // Agents section
@@ -199,14 +211,29 @@ class PrimeGenerator {
 
     // Models table
     if (cmd.models.isNotEmpty) {
-      buffer.writeln('| Model | Alias | Use for |');
-      buffer.writeln('|-------|-------|---------|');
+      final hasHints = cmd.models.any((model) => _modelHint(model) != null);
+      if (hasHints) {
+        buffer.writeln('| Model | Alias | Cost | Int | Speed | Taste | Hint |');
+        buffer.writeln('|-------|-------|------|-----|-------|-------|------|');
+      } else {
+        buffer.writeln('| Model | Alias | Cost | Int | Speed | Taste |');
+        buffer.writeln('|-------|-------|------|-----|-------|-------|');
+      }
       for (final model in cmd.models) {
         final name = model.isDefault ? '`${model.name}` ⭐' : '`${model.name}`';
         final alias = model.aliases.isNotEmpty
             ? '`${model.aliases.first}`'
             : '—';
-        buffer.writeln('| $name | $alias | ${model.description} |');
+        final row = [
+          name,
+          alias,
+          _scoreText(model.scores?.cost),
+          _scoreText(model.scores?.intelligence),
+          _scoreText(model.scores?.speed),
+          _scoreText(model.scores?.taste),
+          if (hasHints) _modelHint(model) ?? '',
+        ];
+        buffer.writeln('| ${row.join(' | ')} |');
       }
       buffer.writeln();
     }
@@ -427,5 +454,13 @@ class PrimeGenerator {
       return '`agent`';
     }
     return agentCommands.map((cmd) => '`${cmd.name}`').join(', ');
+  }
+
+  String _scoreText(int? value) => value == null ? '-' : value.toString();
+
+  String? _modelHint(ModelConfig model) {
+    final hint = model.description?.trim();
+    if (hint == null || hint.isEmpty) return null;
+    return hint;
   }
 }

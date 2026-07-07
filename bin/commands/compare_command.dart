@@ -41,8 +41,7 @@ class CompareCommand extends Command<void> {
   String get name => 'compare';
 
   @override
-  String get description =>
-      'Run multiple agents in parallel without synthesis. Follow-up uses agent -r with returned session_id values.';
+  String get description => 'Run multiple agents in parallel without synthesis';
 
   @override
   String get invocation =>

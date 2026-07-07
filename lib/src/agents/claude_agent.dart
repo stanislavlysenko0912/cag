@@ -1,6 +1,7 @@
 import '../models/models.dart';
 import '../parsers/claude_parser.dart';
 import '../runners/runners.dart';
+import 'agent_id.dart';
 import 'base_agent.dart';
 
 /// Claude CLI agent.
@@ -9,10 +10,11 @@ class ClaudeAgent extends BaseAgent {
     : super(config: config ?? _defaultConfig, parser: parser ?? ClaudeParser());
 
   static final defaultConfig = AgentConfig(
-    name: 'claude',
+    name: AgentId.claude,
     executable: 'claude',
     parser: 'claude_json',
-    defaultModel: AgentModelRegistry.defaultModelName('claude') ?? 'sonnet',
+    defaultModel:
+        AgentModelRegistry.defaultModelName(AgentId.claude) ?? 'sonnet',
     additionalArgs: [
       '-p',
       '--output-format',

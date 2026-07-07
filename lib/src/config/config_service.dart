@@ -103,7 +103,7 @@ class ConfigService {
       shellArgs: overrides.shellArgs ?? base.shellArgs,
       shellCommandPrefix:
           overrides.shellCommandPrefix ?? base.shellCommandPrefix,
-      availableModels: models,
+      availableModels: models.where((model) => model.enabled).toList(),
     );
   }
 
@@ -113,11 +113,29 @@ class ConfigService {
   ) {
     if (overrides == null || overrides.isEmpty) return base;
 
-    final map = {for (final m in base) m.name: m};
-    for (final override in overrides) {
-      map[override.name] = override;
-    }
-    return map.values.toList();
+    final overrideByName = {for (final model in overrides) model.name: model};
+    final baseNames = base.map((model) => model.name).toSet();
+    return [
+      for (final model in base)
+        if (overrideByName[model.name] case final override?)
+          _mergeModel(model, override)
+        else
+          model,
+      for (final override in overrides)
+        if (!baseNames.contains(override.name)) override,
+    ];
+  }
+
+  ModelConfig _mergeModel(ModelConfig base, ModelConfig override) {
+    return ModelConfig(
+      name: base.name,
+      model: override.model ?? base.model,
+      description: _blankToNull(override.description) ?? base.description,
+      scores: override.scores ?? base.scores,
+      isDefault: override.isDefault || base.isDefault,
+      enabled: override.enabled,
+      aliases: override.aliases.isEmpty ? base.aliases : override.aliases,
+    );
   }
 
   AgentConfigOverride? overridesFor(AppConfig config, String agentName) {
@@ -172,5 +190,11 @@ class ConfigService {
     }
 
     return changed;
+  }
+
+  String? _blankToNull(String? value) {
+    final trimmed = value?.trim();
+    if (trimmed == null || trimmed.isEmpty) return null;
+    return trimmed;
   }
 }

@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../models/models.dart';
 import '../parsers/parsers.dart';
 import '../runners/runners.dart';
+import 'agent_id.dart';
 import 'base_agent.dart';
 
 /// Gemini CLI agent.
@@ -11,11 +12,11 @@ class GeminiAgent extends BaseAgent {
     : super(config: config ?? _defaultConfig, parser: parser ?? GeminiParser());
 
   static final defaultConfig = AgentConfig(
-    name: 'gemini',
+    name: AgentId.gemini,
     executable: 'gemini',
     parser: 'gemini_json',
     defaultModel:
-        AgentModelRegistry.defaultModelName('gemini') ??
+        AgentModelRegistry.defaultModelName(AgentId.gemini) ??
         'gemini-3-flash-preview',
     additionalArgs: ['-o', 'json', '--yolo'],
     hardTimeoutSeconds: 1800,

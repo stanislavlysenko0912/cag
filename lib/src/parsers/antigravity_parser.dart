@@ -1,10 +1,11 @@
+import '../agents/agent_id.dart';
 import '../models/models.dart';
 import 'base_parser.dart';
 
 /// Parser for Antigravity CLI output (`agy --print`).
 class AntigravityParser extends BaseParser {
   @override
-  String get name => 'antigravity';
+  String get name => AgentId.antigravity;
 
   @override
   ParsedResponse parse({required String stdout, required String stderr}) {
