@@ -33,7 +33,25 @@ class AgentModelRegistry {
   ];
 
   static final codexModels = [
-    ModelConfig(name: 'gpt-5.5', scores: ModelScores(cost: 9, intelligence: 8, speed: 6, taste: 5), isDefault: true, aliases: ['gpt']),
+    ModelConfig(
+      name: 'gpt-5.6-sol',
+      description: 'frontier agentic coding model',
+      scores: ModelScores(cost: 8, intelligence: 8, speed: 6, taste: 6),
+      isDefault: true,
+      aliases: ['sol', 'gpt-5.6', 'gpt'],
+    ),
+    ModelConfig(
+      name: 'gpt-5.6-terra',
+      description: 'everyday agentic coding model',
+      scores: ModelScores(cost: 9, intelligence: 7, speed: 7, taste: 5),
+      aliases: ['terra'],
+    ),
+    ModelConfig(
+      name: 'gpt-5.6-luna',
+      description: 'lightweight agentic coding model',
+      scores: ModelScores(cost: 10, intelligence: 6, speed: 8, taste: 4),
+      aliases: ['luna'],
+    ),
     ModelConfig(
       name: 'gpt-5.3-codex',
       description: 'finding subtle bugs',
@@ -51,34 +69,40 @@ class AgentModelRegistry {
   static final cursorModels = [
     ModelConfig(name: 'composer-2.5-fast', scores: ModelScores(cost: 7, intelligence: 7, speed: 9, taste: 6), isDefault: true),
     ModelConfig(name: 'composer-2.5', scores: ModelScores(cost: 8, intelligence: 7, speed: 7, taste: 6)),
-    ModelConfig(name: 'gemini-3.5-flash', scores: ModelScores(cost: 8, intelligence: 7, speed: 8, taste: 5)),
+    ModelConfig(name: 'gemini-3.6-flash', scores: ModelScores(cost: 8, intelligence: 7, speed: 8, taste: 5)),
     ModelConfig(name: 'gemini-3.1-pro', scores: ModelScores(cost: 4, intelligence: 9, speed: 5, taste: 6)),
     ModelConfig(name: 'gpt-5.5-high', scores: ModelScores(cost: 8, intelligence: 9, speed: 4, taste: 5)),
     ModelConfig(
-      name: 'grok-4.3',
+      name: 'cursor-grok-4.5-high',
       description: 'contrasting second opinion',
-      scores: ModelScores(cost: 5, intelligence: 8, speed: 6, taste: 6),
+      scores: ModelScores(cost: 8, intelligence: 7, speed: 6, taste: 6),
+      aliases: ['grok-4.5', 'grok'],
+    ),
+    ModelConfig(
+      name: 'cursor-grok-4.5-high-fast',
+      scores: ModelScores(cost: 7, intelligence: 7, speed: 8, taste: 6),
+      aliases: ['grok-4.5-fast', 'grok-fast'],
     ),
     ModelConfig(name: 'claude-opus-4-8-thinking-max', scores: ModelScores(cost: 4, intelligence: 7, speed: 3, taste: 8)),
   ];
 
   static final antigravityModels = [
     ModelConfig(
-      name: 'gemini-3-5-flash-medium',
-      model: 'Gemini 3.5 Flash (Medium)',
+      name: 'gemini-3-6-flash-medium',
+      model: 'Gemini 3.6 Flash (Medium)',
       scores: ModelScores(cost: 7, intelligence: 7, speed: 7, taste: 5),
       isDefault: true,
       aliases: ['flash'],
     ),
     ModelConfig(
-      name: 'gemini-3-5-flash-high',
-      model: 'Gemini 3.5 Flash (High)',
+      name: 'gemini-3-6-flash-high',
+      model: 'Gemini 3.6 Flash (High)',
       scores: ModelScores(cost: 5, intelligence: 8, speed: 6, taste: 5),
       aliases: ['flash-high'],
     ),
     ModelConfig(
-      name: 'gemini-3-5-flash-low',
-      model: 'Gemini 3.5 Flash (Low)',
+      name: 'gemini-3-6-flash-low',
+      model: 'Gemini 3.6 Flash (Low)',
       scores: ModelScores(cost: 9, intelligence: 6, speed: 9, taste: 4),
       aliases: ['flash-low'],
     ),

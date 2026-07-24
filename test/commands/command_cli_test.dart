@@ -523,7 +523,7 @@ void main() {
       expect(codex.enabled, isTrue);
       expect(codex.available, isTrue);
       expect(codex.defaultModel, equals('custom-codex'));
-      expect(codex.modelCount, equals(4));
+      expect(codex.modelCount, equals(6));
       expect(codex.authStatus, equals('not_checked'));
       expect(codex.executionMode, equals('direct'));
       expect(codex.version, isNull);

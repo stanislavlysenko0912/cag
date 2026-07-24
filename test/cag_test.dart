@@ -213,7 +213,7 @@ void main() {
       );
       expect(
         AgentModelRegistry.findModel(AgentId.codex, 'gpt')?.name,
-        equals('gpt-5.5'),
+        equals('gpt-5.6-sol'),
       );
       expect(
         AgentModelRegistry.findModel(AgentId.codex, 'mini')?.name,
@@ -226,7 +226,7 @@ void main() {
       );
       expect(
         AgentModelRegistry.findModel(AgentId.antigravity, 'flash-low')?.name,
-        equals('gemini-3-5-flash-low'),
+        equals('gemini-3-6-flash-low'),
       );
       expect(
         AgentModelRegistry.findModel(AgentId.antigravity, 'sonnet')?.name,
@@ -235,9 +235,9 @@ void main() {
       expect(
         AgentModelRegistry.findModel(
           'antigravity',
-          'gemini-3-5-flash-medium',
+          'gemini-3-6-flash-medium',
         )?.name,
-        equals('gemini-3-5-flash-medium'),
+        equals('gemini-3-6-flash-medium'),
       );
       expect(
         AgentModelRegistry.findModel(
@@ -249,9 +249,9 @@ void main() {
       expect(
         AgentModelRegistry.findModel(
           'antigravity',
-          'gemini-3-5-flash-medium',
+          'gemini-3-6-flash-medium',
         )?.resolvedModel,
-        equals('Gemini 3.5 Flash (Medium)'),
+        equals('Gemini 3.6 Flash (Medium)'),
       );
     });
   });
@@ -269,7 +269,7 @@ void main() {
       await service.setAgentEnabled(agentName: AgentId.codex, enabled: false);
       await service.setModelEnabled(
         agentName: AgentId.codex,
-        modelName: 'gpt-5.5',
+        modelName: 'gpt-5.6-sol',
         enabled: false,
       );
       await service.addCustomModel(
@@ -297,7 +297,7 @@ void main() {
       expect(codex.defaultModel, equals('local-codex'));
       expect(
         codex.standardModels
-            .firstWhere((model) => model.name == 'gpt-5.5')
+            .firstWhere((model) => model.name == 'gpt-5.6-sol')
             .enabled,
         isFalse,
       );
@@ -315,7 +315,7 @@ void main() {
 
       expect(resolved.enabled, isFalse);
       expect(
-        resolved.availableModels.any((model) => model.name == 'gpt-5.5'),
+        resolved.availableModels.any((model) => model.name == 'gpt-5.6-sol'),
         isFalse,
       );
 
@@ -1579,13 +1579,13 @@ void main() {
       );
       final model = AgentModelRegistry.findModel(
         'antigravity',
-        'gemini-3-5-flash-low',
+        'gemini-3-6-flash-low',
       )?.resolvedModel;
 
       final args = agent.buildArgs(prompt: 'hello', model: model);
 
       expect(args, contains('--model'));
-      expect(args, contains('Gemini 3.5 Flash (Low)'));
+      expect(args, contains('Gemini 3.6 Flash (Low)'));
     });
 
     test('AntigravityAgent resumes by explicit conversation id', () async {
