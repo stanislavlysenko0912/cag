@@ -38,7 +38,7 @@ class ConsensusParticipant {
     String? resolvedModel,
   }) : _resolvedModel = resolvedModel;
 
-  /// Agent name (gemini, codex, claude, cursor, antigravity).
+  /// Agent name (gemini, codex, claude, cursor, antigravity, opencode).
   final String agent;
 
   /// Model name as provided (may be alias like "flash").

@@ -42,6 +42,14 @@ Future<void> handleMessage(
         reject(id, -32603, 'Protocol failure');
         return;
       }
+      final capabilities = params['clientCapabilities'] as Map<String, dynamic>;
+      final fileSystem = capabilities['fs'] as Map<String, dynamic>;
+      if (fileSystem['readTextFile'] != false ||
+          fileSystem['writeTextFile'] != false ||
+          capabilities['terminal'] != false) {
+        reject(id, -32602, 'Unexpected client capability');
+        return;
+      }
       respond(id, {
         'protocolVersion': 1,
         'agentCapabilities': {'loadSession': true},

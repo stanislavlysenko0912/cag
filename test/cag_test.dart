@@ -690,6 +690,42 @@ void main() {
       expect(definition.defaultModel(configs['custom-acp']!), isNull);
       expect(definition.createAgent(configs['custom-acp']), isA<AcpAgent>());
     });
+
+    test('registers OpenCode as a built-in ACP agent', () {
+      final definition = AgentCatalog.find(AgentId.opencode)!;
+      final config = definition.defaultConfig;
+
+      expect(AgentCatalog.names, contains(AgentId.opencode));
+      expect(AgentId.all, contains(AgentId.opencode));
+      expect(definition.adapterName, AgentId.acp);
+      expect(config.executable, 'opencode');
+      expect(config.additionalArgs, ['acp']);
+      expect(definition.defaultModel(config), isNull);
+      expect(definition.createAgent(config), isA<OpenCodeAgent>());
+      expect(CommandDefinitions.find(AgentId.opencode), isNotNull);
+    });
+
+    test('allows overriding the OpenCode executable', () async {
+      final tempDir = await Directory.systemTemp.createTemp(
+        'cag_opencode_override_',
+      );
+      addTearDown(() => tempDir.delete(recursive: true));
+      final configPath = '${tempDir.path}/config.json';
+      await File(configPath).writeAsString(
+        jsonEncode({
+          'agents': {
+            'opencode': {'executable': '/custom/bin/opencode'},
+          },
+        }),
+      );
+
+      final service = ConfigService(configPath: configPath);
+      final appConfig = await service.loadOrCreate();
+      final configs = AgentCatalog.resolveConfigs(service, appConfig);
+
+      expect(configs[AgentId.opencode]!.executable, '/custom/bin/opencode');
+      expect(configs[AgentId.opencode]!.additionalArgs, ['acp']);
+    });
   });
 
   group('CompareParticipant', () {

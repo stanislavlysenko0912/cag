@@ -13,7 +13,7 @@
         "properties": {
           "adapter": {
             "type": "string",
-            "enum": ["claude", "gemini", "codex", "cursor", "antigravity", "acp"],
+            "enum": ["claude", "gemini", "codex", "cursor", "antigravity", "acp", "opencode"],
             "description": "Built-in CLI adapter used by a custom agent."
           },
           "display_name": {

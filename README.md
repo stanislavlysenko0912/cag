@@ -1,12 +1,12 @@
 # CAG - CLI Agents Wrapper
 
-CLI wrapper for multiple AI agent CLIs (Claude, Gemini, Codex, Cursor, Antigravity) with compare/consensus/council modes and session resume.
+CLI wrapper for multiple AI agent CLIs (Claude, Gemini, Codex, Cursor, Antigravity, OpenCode) with compare/consensus/council modes and session resume.
 
 <img src="docs/images/consensus-demo.png" width="700" alt="CAG - CLI Agents Wrapper">
 
 ## Features
 
-- **Unified interface** — single CLI for Claude, Gemini, Codex, Cursor, and Antigravity with consistent flags and output
+- **Unified interface** — single CLI for Claude, Gemini, Codex, Cursor, Antigravity, and OpenCode with consistent flags and output
 - **Session resume** — continue conversations with `-r <session_id>`
 - **Compare mode** — run multiple agents in parallel and keep each answer as a resumable branch
 - **Consensus mode** — run multiple models in parallel with stance-based prompts (for/against/neutral)
@@ -25,6 +25,7 @@ This tool wraps external AI CLIs that must be installed separately:
 | `agy` | [Antigravity CLI](https://antigravity.google/product/antigravity-cli) |
 | `codex` | [Codex CLI](https://github.com/openai/codex) |
 | `cursor` | [Cursor Agent CLI](https://cursor.com/cli) |
+| `opencode` | [OpenCode](https://opencode.ai/docs/) |
 
 > [!NOTE]
 > **Gemini CLI** is deprecated in favor of **Antigravity CLI** (`agy`). The `gemini` agent remains available for now. And will be removed in the future.
@@ -87,6 +88,8 @@ cag gemini -m pro "Find issues in this parser"   # deprecated — prefer antigra
 cag antigravity "Find issues in this parser"     # work in progress (enable in config)
 cag codex -m gpt "Explain this architecture"
 cag cursor -m composer-2.5 "Summarize this architecture"
+cag opencode "Review this change"
+cag opencode -m provider/model -r session_id "Continue"
 ```
 
 Common flags:
@@ -116,6 +119,8 @@ Models and aliases:
   - `gemini-3.1-pro` — top-tier
   - `grok-4.3` — mid-tier second opinion
   - `gpt-5.5-high`, `claude-opus-4-8-thinking-max` — front-tier (above top)
+- **opencode**: CAG leaves the model unset by default; use OpenCode's
+  `provider/model` identifier with `-m` when an explicit model is needed
 
 > [!CAUTION]
 > **⚠️ Permission Note:** Agents run with elevated permissions for non-interactive execution:

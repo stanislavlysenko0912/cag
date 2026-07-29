@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added built-in OpenCode support through its `opencode acp` stdio server, including model selection and session resume.
 - Added config-defined ACP v1 agents over JSON-RPC/stdio, including session resume, model selection, streamed responses, and non-interactive `allow_once` permissions.
 - Added config-defined agents backed by existing CLI adapters, including custom arguments, structured adapter settings, model-specific environment variables, and secret mapping from a `.env` file beside the CAG config.
 - Added the initial `--tui` entrypoint with a Nocterm-backed terminal UI shell.

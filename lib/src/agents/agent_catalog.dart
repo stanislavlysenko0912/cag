@@ -3,13 +3,14 @@ import '../config/app_config.dart';
 import '../config/config_service.dart';
 import '../models/agent_config.dart';
 import 'acp_agent.dart';
+import 'agent_id.dart';
 import 'antigravity_agent.dart';
 import 'base_agent.dart';
 import 'claude_agent.dart';
 import 'codex_agent.dart';
 import 'cursor_agent.dart';
 import 'gemini_agent.dart';
-import 'agent_id.dart';
+import 'opencode_agent.dart';
 
 typedef AgentFactory = BaseAgent Function(AgentConfig? config);
 
@@ -37,9 +38,7 @@ class AgentDefinition {
   String get adapterName => adapter ?? name;
 
   String? defaultModel(AgentConfig config) {
-    return config.defaultModel ??
-        defaultConfig.defaultModel ??
-        config.availableModels.firstOrNull?.name;
+    return config.defaultModel ?? defaultConfig.defaultModel ?? config.availableModels.firstOrNull?.name;
   }
 }
 
@@ -92,6 +91,16 @@ class AgentCatalog {
       resumeHelp: 'Resume session (conversation_id)',
       createAgent: (config) => AntigravityAgent(config: config),
     ),
+    AgentDefinition(
+      name: AgentId.opencode,
+      adapter: AgentId.acp,
+      displayName: 'OpenCode',
+      defaultConfig: OpenCodeAgent.defaultConfig,
+      descriptionText: 'Run OpenCode through ACP',
+      systemHelp: 'System prompt (prepended to the first prompt)',
+      resumeHelp: 'Resume OpenCode ACP session (session_id)',
+      createAgent: (config) => OpenCodeAgent(config: config),
+    ),
   ];
 
   static final _adapterOnlyDefinitions = [
@@ -108,18 +117,11 @@ class AgentCatalog {
 
   static List<AgentDefinition> _configuredDefinitions = const [];
 
-  static List<AgentDefinition> get definitions => [
-    ..._builtInDefinitions,
-    ..._configuredDefinitions,
-  ];
+  static List<AgentDefinition> get definitions => [..._builtInDefinitions, ..._configuredDefinitions];
 
-  static List<String> get names =>
-      definitions.map((definition) => definition.name).toList(growable: false);
+  static List<String> get names => definitions.map((definition) => definition.name).toList(growable: false);
 
-  static Map<String, AgentConfig> get defaultConfigs => {
-    for (final definition in definitions)
-      definition.name: definition.defaultConfig,
-  };
+  static Map<String, AgentConfig> get defaultConfigs => {for (final definition in definitions) definition.name: definition.defaultConfig};
 
   static AgentDefinition? find(String name) {
     for (final definition in definitions) {
@@ -128,17 +130,11 @@ class AgentCatalog {
     return null;
   }
 
-  static Map<String, AgentConfig> resolveConfigs(
-    ConfigService configService,
-    AppConfig appConfig,
-  ) {
+  static Map<String, AgentConfig> resolveConfigs(ConfigService configService, AppConfig appConfig) {
     configure(appConfig);
     return {
       for (final definition in definitions)
-        definition.name: configService.applyOverrides(
-          definition.defaultConfig,
-          configService.overridesFor(appConfig, definition.name),
-        ),
+        definition.name: configService.applyOverrides(definition.defaultConfig, configService.overridesFor(appConfig, definition.name)),
     };
   }
 
@@ -150,8 +146,7 @@ class AgentCatalog {
     }
     _configuredDefinitions = [
       for (final entry in config.agents.entries)
-        if (findBuiltIn(entry.key) == null && entry.value.adapter != null)
-          _customDefinition(entry.key, entry.value),
+        if (findBuiltIn(entry.key) == null && entry.value.adapter != null) _customDefinition(entry.key, entry.value),
     ];
   }
 
@@ -163,21 +158,13 @@ class AgentCatalog {
   }
 
   static AgentDefinition? findAdapter(String name) {
-    return findBuiltIn(name) ??
-        _adapterOnlyDefinitions
-            .where((definition) => definition.name == name)
-            .firstOrNull;
+    return findBuiltIn(name) ?? _adapterOnlyDefinitions.where((definition) => definition.name == name).firstOrNull;
   }
 
-  static AgentDefinition _customDefinition(
-    String name,
-    AgentConfigOverride override,
-  ) {
+  static AgentDefinition _customDefinition(String name, AgentConfigOverride override) {
     final adapter = findAdapter(override.adapter!);
     if (adapter == null) {
-      throw StateError(
-        'Unknown adapter "${override.adapter}" for agent "$name".',
-      );
+      throw StateError('Unknown adapter "${override.adapter}" for agent "$name".');
     }
     final base = adapter.defaultConfig;
     final defaultConfig = AgentConfig(
@@ -199,9 +186,7 @@ class AgentCatalog {
       adapter: adapter.name,
       displayName: override.displayName ?? name,
       defaultConfig: defaultConfig,
-      descriptionText:
-          override.description ??
-          'Run $name through the ${adapter.name} adapter',
+      descriptionText: override.description ?? 'Run $name through the ${adapter.name} adapter',
       systemHelp: adapter.systemHelp,
       resumeHelp: adapter.resumeHelp,
       createAgent: (config) => adapter.createAgent(config),
@@ -215,13 +200,10 @@ class AgentCatalog {
     ];
   }
 
-  static Map<String, BaseAgent> createEnabledAgents(
-    Map<String, AgentConfig> configs,
-  ) {
+  static Map<String, BaseAgent> createEnabledAgents(Map<String, AgentConfig> configs) {
     return {
       for (final definition in definitions)
-        if (configs[definition.name]?.enabled == true)
-          definition.name: definition.createAgent(configs[definition.name]!),
+        if (configs[definition.name]?.enabled == true) definition.name: definition.createAgent(configs[definition.name]!),
     };
   }
 

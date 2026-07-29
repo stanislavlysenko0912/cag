@@ -27,6 +27,22 @@ void main() {
       expect(result.stdout, contains('--tui'));
       expect(result.stdout, contains('Open the terminal user interface.'));
     });
+
+    test('OpenCode help exposes optional model and resume flags', () async {
+      await writeAgentConfig(
+        tempDir,
+        disabledAgentConfig({
+          'opencode': {'enabled': true},
+        }),
+      );
+
+      final result = await runCli(['opencode', '--help'], environment);
+
+      expect(result.exitCode, equals(0));
+      expect(result.stdout, contains('Run OpenCode through ACP'));
+      expect(result.stdout, contains('--model'));
+      expect(result.stdout, contains('--resume'));
+    });
   });
 
   group('consensus CLI', () {

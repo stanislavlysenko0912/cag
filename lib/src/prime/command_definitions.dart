@@ -75,6 +75,19 @@ class CommandDefinitions {
     ],
   );
 
+  static const opencode = CommandMetadata(
+    name: AgentId.opencode,
+    description:
+        'Run OpenCode through ACP, using its configured default model unless one is selected.',
+    flags: [
+      CommandFlag(
+        flag: '--system',
+        shortFlag: '-s',
+        description: 'System prompt (prepended to the first prompt)',
+      ),
+    ],
+  );
+
   static const consensus = CommandMetadata(
     name: 'consensus',
     description:
@@ -265,6 +278,7 @@ cag council -a "agent:model" -a "..." -c "agent:model" "<prompt>"
     codex,
     cursor,
     antigravity,
+    opencode,
     consensus,
     compare,
     council,

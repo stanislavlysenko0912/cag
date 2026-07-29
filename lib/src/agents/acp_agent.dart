@@ -160,7 +160,9 @@ class AcpAgent extends BaseAgent {
     final initialized = await connection.initialize(
       acp.InitializeRequest(
         protocolVersion: 1,
-        clientCapabilities: acp.ClientCapabilities(),
+        clientCapabilities: acp.ClientCapabilities(
+          fs: acp.FileSystemCapability(),
+        ),
         clientInfo: acp.Implementation(
           name: 'cag',
           title: 'CAG',
