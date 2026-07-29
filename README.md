@@ -401,6 +401,76 @@ This runs `claude` inside WSL via `bash -lc`. Adjust `shell_command_prefix` per 
 
 Invalid configs are reported to stderr with per-field errors.
 
+#### Custom agents through an existing CLI adapter
+
+Custom agents reuse a built-in CLI adapter while defining their provider,
+models, environment, and CLI arguments in config. Secrets can be stored in a
+`.env` file beside `config.json`; shell environment variables take precedence.
+
+`.env` locations:
+- macOS: `~/.cag/.env`
+- Linux: `~/.local/share/cag/.env` (or `$XDG_DATA_HOME/cag/.env`)
+- Windows: `%APPDATA%\cag\.env` (same fallbacks as `config.json`)
+- Other: beside the resolved `config.json`
+
+```dotenv
+KIMI_API_KEY=...
+```
+
+```json
+{
+  "agents": {
+    "kimi": {
+      "adapter": "claude",
+      "display_name": "Kimi via Claude Code",
+      "default_model": "k3-256k",
+      "env": {
+        "ANTHROPIC_BASE_URL": "https://api.kimi.com/coding/",
+        "CLAUDE_CODE_DISABLE_BUNDLED_SKILLS": "1"
+      },
+      "env_from": {
+        "ANTHROPIC_API_KEY": "KIMI_API_KEY"
+      },
+      "args": [
+        "--permission-mode",
+        "dontAsk",
+        "--tools",
+        "Read,Grep,Glob,Bash",
+        "--disable-slash-commands"
+      ],
+      "settings": {
+        "permissions": {
+          "allow": ["Read", "Grep", "Glob", "Bash(git status)"],
+          "deny": ["Edit", "Write", "WebFetch", "WebSearch", "Agent(*)", "mcp__*"]
+        }
+      },
+      "models": [
+        {
+          "name": "k3-256k",
+          "env": {
+            "ANTHROPIC_MODEL": "k3-256k",
+            "CLAUDE_CODE_SUBAGENT_MODEL": "k3-256k",
+            "CLAUDE_CODE_EFFORT_LEVEL": "high"
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+The configured agent is available anywhere a built-in agent is accepted:
+
+```bash
+cag kimi -m k3-256k "Review this change"
+cag compare -a "kimi:k3-256k" -a "codex:gpt-5.6-terra" "Compare approaches"
+```
+
+Adapter-required transport arguments remain managed by CAG. For example, the
+Claude adapter always adds `-p --output-format json`; configured `args` are
+appended after them. Values referenced by `env_from` are passed only to the
+selected child process and are never copied into `config.json`.
+
 ## Development
 
 FVM is used to pin the Dart SDK version for contributors. If you don’t use FVM, you can ignore `.fvmrc` (if present) and run plain `dart` commands.

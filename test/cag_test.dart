@@ -605,6 +605,63 @@ void main() {
         expect(mini.scores?.taste, equals(4));
       },
     );
+
+    test('loads a custom Claude adapter with env and model settings', () async {
+      final tempDir = await Directory.systemTemp.createTemp(
+        'cag_custom_agent_',
+      );
+      addTearDown(() => tempDir.delete(recursive: true));
+      final configPath = '${tempDir.path}/config.json';
+      await File(
+        '${tempDir.path}/.env',
+      ).writeAsString('KIMI_API_KEY=secret-from-file\n');
+      await File(configPath).writeAsString(
+        jsonEncode({
+          'agents': {
+            'kimi': {
+              'adapter': 'claude',
+              'display_name': 'Kimi',
+              'default_model': 'k3-256k',
+              'args': ['--permission-mode', 'dontAsk'],
+              'env': {
+                'ANTHROPIC_BASE_URL': 'https://api.kimi.com/coding/',
+                'CLAUDE_CODE_DISABLE_BUNDLED_SKILLS': '1',
+              },
+              'env_from': {'ANTHROPIC_API_KEY': 'KIMI_API_KEY'},
+              'settings': {
+                'permissions': {
+                  'deny': ['Edit', 'Write'],
+                },
+              },
+              'models': [
+                {
+                  'name': 'k3-256k',
+                  'env': {'CLAUDE_CODE_SUBAGENT_MODEL': 'k3-256k'},
+                },
+              ],
+            },
+          },
+        }),
+      );
+
+      final service = ConfigService(configPath: configPath);
+      final appConfig = await service.loadOrCreate();
+      final configs = AgentCatalog.resolveConfigs(service, appConfig);
+      final definition = AgentCatalog.find('kimi')!;
+      final config = configs['kimi']!;
+      final agent = definition.createAgent(config) as ClaudeAgent;
+      final args = agent.buildArgs(prompt: 'hello', model: 'k3-256k');
+
+      expect(definition.adapterName, AgentId.claude);
+      expect(config.env['ANTHROPIC_API_KEY'], 'secret-from-file');
+      expect(
+        config.environmentFor('k3-256k')['CLAUDE_CODE_SUBAGENT_MODEL'],
+        'k3-256k',
+      );
+      expect(args.take(3), ['-p', '--output-format', 'json']);
+      expect(args, containsAllInOrder(['--permission-mode', 'dontAsk']));
+      expect(args, contains('--settings'));
+    });
   });
 
   group('CompareParticipant', () {
@@ -1525,7 +1582,10 @@ void main() {
 
       final args = agent.buildArgs(prompt: 'hello', model: 'sonnet');
 
-      expect(args.take(2).toList(), equals(['--custom-flag', '1']));
+      expect(
+        args.take(5).toList(),
+        equals(['-p', '--output-format', 'json', '--custom-flag', '1']),
+      );
       expect(args, contains('hello'));
       expect(args, contains('--model'));
     });

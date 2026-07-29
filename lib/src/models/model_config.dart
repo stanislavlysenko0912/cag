@@ -8,6 +8,7 @@ class ModelConfig {
     this.isDefault = false,
     this.enabled = true,
     this.aliases = const [],
+    this.env = const {},
   });
 
   /// Stable model identifier exposed by CAG.
@@ -31,6 +32,9 @@ class ModelConfig {
   /// Alternative names that resolve to this model.
   final List<String> aliases;
 
+  /// Environment variables applied when this model is selected.
+  final Map<String, String> env;
+
   /// Creates a model configuration from a JSON map.
   factory ModelConfig.fromJson(Map<String, dynamic> json) {
     final description = _blankToNull(json['description'] as String?);
@@ -46,6 +50,11 @@ class ModelConfig {
       enabled: json['enabled'] as bool? ?? true,
       aliases:
           (json['aliases'] as List?)?.whereType<String>().toList() ?? const [],
+      env:
+          (json['env'] as Map?)?.map(
+            (key, value) => MapEntry(key.toString(), value.toString()),
+          ) ??
+          const {},
     );
   }
 
@@ -60,6 +69,7 @@ class ModelConfig {
       'is_default': isDefault,
       if (!enabled) 'enabled': enabled,
       'aliases': aliases,
+      if (env.isNotEmpty) 'env': env,
     };
   }
 

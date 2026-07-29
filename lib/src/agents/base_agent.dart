@@ -118,6 +118,7 @@ abstract class BaseAgent {
 
       final result = await _runCommand(
         args,
+        environment: config.environmentFor(resolvedModel),
         workingDirectory: workingDirectory,
         onProcessStarted: onProcessStarted,
         keepCapture: keepCapture,
@@ -175,6 +176,7 @@ abstract class BaseAgent {
 
   Future<CLIResult> _runCommand(
     List<String> args, {
+    required Map<String, String> environment,
     String? workingDirectory,
     ProcessStarted? onProcessStarted,
     bool keepCapture = false,
@@ -185,7 +187,7 @@ abstract class BaseAgent {
       return runner.run(
         executable: config.executable,
         args: args,
-        env: config.env.isNotEmpty ? config.env : null,
+        env: environment.isNotEmpty ? environment : null,
         hardTimeout: hardTimeout,
         idleTimeout: idleTimeout,
         workingDirectory: workingDirectory,
@@ -207,7 +209,7 @@ abstract class BaseAgent {
     return runner.run(
       executable: shellExecutable,
       args: [...shellArgs, command],
-      env: config.env.isNotEmpty ? config.env : null,
+      env: environment.isNotEmpty ? environment : null,
       hardTimeout: hardTimeout,
       idleTimeout: idleTimeout,
       workingDirectory: workingDirectory,

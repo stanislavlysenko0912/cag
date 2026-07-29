@@ -79,7 +79,7 @@ void _addAgentCommands(
         descriptionText: definition.descriptionText,
         defaultModel: definition.defaultModel(config),
         agent: definition.createAgent(config),
-        metaPrinter: _metaPrinterFor(definition.name),
+        metaPrinter: _metaPrinterFor(definition.adapterName),
         systemHelp: definition.systemHelp,
         resumeHelp: definition.resumeHelp,
       ),

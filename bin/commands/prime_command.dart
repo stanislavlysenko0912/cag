@@ -16,10 +16,16 @@ class PrimeCommand extends Command<void> {
   @override
   Future<void> run() async {
     const generator = PrimeGenerator();
-    final markdown = generator.generate(
-      CommandDefinitions.all,
-      agentConfigs: _agentConfigs,
-    );
+    final markdown = generator.generate([
+      ...CommandDefinitions.all,
+      for (final definition in AgentCatalog.definitions)
+        if (CommandDefinitions.find(definition.name) == null)
+          CommandMetadata(
+            name: definition.name,
+            description: definition.descriptionText,
+            models: _agentConfigs[definition.name]?.availableModels ?? const [],
+          ),
+    ], agentConfigs: _agentConfigs);
     print(markdown);
   }
 }

@@ -13,6 +13,11 @@ class AgentConfigOverride {
     this.shellArgs,
     this.shellCommandPrefix,
     this.models,
+    this.adapter,
+    this.displayName,
+    this.description,
+    this.envFrom,
+    this.settings,
   });
 
   final String? executable;
@@ -26,17 +31,32 @@ class AgentConfigOverride {
   final List<String>? shellArgs;
   final String? shellCommandPrefix;
   final List<ModelConfig>? models;
+  final String? adapter;
+  final String? displayName;
+  final String? description;
+  final Map<String, String>? envFrom;
+  final Map<String, dynamic>? settings;
 
   factory AgentConfigOverride.fromJson(Map<String, dynamic> json) {
     return AgentConfigOverride(
       executable: json['executable'] as String?,
+      adapter: json['adapter'] as String?,
+      displayName: json['display_name'] as String?,
+      description: json['description'] as String?,
       enabled: json['enabled'] is bool ? json['enabled'] as bool : null,
       defaultModel: json['default_model'] as String?,
-      additionalArgs: (json['additional_args'] as List?)
-          ?.whereType<String>()
-          .toList(),
+      additionalArgs:
+          (json['args'] as List? ?? json['additional_args'] as List?)
+              ?.whereType<String>()
+              .toList(),
       env: (json['env'] as Map?)?.map(
         (key, value) => MapEntry(key.toString(), value.toString()),
+      ),
+      envFrom: (json['env_from'] as Map?)?.map(
+        (key, value) => MapEntry(key.toString(), value.toString()),
+      ),
+      settings: (json['settings'] as Map?)?.map(
+        (key, value) => MapEntry(key.toString(), value),
       ),
       hardTimeoutSeconds: json['hard_timeout_seconds'] is int
           ? json['hard_timeout_seconds'] as int
@@ -56,10 +76,15 @@ class AgentConfigOverride {
 
   Map<String, dynamic> toJson() => {
     if (executable != null) 'executable': executable,
+    if (adapter != null) 'adapter': adapter,
+    if (displayName != null) 'display_name': displayName,
+    if (description != null) 'description': description,
     if (enabled != null) 'enabled': enabled,
     if (defaultModel != null) 'default_model': defaultModel,
-    if (additionalArgs != null) 'additional_args': additionalArgs,
+    if (additionalArgs != null) 'args': additionalArgs,
     if (env != null) 'env': env,
+    if (envFrom != null) 'env_from': envFrom,
+    if (settings != null) 'settings': settings,
     if (hardTimeoutSeconds != null) 'hard_timeout_seconds': hardTimeoutSeconds,
     if (idleTimeoutSeconds != null) 'idle_timeout_seconds': idleTimeoutSeconds,
     if (shellExecutable != null) 'shell_executable': shellExecutable,

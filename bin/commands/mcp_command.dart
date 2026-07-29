@@ -13,7 +13,7 @@ const String _appVersion = String.fromEnvironment(
   'APP_VERSION',
   defaultValue: 'unknown',
 );
-final _knownAgents = AgentCatalog.names;
+List<String> get _knownAgents => AgentCatalog.names;
 const _agentToolDescription =
     'Ask one enabled CAG agent to inspect, reason about, or answer a task. '
     'Use CAG only when the user asks for CAG or a specific CAG agent/model, '

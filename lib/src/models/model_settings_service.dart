@@ -34,7 +34,8 @@ class AgentModelSettings {
   final Set<String> overriddenModelNames;
 
   /// Whether [model] is a built-in whose definition is overridden by config.
-  bool isOverridden(ModelConfig model) => overriddenModelNames.contains(model.name);
+  bool isOverridden(ModelConfig model) =>
+      overriddenModelNames.contains(model.name);
 }
 
 class ModelSettingsService {
@@ -173,6 +174,7 @@ class ModelSettingsService {
       description: modelDescription,
       scores: scores,
       enabled: index == -1 ? true : models[index].enabled,
+      env: index == -1 ? const {} : models[index].env,
     );
 
     if (index == -1) {
@@ -289,6 +291,11 @@ class ModelSettingsService {
       shellArgs: current?.shellArgs,
       shellCommandPrefix: current?.shellCommandPrefix,
       models: models ?? current?.models,
+      adapter: current?.adapter,
+      displayName: current?.displayName,
+      description: current?.description,
+      envFrom: current?.envFrom,
+      settings: current?.settings,
     );
   }
 
@@ -309,6 +316,11 @@ class ModelSettingsService {
       shellArgs: current?.shellArgs,
       shellCommandPrefix: current?.shellCommandPrefix,
       models: models,
+      adapter: current?.adapter,
+      displayName: current?.displayName,
+      description: current?.description,
+      envFrom: current?.envFrom,
+      settings: current?.settings,
     );
   }
 
@@ -329,6 +341,7 @@ class ModelSettingsService {
       isDefault: override.isDefault || base.isDefault,
       enabled: override.enabled,
       aliases: override.aliases.isEmpty ? base.aliases : override.aliases,
+      env: override.env.isEmpty ? base.env : override.env,
     );
   }
 
@@ -341,6 +354,7 @@ class ModelSettingsService {
       isDefault: model.isDefault,
       enabled: enabled,
       aliases: model.aliases,
+      env: model.env,
     );
   }
 

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:json_schema/json_schema.dart';
+import 'package:path/path.dart' as p;
 
 import '../../gen/config_schema.dart';
 import '../models/models.dart';
@@ -16,8 +17,10 @@ class ConfigService {
 
   final String _configPath;
   final StringSink _warningSink;
+  Map<String, String> _fileEnvironment = const {};
 
   Future<AppConfig> loadOrCreate() async {
+    await loadEnvironment();
     final file = File(_configPath);
     if (!await file.exists()) {
       final defaults = AppConfig.defaults();
@@ -79,6 +82,7 @@ class ConfigService {
         shellArgs: base.shellArgs,
         shellCommandPrefix: base.shellCommandPrefix,
         availableModels: AgentModelRegistry.modelsFor(base.name),
+        settings: base.settings,
       );
     }
 
@@ -86,15 +90,20 @@ class ConfigService {
       AgentModelRegistry.modelsFor(base.name),
       overrides.models,
     );
+    final isEnabled = overrides.enabled ?? base.enabled;
 
     return AgentConfig(
       name: base.name,
       executable: overrides.executable ?? base.executable,
       parser: base.parser,
-      enabled: overrides.enabled ?? base.enabled,
+      enabled: isEnabled,
       defaultModel: overrides.defaultModel ?? base.defaultModel,
       additionalArgs: overrides.additionalArgs ?? base.additionalArgs,
-      env: overrides.env ?? base.env,
+      env: {
+        ...base.env,
+        ...?overrides.env,
+        if (isEnabled) ..._resolveEnvironment(overrides.envFrom, base.name),
+      },
       hardTimeoutSeconds:
           overrides.hardTimeoutSeconds ?? base.hardTimeoutSeconds,
       idleTimeoutSeconds:
@@ -104,6 +113,7 @@ class ConfigService {
       shellCommandPrefix:
           overrides.shellCommandPrefix ?? base.shellCommandPrefix,
       availableModels: models.where((model) => model.enabled).toList(),
+      settings: overrides.settings ?? base.settings,
     );
   }
 
@@ -135,6 +145,7 @@ class ConfigService {
       isDefault: override.isDefault || base.isDefault,
       enabled: override.enabled,
       aliases: override.aliases.isEmpty ? base.aliases : override.aliases,
+      env: override.env.isEmpty ? base.env : override.env,
     );
   }
 
@@ -196,5 +207,50 @@ class ConfigService {
     final trimmed = value?.trim();
     if (trimmed == null || trimmed.isEmpty) return null;
     return trimmed;
+  }
+
+  Map<String, String> _resolveEnvironment(
+    Map<String, String>? envFrom,
+    String agentName,
+  ) {
+    if (envFrom == null) return const {};
+    return envFrom.map((target, source) {
+      final value = Platform.environment[source] ?? _fileEnvironment[source];
+      if (value == null) {
+        throw StateError(
+          'Missing environment variable $source required by agent "$agentName".',
+        );
+      }
+      return MapEntry(target, value);
+    });
+  }
+
+  Future<Map<String, String>> _loadEnvironmentFile() async {
+    final file = File(p.join(File(_configPath).parent.path, '.env'));
+    if (!await file.exists()) return const {};
+    final values = <String, String>{};
+    for (final rawLine in await file.readAsLines()) {
+      final line = rawLine.trim();
+      if (line.isEmpty || line.startsWith('#')) continue;
+      final separator = line.indexOf('=');
+      if (separator <= 0) {
+        _warningSink.writeln('Ignoring invalid .env line at ${file.path}.');
+        continue;
+      }
+      final key = line.substring(0, separator).trim();
+      var value = line.substring(separator + 1).trim();
+      if (value.length >= 2 &&
+          ((value.startsWith('"') && value.endsWith('"')) ||
+              (value.startsWith("'") && value.endsWith("'")))) {
+        value = value.substring(1, value.length - 1);
+      }
+      values[key] = value;
+    }
+    return values;
+  }
+
+  /// Loads the optional `.env` file beside the CAG config without writing files.
+  Future<void> loadEnvironment() async {
+    _fileEnvironment = await _loadEnvironmentFile();
   }
 }

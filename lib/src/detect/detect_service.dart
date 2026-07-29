@@ -88,6 +88,12 @@ class DetectService {
       shellExecutable: current?.shellExecutable,
       shellArgs: current?.shellArgs,
       shellCommandPrefix: current?.shellCommandPrefix,
+      models: current?.models,
+      adapter: current?.adapter,
+      displayName: current?.displayName,
+      description: current?.description,
+      envFrom: current?.envFrom,
+      settings: current?.settings,
     );
   }
 }

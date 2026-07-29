@@ -16,6 +16,7 @@ class AgentConfig {
     this.shellArgs = const [],
     this.shellCommandPrefix,
     this.availableModels = const [],
+    this.settings,
   });
 
   /// Agent identifier (e.g., 'gemini', 'claude').
@@ -56,4 +57,17 @@ class AgentConfig {
 
   /// List of available models for this agent.
   final List<ModelConfig> availableModels;
+
+  /// Structured settings serialized by adapters that support them.
+  final Map<String, dynamic>? settings;
+
+  /// Returns the process environment for the selected model.
+  Map<String, String> environmentFor(String? model) {
+    if (model == null) return env;
+    final selected = availableModels.where((candidate) {
+      return candidate.resolvedModel == model || candidate.matches(model);
+    }).firstOrNull;
+    if (selected == null || selected.env.isEmpty) return env;
+    return {...env, ...selected.env};
+  }
 }

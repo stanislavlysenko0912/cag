@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import '../models/models.dart';
 import '../parsers/claude_parser.dart';
 import '../runners/runners.dart';
@@ -15,13 +17,7 @@ class ClaudeAgent extends BaseAgent {
     parser: 'claude_json',
     defaultModel:
         AgentModelRegistry.defaultModelName(AgentId.claude) ?? 'sonnet',
-    additionalArgs: [
-      '-p',
-      '--output-format',
-      'json',
-      '--permission-mode',
-      'acceptEdits',
-    ],
+    additionalArgs: ['--permission-mode', 'acceptEdits'],
     hardTimeoutSeconds: 1800,
     idleTimeoutSeconds: 900,
   );
@@ -37,7 +33,8 @@ class ClaudeAgent extends BaseAgent {
     Map<String, String>? extraArgs,
     AgentRunContext? runContext,
   }) {
-    final args = <String>[...config.additionalArgs];
+    final configuredArgs = _withoutTransportArgs(config.additionalArgs);
+    final args = <String>['-p', '--output-format', 'json', ...configuredArgs];
 
     if (model != null) {
       args.addAll(['--model', model]);
@@ -45,6 +42,10 @@ class ClaudeAgent extends BaseAgent {
 
     if (systemPrompt != null) {
       args.addAll(['--system-prompt', systemPrompt]);
+    }
+
+    if (config.settings case final settings?) {
+      args.addAll(['--settings', jsonEncode(settings)]);
     }
 
     if (resume != null) {
@@ -60,6 +61,20 @@ class ClaudeAgent extends BaseAgent {
     args.add(prompt);
 
     return args;
+  }
+
+  List<String> _withoutTransportArgs(List<String> configuredArgs) {
+    final result = <String>[];
+    for (var index = 0; index < configuredArgs.length; index++) {
+      final argument = configuredArgs[index];
+      if (argument == '-p') continue;
+      if (argument == '--output-format' && index + 1 < configuredArgs.length) {
+        index++;
+        continue;
+      }
+      result.add(argument);
+    }
+    return result;
   }
 
   @override

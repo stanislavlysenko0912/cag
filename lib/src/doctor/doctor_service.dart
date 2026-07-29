@@ -90,7 +90,14 @@ class DoctorService {
     final decoded = jsonDecode(configSchemaJson) as Map<String, dynamic>;
     final schema = JsonSchema.create(decoded);
     final result = schema.validate(json);
-    if (result.isValid) return null;
+    if (result.isValid) {
+      try {
+        AgentCatalog.configure(AppConfig.fromJson(json));
+        return null;
+      } on StateError catch (error) {
+        return error.message;
+      }
+    }
 
     return result.errors
         .map((error) {
@@ -107,6 +114,7 @@ class DoctorService {
     required bool includeVersions,
   }) async {
     final configService = ConfigService(configPath: _configPath);
+    await configService.loadEnvironment();
     final diagnostics = <AgentDiagnostic>[];
 
     for (final definition in AgentCatalog.definitions) {

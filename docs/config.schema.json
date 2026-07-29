@@ -6,20 +6,22 @@
   "properties": {
     "agents": {
       "type": "object",
-      "description": "Per-agent overrides (claude, gemini, codex, cursor, antigravity). Use this to customize executable paths, args, env, timeouts, or to enable shell mode.",
-      "propertyNames": {
-        "enum": [
-          "claude",
-          "gemini",
-          "codex",
-          "cursor",
-          "antigravity"
-        ]
-      },
+      "description": "Built-in agent overrides and custom adapter-backed agents.",
       "additionalProperties": {
         "type": "object",
         "additionalProperties": false,
         "properties": {
+          "adapter": {
+            "type": "string",
+            "enum": ["claude", "gemini", "codex", "cursor", "antigravity"],
+            "description": "Built-in CLI adapter used by a custom agent."
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
           "executable": {
             "type": "string",
             "description": "Executable name or full path. On Windows, you can point to a .exe/.cmd/.bat shim if PATH resolution fails."
@@ -96,6 +98,13 @@
                   "items": {
                     "type": "string"
                   }
+                },
+                "env": {
+                  "type": "object",
+                  "description": "Environment variables applied when this model is selected.",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
                 }
               }
             }
@@ -103,6 +112,13 @@
           "additional_args": {
             "type": "array",
             "description": "Arguments always appended to the command.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "args": {
+            "type": "array",
+            "description": "Arguments appended after the adapter's required transport arguments.",
             "items": {
               "type": "string"
             }
@@ -128,6 +144,17 @@
             "additionalProperties": {
               "type": "string"
             }
+          },
+          "env_from": {
+            "type": "object",
+            "description": "Maps child-process variable names to source names from the process environment or the .env beside config.json.",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "settings": {
+            "type": "object",
+            "description": "Structured settings serialized by adapters that support them."
           },
           "hard_timeout_seconds": {
             "type": "integer",
