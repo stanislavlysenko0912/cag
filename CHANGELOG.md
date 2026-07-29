@@ -44,6 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed single-agent CLI runs appearing stalled by reporting provider startup to `stderr` immediately while preserving the final `stdout` response format.
 - Fixed Antigravity CLI integration to pass model overrides, preserve explicit conversation resume IDs, and capture new conversation IDs from per-run AGY logs.
 - Fixed CLI runner capturing agent stdout/stderr by streaming process output during execution, avoiding truncated JSON from Claude CLI and other agents on large responses (~192 KB+) without using temporary files for ordinary runs.
 - Fixed Windows CLI runner argument handling so direct process execution no longer breaks quoted arguments such as `python -c` scripts or nested `cmd /c` commands.

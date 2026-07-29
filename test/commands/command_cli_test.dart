@@ -335,6 +335,34 @@ void main() {
       expect(stdout, contains('review this\n\ndiff --git'));
       expect(stdout, contains('+new line'));
     });
+
+    test('agent reports provider startup before the final response', () async {
+      final fakeCodex = await writeDelayedFakeCodexExecutable(tempDir);
+      await writeCodexConfig(tempDir, fakeCodex.path);
+
+      final process = await Process.start(
+        Platform.resolvedExecutable,
+        ['run', 'bin/cag.dart', 'codex', '-m', 'mini', 'review this'],
+        workingDirectory: Directory.current.path,
+        environment: environment,
+      );
+      await process.stdin.close();
+      final stderrLines = process.stderr
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())
+          .asBroadcastStream();
+
+      final startupStatus = await stderrLines.first.timeout(
+        const Duration(seconds: 15),
+      );
+
+      expect(startupStatus, matches(r'^status: running \(codex, pid \d+\)$'));
+      expect(await process.exitCode, equals(0));
+      expect(
+        await process.stdout.transform(utf8.decoder).join(),
+        contains('done'),
+      );
+    });
   });
 
   group('detect CLI', () {
@@ -644,6 +672,24 @@ void main(List<String> args) {
   print(jsonEncode({
     'type': 'item.completed',
     'item': {'type': 'agent_message', 'text': prompt},
+  }));
+}
+''');
+  return file;
+}
+
+Future<File> writeDelayedFakeCodexExecutable(Directory tempDir) async {
+  final file = File(p.join(tempDir.path, 'delayed_fake_codex.dart'));
+  await file.writeAsString(r'''
+import 'dart:async';
+import 'dart:convert';
+
+Future<void> main() async {
+  await Future<void>.delayed(const Duration(seconds: 2));
+  print(jsonEncode({'type': 'thread.started', 'thread_id': 'fake-thread'}));
+  print(jsonEncode({
+    'type': 'item.completed',
+    'item': {'type': 'agent_message', 'text': 'done'},
   }));
 }
 ''');

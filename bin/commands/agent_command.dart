@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -76,12 +77,17 @@ class AgentCommand extends Command<void> {
     final resolvedModel = _resolveModel(model);
 
     try {
-      final response = await agent.execute(
+      final execution = await agent.executeDetailed(
         prompt: prompt,
         model: resolvedModel,
         systemPrompt: systemPrompt,
         resume: resume,
+        onProcessStarted: (process) {
+          stderr.writeln('status: running ($agentName, pid ${process.pid})');
+          unawaited(stderr.flush());
+        },
       );
+      final response = execution.response;
 
       if (outputJson) {
         print(const JsonEncoder.withIndent('  ').convert(response.toJson()));
