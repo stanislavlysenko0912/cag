@@ -471,6 +471,38 @@ Claude adapter always adds `-p --output-format json`; configured `args` are
 appended after them. Values referenced by `env_from` are passed only to the
 selected child process and are never copied into `config.json`.
 
+#### ACP agents
+
+Use the `acp` adapter for local agents that implement stable ACP v1 over
+JSON-RPC/stdio:
+
+```json
+{
+  "agents": {
+    "custom-acp-agent": {
+      "adapter": "acp",
+      "executable": "some-agent",
+      "args": ["acp"]
+    }
+  }
+}
+```
+
+```bash
+cag custom-acp-agent "Review this change"
+cag custom-acp-agent -m provider/model -r session_id "Continue"
+```
+
+CAG leaves model selection to the agent unless `--model` is provided. ACP
+permission requests automatically select `allow_once`; CAG never escalates an
+unavailable one-time option to `allow_always`. The initial integration does not
+advertise client filesystem or terminal capabilities because local agents own
+their tools.
+
+This adapter targets ACP v1 local stdio agents. ACP v2, remote HTTP/WebSocket
+transports, interactive authentication, and client-delegated filesystem or
+terminal execution are outside its current scope.
+
 ## Development
 
 FVM is used to pin the Dart SDK version for contributors. If you don’t use FVM, you can ignore `.fvmrc` (if present) and run plain `dart` commands.

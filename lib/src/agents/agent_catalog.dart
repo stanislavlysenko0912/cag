@@ -2,6 +2,7 @@ import '../config/agent_config_override.dart';
 import '../config/app_config.dart';
 import '../config/config_service.dart';
 import '../models/agent_config.dart';
+import 'acp_agent.dart';
 import 'antigravity_agent.dart';
 import 'base_agent.dart';
 import 'claude_agent.dart';
@@ -35,12 +36,10 @@ class AgentDefinition {
 
   String get adapterName => adapter ?? name;
 
-  String defaultModel(AgentConfig config) {
-    final model = config.defaultModel ?? defaultConfig.defaultModel;
-    if (model == null || model.isEmpty) {
-      throw StateError('No default model configured for $name.');
-    }
-    return model;
+  String? defaultModel(AgentConfig config) {
+    return config.defaultModel ??
+        defaultConfig.defaultModel ??
+        config.availableModels.firstOrNull?.name;
   }
 }
 
@@ -92,6 +91,18 @@ class AgentCatalog {
       systemHelp: 'System prompt',
       resumeHelp: 'Resume session (conversation_id)',
       createAgent: (config) => AntigravityAgent(config: config),
+    ),
+  ];
+
+  static final _adapterOnlyDefinitions = [
+    AgentDefinition(
+      name: AgentId.acp,
+      displayName: 'ACP',
+      defaultConfig: AcpAgent.defaultConfig,
+      descriptionText: 'Run an ACP v1 agent',
+      systemHelp: 'System prompt (prepended to the first prompt)',
+      resumeHelp: 'Resume ACP session (session_id)',
+      createAgent: (config) => AcpAgent(config: config),
     ),
   ];
 
@@ -151,11 +162,18 @@ class AgentCatalog {
     return null;
   }
 
+  static AgentDefinition? findAdapter(String name) {
+    return findBuiltIn(name) ??
+        _adapterOnlyDefinitions
+            .where((definition) => definition.name == name)
+            .firstOrNull;
+  }
+
   static AgentDefinition _customDefinition(
     String name,
     AgentConfigOverride override,
   ) {
-    final adapter = findBuiltIn(override.adapter!);
+    final adapter = findAdapter(override.adapter!);
     if (adapter == null) {
       throw StateError(
         'Unknown adapter "${override.adapter}" for agent "$name".',

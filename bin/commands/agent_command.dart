@@ -45,7 +45,7 @@ class AgentCommand extends Command<void> {
 
   final String agentName;
   final String descriptionText;
-  final String defaultModel;
+  final String? defaultModel;
   final BaseAgent agent;
   final MetaPrinter metaPrinter;
   final String systemHelp;
@@ -68,7 +68,7 @@ class AgentCommand extends Command<void> {
       throw UsageException('Missing prompt', usage);
     }
 
-    final model = argResults!['model'] as String;
+    final model = argResults!['model'] as String?;
     final systemPrompt = argResults!['system'] as String?;
     final outputJson = argResults!['json'] as bool;
     final includeMeta = argResults!['meta'] as bool;
@@ -102,7 +102,8 @@ class AgentCommand extends Command<void> {
     }
   }
 
-  String _resolveModel(String modelInput) {
+  String? _resolveModel(String? modelInput) {
+    if (modelInput == null) return null;
     final availableModels = agent.config.availableModels;
     if (availableModels.isEmpty) {
       return modelInput;
@@ -202,5 +203,14 @@ void printAntigravityMeta(ParsedResponse response) {
   }
   if (response.metadata['session_id'] != null) {
     print('conversation_id: ${response.metadata['session_id']}');
+  }
+}
+
+void printAcpMeta(ParsedResponse response) {
+  if (response.metadata['stop_reason'] != null) {
+    print('stop_reason: ${response.metadata['stop_reason']}');
+  }
+  if (response.metadata['duration_ms'] != null) {
+    print('duration_ms: ${response.metadata['duration_ms']}');
   }
 }

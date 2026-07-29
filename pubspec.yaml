@@ -6,6 +6,7 @@ environment:
   sdk: ^3.10.1
 
 dependencies:
+  acp_dart: 0.4.0
   args: ^2.6.0
   json_schema: ^5.2.2
   mcp_dart: ^2.1.0

@@ -94,6 +94,7 @@ MetaPrinter _metaPrinterFor(String agentName) {
     AgentId.codex => printCodexMeta,
     AgentId.cursor => printCursorMeta,
     AgentId.antigravity => printAntigravityMeta,
+    AgentId.acp => printAcpMeta,
     _ => throw ArgumentError('Unknown agent: $agentName'),
   };
 }

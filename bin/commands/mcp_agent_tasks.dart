@@ -583,7 +583,7 @@ class CagAgentRequest {
   final String agentName;
   final BaseAgent agent;
   final String prompt;
-  final String model;
+  final String? model;
   final CagAgentMode mode;
   final bool verbose;
   final String? systemPrompt;

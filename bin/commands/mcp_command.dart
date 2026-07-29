@@ -488,9 +488,9 @@ Future<McpServer> _buildServer() async {
   final agentDefaults = {
     for (final definition in AgentCatalog.definitions)
       if (agentConfigs[definition.name]?.enabled == true)
-        definition.name: definition.defaultModel(
-          agentConfigs[definition.name]!,
-        ),
+        if (definition.defaultModel(agentConfigs[definition.name]!)
+            case final defaultModel?)
+          definition.name: defaultModel,
   };
   final agents = AgentCatalog.createEnabledAgents(agentConfigs);
 
@@ -1104,10 +1104,6 @@ CagAgentRequest _buildAgentRequest(
   }
 
   final model = modelInput ?? agentDefaults[agentName];
-  if (model == null || model.isEmpty) {
-    _throwInvalidParams('Model is required for agent "$agentName".');
-  }
-
   final mode = switch (modeInput) {
     'sync' => CagAgentMode.sync,
     'background' => CagAgentMode.background,
@@ -1117,7 +1113,9 @@ CagAgentRequest _buildAgentRequest(
     _throwInvalidParams('mode must be "sync" or "background".');
   }
 
-  final resolvedModel = _resolveModel(agentName, model, agentConfigs, errors);
+  final resolvedModel = model == null
+      ? null
+      : _resolveModel(agentName, model, agentConfigs, errors);
   if (errors.isNotEmpty) {
     _throwInvalidParams(errors.join(' '));
   }
@@ -1249,7 +1247,8 @@ List<Map<String, Object?>> _modelAgentsInfo(
                   'aliases': model.aliases,
                   if (description != null) 'description': description,
                   if (model.scores != null) 'scores': model.scores!.toJson(),
-                  'is_default': model.matches(defaultModel),
+                  'is_default':
+                      defaultModel != null && model.matches(defaultModel),
                 };
               }).toList(),
             },

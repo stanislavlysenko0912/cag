@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import '../models/models.dart';
 import '../parsers/parsers.dart';
 import '../runners/runners.dart';
@@ -22,11 +20,11 @@ class AgentDetailedExecution {
 
 /// Base class for CLI agents.
 abstract class BaseAgent {
-  BaseAgent({required this.config, required this.parser, CLIRunner? runner})
+  BaseAgent({required this.config, this.parser, CLIRunner? runner})
     : runner = runner ?? CLIRunner();
 
   final AgentConfig config;
-  final BaseParser parser;
+  final BaseParser? parser;
   final CLIRunner runner;
 
   /// Agent name.
@@ -55,7 +53,11 @@ abstract class BaseAgent {
 
   /// Parse CLI output into a normalized response.
   ParsedResponse parseResponse(CLIResult result, AgentRunContext? runContext) {
-    return parser.parse(stdout: result.stdout, stderr: result.stderr);
+    final responseParser = parser;
+    if (responseParser == null) {
+      throw ParserException('${config.name} does not define an output parser.');
+    }
+    return responseParser.parse(stdout: result.stdout, stderr: result.stderr);
   }
 
   /// Clean up per-run resources.
@@ -183,32 +185,11 @@ abstract class BaseAgent {
   }) {
     final hardTimeout = Duration(seconds: config.hardTimeoutSeconds);
     final idleTimeout = Duration(seconds: config.idleTimeoutSeconds);
-    if (config.shellCommandPrefix == null) {
-      return runner.run(
-        executable: config.executable,
-        args: args,
-        env: environment.isNotEmpty ? environment : null,
-        hardTimeout: hardTimeout,
-        idleTimeout: idleTimeout,
-        workingDirectory: workingDirectory,
-        onProcessStarted: onProcessStarted,
-        keepCapture: keepCapture,
-      );
-    }
-
-    final shellExecutable = config.shellExecutable ?? _defaultShellExecutable();
-    final shellArgs = config.shellArgs.isNotEmpty
-        ? config.shellArgs
-        : _defaultShellArgs(shellExecutable);
-    final command = _buildShellCommand(
-      config.shellCommandPrefix!,
-      args,
-      shellExecutable,
-    );
+    final command = ProcessCommand.forAgent(config, args);
 
     return runner.run(
-      executable: shellExecutable,
-      args: [...shellArgs, command],
+      executable: command.executable,
+      args: command.args,
       env: environment.isNotEmpty ? environment : null,
       hardTimeout: hardTimeout,
       idleTimeout: idleTimeout,
@@ -226,40 +207,6 @@ abstract class BaseAgent {
       content: response.content,
       metadata: {...response.metadata, 'duration_ms': result.durationMs},
     );
-  }
-
-  String _buildShellCommand(
-    String prefix,
-    List<String> args,
-    String shellExecutable,
-  ) {
-    final escapedArgs = args
-        .map((arg) => _shellEscape(arg, shellExecutable))
-        .join(' ');
-    final trimmedPrefix = prefix.trim();
-    if (escapedArgs.isEmpty) return trimmedPrefix;
-    return '$trimmedPrefix $escapedArgs';
-  }
-
-  String _shellEscape(String value, String shellExecutable) {
-    final lower = shellExecutable.toLowerCase();
-    if (lower.contains('cmd')) {
-      final escaped = value.replaceAll('"', '\\"');
-      return '"$escaped"';
-    }
-    final escaped = value.replaceAll("'", "'\\''");
-    return "'$escaped'";
-  }
-
-  String _defaultShellExecutable() {
-    if (Platform.isWindows) return 'cmd';
-    return '/bin/sh';
-  }
-
-  List<String> _defaultShellArgs(String shellExecutable) {
-    final lower = shellExecutable.toLowerCase();
-    if (lower.contains('cmd')) return ['/c'];
-    return ['-c'];
   }
 
   String? _snippet(String value) {

@@ -96,7 +96,10 @@ class AntigravityAgent extends BaseAgent {
 
   @override
   ParsedResponse parseResponse(CLIResult result, AgentRunContext? runContext) {
-    final response = parser.parse(stdout: result.stdout, stderr: result.stderr);
+    final response = parser!.parse(
+      stdout: result.stdout,
+      stderr: result.stderr,
+    );
     if (runContext is! _AntigravityRunContext) {
       return response;
     }

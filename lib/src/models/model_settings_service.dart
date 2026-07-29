@@ -25,7 +25,7 @@ class AgentModelSettings {
   final String name;
   final String displayName;
   final bool enabled;
-  final String defaultModel;
+  final String? defaultModel;
   final List<ModelConfig> standardModels;
   final List<ModelConfig> customModels;
 
@@ -218,7 +218,7 @@ class ModelSettingsService {
     required AgentDefinition definition,
     required AgentConfigOverride? override,
     required bool enabled,
-    required String defaultModel,
+    required String? defaultModel,
   }) {
     final standardModels = definition.defaultConfig.availableModels.isEmpty
         ? AgentModelRegistry.modelsFor(definition.name)

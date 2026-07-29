@@ -662,6 +662,34 @@ void main() {
       expect(args, containsAllInOrder(['--permission-mode', 'dontAsk']));
       expect(args, contains('--settings'));
     });
+
+    test('loads ACP as an adapter-only custom agent', () async {
+      final tempDir = await Directory.systemTemp.createTemp('cag_custom_acp_');
+      addTearDown(() => tempDir.delete(recursive: true));
+      final configPath = '${tempDir.path}/config.json';
+      await File(configPath).writeAsString(
+        jsonEncode({
+          'agents': {
+            'custom-acp': {
+              'adapter': 'acp',
+              'executable': 'custom-agent',
+              'args': ['acp'],
+            },
+          },
+        }),
+      );
+
+      final service = ConfigService(configPath: configPath);
+      final appConfig = await service.loadOrCreate();
+      final configs = AgentCatalog.resolveConfigs(service, appConfig);
+      final definition = AgentCatalog.find('custom-acp')!;
+
+      expect(AgentCatalog.find(AgentId.acp), isNull);
+      expect(AgentCatalog.names, isNot(contains(AgentId.acp)));
+      expect(definition.adapterName, AgentId.acp);
+      expect(definition.defaultModel(configs['custom-acp']!), isNull);
+      expect(definition.createAgent(configs['custom-acp']), isA<AcpAgent>());
+    });
   });
 
   group('CompareParticipant', () {

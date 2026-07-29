@@ -83,7 +83,7 @@ class ClaudeAgent extends BaseAgent {
     AgentRunContext? runContext,
   ) {
     try {
-      return parser.parse(stdout: result.stdout, stderr: result.stderr);
+      return parser!.parse(stdout: result.stdout, stderr: result.stderr);
     } catch (_) {
       return null;
     }

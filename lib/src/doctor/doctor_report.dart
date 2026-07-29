@@ -79,7 +79,7 @@ class AgentDiagnostic {
   final bool enabled;
   final String executable;
   final bool available;
-  final String defaultModel;
+  final String? defaultModel;
   final int modelCount;
   final String authStatus;
   final String executionMode;
@@ -92,7 +92,7 @@ class AgentDiagnostic {
     'enabled': enabled,
     'executable': executable,
     'available': available,
-    'default_model': defaultModel,
+    if (defaultModel != null) 'default_model': defaultModel,
     'model_count': modelCount,
     'auth_status': authStatus,
     'execution_mode': executionMode,

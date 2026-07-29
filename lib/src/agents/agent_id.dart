@@ -6,6 +6,7 @@ class AgentId {
   static const codex = 'codex';
   static const cursor = 'cursor';
   static const antigravity = 'antigravity';
+  static const acp = 'acp';
 
   static const all = [claude, gemini, codex, cursor, antigravity];
 }

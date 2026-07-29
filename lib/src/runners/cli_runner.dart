@@ -37,7 +37,7 @@ class CLIRunner {
     ProcessStarted? onProcessStarted,
     bool keepCapture = false,
   }) async {
-    final resolvedExecutable = _resolveExecutable(executable);
+    final resolvedExecutable = resolveExecutable(executable);
     try {
       return await _runProcess(
         executable: resolvedExecutable,
@@ -302,7 +302,8 @@ class CLIRunner {
     return buffer.toString();
   }
 
-  String _resolveExecutable(String executable) {
+  /// Resolves Windows executable shims while preserving Unix PATH lookup.
+  String resolveExecutable(String executable) {
     if (!Platform.isWindows) return executable;
 
     final hasPath = executable.contains(r'\') || executable.contains('/');
