@@ -127,6 +127,35 @@ void main() {
       expect(result.stdout, contains('| `fast` |'));
       expect(result.stdout, contains('| `agent-default`'));
     });
+
+    test(
+      'prime keeps Cursor models curated instead of discovering them',
+      () async {
+        final fixture = p.join(
+          Directory.current.path,
+          'test',
+          'fixtures',
+          'fake_acp_agent.dart',
+        );
+        await writeAgentConfig(
+          tempDir,
+          disabledAgentConfig({
+            'cursor': {
+              'enabled': true,
+              'executable': Platform.resolvedExecutable,
+              'args': [fixture],
+            },
+          }),
+        );
+
+        final result = await runCli(['prime'], environment);
+
+        expect(result.exitCode, equals(0));
+        expect(result.stdout, contains('| `composer-2.5-fast`'));
+        expect(result.stdout, isNot(contains('| `agent-default`')));
+        expect(result.stdout, isNot(contains('| `fast` |')));
+      },
+    );
   });
 
   group('consensus CLI', () {

@@ -4,8 +4,7 @@ import 'agent_id.dart';
 
 /// Runs Cursor Agent through its ACP stdio server.
 ///
-/// Model slugs are discovered from the ACP session and enriched with curated
-/// metadata from [AgentModelRegistry.cursorModels].
+/// Model selection uses the curated [AgentModelRegistry.cursorModels] catalog.
 class CursorAgent extends AcpAgent {
   CursorAgent({AgentConfig? config}) : super(config: config ?? defaultConfig);
 

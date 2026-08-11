@@ -967,6 +967,7 @@ void main() {
       expect(config.executable, 'cursor-agent');
       expect(config.parser, 'acp');
       expect(config.additionalArgs, ['acp']);
+      expect(definition.isModelDiscoveryEnabled, isFalse);
       expect(definition.createAgent(config), isA<AcpAgent>());
     });
 

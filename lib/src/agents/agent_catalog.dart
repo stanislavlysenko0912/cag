@@ -27,6 +27,7 @@ class AgentDefinition {
     required this.createAgent,
     this.adapter,
     this.isDetectionManaged = true,
+    this.isModelDiscoveryEnabled = true,
   });
 
   final String name;
@@ -40,6 +41,9 @@ class AgentDefinition {
 
   /// Whether `cag detect` may update this agent's enabled state.
   final bool isDetectionManaged;
+
+  /// Whether ACP model discovery may replace this agent's configured catalog.
+  final bool isModelDiscoveryEnabled;
 
   String get adapterName => adapter ?? name;
 
@@ -88,6 +92,7 @@ class AgentCatalog {
       systemHelp: 'System prompt (prepended to the first prompt)',
       resumeHelp: 'Resume Cursor ACP session (session_id)',
       createAgent: (config) => CursorAgent(config: config),
+      isModelDiscoveryEnabled: false,
     ),
     AgentDefinition(
       name: AgentId.antigravity,
@@ -177,6 +182,7 @@ class AgentCatalog {
     await Future.wait([
       for (final definition in definitions)
         if (definition.adapterName == AgentId.acp &&
+            definition.isModelDiscoveryEnabled &&
             configs[definition.name]?.enabled == true)
           () async {
             try {
@@ -279,6 +285,7 @@ class AgentCatalog {
       resumeHelp: adapter.resumeHelp,
       createAgent: (config) => adapter.createAgent(config),
       isDetectionManaged: adapter.isDetectionManaged,
+      isModelDiscoveryEnabled: adapter.isModelDiscoveryEnabled,
     );
   }
 
