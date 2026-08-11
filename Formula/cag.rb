@@ -4,13 +4,13 @@
 class Cag < Formula
   desc "Unified CLI wrapper for AI agents (Claude, Gemini, Codex)"
   homepage "https://github.com/stanislavlysenko0912/cag"
-  version "0.3.1"
+  version "0.4.0"
   license "MIT"
 
   on_macos do
     on_arm do
       url "https://github.com/stanislavlysenko0912/cag/releases/download/v#{version}/cag_macos_arm64.tar.gz"
-      sha256 "856523d58b5b12039157ff9a6e6937d985e686497c075b76d67ea9342bc92403"
+      sha256 "65e5722907479f569f858875343ff82633812dbac7345599a11ac65bcf043e13"
 
       def install
         bin.install "cag"
@@ -19,7 +19,7 @@ class Cag < Formula
 
     on_intel do
       url "https://github.com/stanislavlysenko0912/cag/releases/download/v#{version}/cag_macos_x64.tar.gz"
-      sha256 "d55ca5be348992c07204d8accff680a2bfd93e3af8ab315366b5c23a995183cd"
+      sha256 "d4e33772afb1ecce8ddabaf4ed125c54b6d575fa146b2052b686007b3bf77afc"
 
       def install
         bin.install "cag"
@@ -30,7 +30,7 @@ class Cag < Formula
   on_linux do
     on_intel do
       url "https://github.com/stanislavlysenko0912/cag/releases/download/v#{version}/cag_linux_x64.tar.gz"
-      sha256 "SHA256_LINUX_X64"
+      sha256 "65205c59a103bf9820286a399c233426fbaa68031972b9edb85706edba568027"
 
       def install
         bin.install "cag"
