@@ -307,7 +307,7 @@ void main() {
       );
       expect(
         AgentModelRegistry.findModel(AgentId.antigravity, 'sonnet')?.name,
-        equals('claude-sonnet-5-thinking'),
+        equals('claude-sonnet-4-6-thinking'),
       );
       expect(
         AgentModelRegistry.findModel(
@@ -319,9 +319,9 @@ void main() {
       expect(
         AgentModelRegistry.findModel(
           'antigravity',
-          'claude-sonnet-5-thinking',
+          'claude-sonnet-4-6-thinking',
         )?.name,
-        equals('claude-sonnet-5-thinking'),
+        equals('claude-sonnet-4-6-thinking'),
       );
       expect(
         AgentModelRegistry.findModel(

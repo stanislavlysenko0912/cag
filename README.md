@@ -113,7 +113,7 @@ Models and aliases:
 
 - **claude**: `claude-opus-5` (alias `opus`, default), `claude-fable-5`, `claude-sonnet-5` (alias `sonnet`), `claude-haiku-4-5` (alias `haiku`)
 - **gemini** (deprecated): `gemini-3-flash-preview` (alias `flash`, default), `gemini-3.1-pro-preview` (alias `pro`), `gemini-3.1-flash-lite-preview` (alias `flash-lite`)
-- **antigravity**: `gemini-3-6-flash-medium` (alias `flash`, default), `gemini-3-6-flash-high` (alias `flash-high`), `gemini-3-6-flash-low` (alias `flash-low`), `gemini-3-1-pro-high` (alias `pro-high`), `gemini-3-1-pro-low` (alias `pro-low`), `claude-sonnet-5-thinking` (alias `sonnet`), `claude-opus-5-thinking` (alias `opus`), `gpt-oss-120b-medium` (alias `oss`)
+- **antigravity**: `gemini-3-6-flash-medium` (alias `flash`, default), `gemini-3-6-flash-high` (alias `flash-high`), `gemini-3-6-flash-low` (alias `flash-low`), `gemini-3-1-pro-high` (alias `pro-high`), `gemini-3-1-pro-low` (alias `pro-low`), `claude-sonnet-4-6-thinking` (alias `sonnet`), `claude-opus-4-6-thinking` (alias `opus`), `gpt-oss-120b-medium` (alias `oss`)
 - **codex**: `gpt-5.6-sol` (aliases `sol`, `gpt`, default), `gpt-5.6-terra` (alias `terra`), `gpt-5.6-luna` (alias `luna`), `gpt-5.3-codex` (alias `codex`), `gpt-5.5-mini` (alias `mini`)
 - **cursor**: curated slugs below; run `cursor-agent models` for the full account list
   - `composer-2.5-fast` (default), `composer-2.5` — solid-tier agent models

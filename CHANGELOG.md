@@ -29,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Updated Claude models to `claude-opus-5` (alias `opus`, now the default) and `claude-sonnet-5` (alias `sonnet`), replacing `claude-opus-4-8` and `claude-sonnet-4-6`.
-- Updated curated Cursor front-tier Opus to `claude-opus-5-thinking-max`, and Antigravity Claude models to `claude-opus-5-thinking` and `claude-sonnet-5-thinking`.
+- Updated curated Cursor front-tier Opus to `claude-opus-5-thinking-max`.
 - Redesigned the `--tui` interface around a single, selection-driven interaction model: arrows or the mouse move a highlight, Enter opens the row, Space toggles it, and Esc goes back or quits. Every navigational action (Back, Add custom model) is now a highlighted row, and framed panels with titles replace the previous key-hint clutter.
 - Replaced the `[x]`/`[ ]` toggle markers with a colored status dot so enabled and disabled agents and models read at a glance.
 - Made the `--tui` Detect screen a preview: it now shows a diff of what applying detection would change and requires an explicit "Apply changes" action instead of writing config on open.

@@ -157,14 +157,14 @@ class AgentModelRegistry {
       aliases: ['pro-low'],
     ),
     ModelConfig(
-      name: 'claude-sonnet-5-thinking',
-      model: 'Claude Sonnet 5 (Thinking)',
+      name: 'claude-sonnet-4-6-thinking',
+      model: 'Claude Sonnet 4.6 (Thinking)',
       scores: ModelScores(cost: 5, intelligence: 5, speed: 5, taste: 7),
       aliases: ['sonnet'],
     ),
     ModelConfig(
-      name: 'claude-opus-5-thinking',
-      model: 'Claude Opus 5 (Thinking)',
+      name: 'claude-opus-4-6-thinking',
+      model: 'Claude Opus 4.6 (Thinking)',
       scores: ModelScores(cost: 4, intelligence: 7, speed: 3, taste: 8),
       aliases: ['opus'],
     ),
