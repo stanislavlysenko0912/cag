@@ -30,6 +30,12 @@ abstract class BaseAgent {
   /// Agent name.
   String get name => config.name;
 
+  /// Whether the agent must receive a model explicitly or through config.
+  bool get requiresModel => false;
+
+  /// Whether model names absent from the configured catalog may pass through.
+  bool get allowsUnconfiguredModels => false;
+
   /// Build CLI arguments for the prompt.
   List<String> buildArgs({
     required String prompt,
@@ -100,6 +106,15 @@ abstract class BaseAgent {
     bool keepCapture = false,
   }) async {
     final resolvedModel = model ?? config.defaultModel;
+    if (requiresModel && resolvedModel == null) {
+      throw AgentExecutionException(
+        AgentFailure(
+          reason: AgentExitReason.cliError,
+          message:
+              '${config.name} requires --model or a configured default model.',
+        ),
+      );
+    }
     final runContext = await prepareRun(
       prompt: prompt,
       model: resolvedModel,

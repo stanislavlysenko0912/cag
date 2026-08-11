@@ -31,6 +31,7 @@ class DetectRow {
     required this.displayName,
     required this.available,
     required this.enabled,
+    this.isDetectionManaged = true,
   });
 
   /// Stable agent identifier.
@@ -45,6 +46,9 @@ class DetectRow {
   /// Whether the agent is currently enabled in config.
   final bool enabled;
 
+  /// Whether applying detection may change this agent's enabled state.
+  final bool isDetectionManaged;
+
   /// Whether applying detection would flip the enabled state.
-  bool get willChange => available != enabled;
+  bool get willChange => isDetectionManaged && available != enabled;
 }

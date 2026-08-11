@@ -483,7 +483,17 @@ class McpCommand extends Command<void> {
 Future<McpServer> _buildServer() async {
   final configService = ConfigService();
   final config = await configService.loadOrCreate();
-  final agentConfigs = AgentCatalog.resolveConfigs(configService, config);
+  final resolvedConfigs = AgentCatalog.resolveConfigs(configService, config);
+  final discoveries = await AgentCatalog.discoverModels(
+    resolvedConfigs,
+    warningSink: stderr,
+  );
+  final agentConfigs = AgentCatalog.applyModelDiscoveries(
+    configService,
+    config,
+    resolvedConfigs,
+    discoveries,
+  );
   final enabledAgents = AgentCatalog.enabledNames(agentConfigs);
   final agentDefaults = {
     for (final definition in AgentCatalog.definitions)

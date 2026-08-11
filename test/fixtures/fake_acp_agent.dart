@@ -26,6 +26,9 @@ Future<void> main(List<String> args) async {
     final message = jsonDecode(line) as Map<String, dynamic>;
     await handleMessage(message, mode, args);
   }
+  if (mode == 'linger_after_eof') {
+    await Completer<void>().future;
+  }
 }
 
 Future<void> handleMessage(
@@ -97,8 +100,12 @@ Map<String, dynamic> sessionState() => {
       'type': 'select',
       'currentValue': selectedModel,
       'options': [
-        {'value': 'fast', 'name': 'Fast'},
-        {'value': 'agent-default', 'name': 'Default'},
+        {'value': 'fast', 'name': 'Fast', 'description': 'Fast model'},
+        {
+          'value': 'agent-default',
+          'name': 'Default',
+          'description': 'Agent default model',
+        },
       ],
     },
   ],

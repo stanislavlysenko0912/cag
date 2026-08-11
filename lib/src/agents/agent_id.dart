@@ -8,6 +8,7 @@ class AgentId {
   static const antigravity = 'antigravity';
   static const acp = 'acp';
   static const opencode = 'opencode';
+  static const pi = 'pi';
 
-  static const all = [claude, gemini, codex, cursor, antigravity, opencode];
+  static const all = [claude, gemini, codex, cursor, antigravity, opencode, pi];
 }

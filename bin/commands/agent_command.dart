@@ -103,16 +103,27 @@ class AgentCommand extends Command<void> {
   }
 
   String? _resolveModel(String? modelInput) {
-    if (modelInput == null) return null;
     final availableModels = agent.config.availableModels;
     if (availableModels.isEmpty) {
+      if (agent.config.hasModelCatalog) {
+        throw UsageException(
+          'No enabled models for "$agentName". Enable at least one model '
+          'before running it.',
+          usage,
+        );
+      }
       return modelInput;
     }
+    if (modelInput == null) return null;
 
     final matched = availableModels
         .where((m) => m.matches(modelInput))
         .firstOrNull;
     if (matched == null) {
+      if (agent.config.parser == AgentId.acp ||
+          agent.allowsUnconfiguredModels) {
+        return modelInput;
+      }
       final available = availableModels.map((m) => m.name).join(', ');
       throw UsageException(
         'Unknown model "$modelInput". Available: $available',
@@ -209,6 +220,23 @@ void printAntigravityMeta(ParsedResponse response) {
 void printAcpMeta(ParsedResponse response) {
   if (response.metadata['stop_reason'] != null) {
     print('stop_reason: ${response.metadata['stop_reason']}');
+  }
+  if (response.metadata['duration_ms'] != null) {
+    print('duration_ms: ${response.metadata['duration_ms']}');
+  }
+}
+
+void printPiMeta(ParsedResponse response) {
+  if (response.metadata['model_used'] != null) {
+    print('model: ${response.metadata['model_used']}');
+  }
+  final usage = response.metadata['usage'] as Map<String, dynamic>?;
+  if (usage != null) {
+    print('input_tokens: ${usage['input']}');
+    print('output_tokens: ${usage['output']}');
+    print('cache_read: ${usage['cacheRead']}');
+    final cost = usage['cost'] as Map<String, dynamic>?;
+    if (cost?['total'] != null) print('cost_usd: ${cost!['total']}');
   }
   if (response.metadata['duration_ms'] != null) {
     print('duration_ms: ${response.metadata['duration_ms']}');

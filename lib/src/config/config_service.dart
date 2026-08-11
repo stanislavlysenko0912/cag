@@ -68,12 +68,13 @@ class ConfigService {
 
   AgentConfig applyOverrides(AgentConfig base, AgentConfigOverride? overrides) {
     if (overrides == null) {
+      final models = AgentModelRegistry.modelsFor(base.name);
       return AgentConfig(
         name: base.name,
         executable: base.executable,
         parser: base.parser,
         enabled: base.enabled,
-        defaultModel: base.defaultModel,
+        defaultModel: _resolveDefaultModel(base.defaultModel, models),
         additionalArgs: base.additionalArgs,
         env: base.env,
         hardTimeoutSeconds: base.hardTimeoutSeconds,
@@ -81,7 +82,8 @@ class ConfigService {
         shellExecutable: base.shellExecutable,
         shellArgs: base.shellArgs,
         shellCommandPrefix: base.shellCommandPrefix,
-        availableModels: AgentModelRegistry.modelsFor(base.name),
+        availableModels: models,
+        hasModelCatalog: base.hasModelCatalog || models.isNotEmpty,
         settings: base.settings,
       );
     }
@@ -90,6 +92,7 @@ class ConfigService {
       AgentModelRegistry.modelsFor(base.name),
       overrides.models,
     );
+    final availableModels = models.where((model) => model.enabled).toList();
     final isEnabled = overrides.enabled ?? base.enabled;
 
     return AgentConfig(
@@ -97,7 +100,11 @@ class ConfigService {
       executable: overrides.executable ?? base.executable,
       parser: base.parser,
       enabled: isEnabled,
-      defaultModel: overrides.defaultModel ?? base.defaultModel,
+      defaultModel: _resolveDefaultModel(
+        overrides.defaultModel ?? base.defaultModel,
+        availableModels,
+        hasModelCatalog: base.hasModelCatalog || models.isNotEmpty,
+      ),
       additionalArgs: overrides.additionalArgs ?? base.additionalArgs,
       env: {
         ...base.env,
@@ -112,8 +119,41 @@ class ConfigService {
       shellArgs: overrides.shellArgs ?? base.shellArgs,
       shellCommandPrefix:
           overrides.shellCommandPrefix ?? base.shellCommandPrefix,
-      availableModels: models.where((model) => model.enabled).toList(),
+      availableModels: availableModels,
+      hasModelCatalog: base.hasModelCatalog || models.isNotEmpty,
       settings: overrides.settings ?? base.settings,
+    );
+  }
+
+  /// Merges runtime-discovered models with curated metadata and user overrides.
+  AgentConfig applyModelDiscovery(
+    AgentConfig config,
+    AgentConfigOverride? overrides,
+    AgentModelDiscovery discovery,
+  ) {
+    if (discovery.models.isEmpty) return config;
+    final curated = {
+      for (final model in AgentModelRegistry.modelsFor(config.name))
+        model.name: model,
+    };
+    final discovered = [
+      for (final model in discovery.models)
+        if (curated[model.name] case final known?)
+          _mergeModel(model, known)
+        else
+          model,
+    ];
+    final models = _mergeModels(
+      discovered,
+      overrides?.models,
+    ).where((model) => model.enabled).toList();
+    return config.copyWith(
+      defaultModel:
+          overrides?.defaultModel ??
+          discovery.defaultModel ??
+          config.defaultModel,
+      availableModels: models,
+      hasModelCatalog: true,
     );
   }
 
@@ -207,6 +247,27 @@ class ConfigService {
     final trimmed = value?.trim();
     if (trimmed == null || trimmed.isEmpty) return null;
     return trimmed;
+  }
+
+  String? _resolveDefaultModel(
+    String? configuredDefault,
+    List<ModelConfig> availableModels, {
+    bool hasModelCatalog = false,
+  }) {
+    if (availableModels.isEmpty) {
+      return hasModelCatalog ? null : configuredDefault;
+    }
+    final isAvailable = availableModels.any((model) {
+      return model.matches(configuredDefault ?? '') ||
+          model.resolvedModel == configuredDefault;
+    });
+    if (isAvailable) return configuredDefault;
+
+    return availableModels
+            .where((model) => model.isDefault)
+            .firstOrNull
+            ?.name ??
+        availableModels.first.name;
   }
 
   Map<String, String> _resolveEnvironment(

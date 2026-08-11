@@ -1,75 +1,23 @@
 import '../models/models.dart';
-import '../parsers/cursor_parser.dart';
+import 'acp_agent.dart';
 import 'agent_id.dart';
-import 'base_agent.dart';
 
-/// Cursor CLI agent.
+/// Runs Cursor Agent through its ACP stdio server.
 ///
-/// Model slugs are account-specific. Run `cursor-agent models` to list all
-/// available slugs; [AgentModelRegistry.cursorModels] holds the curated subset.
-class CursorAgent extends BaseAgent {
-  CursorAgent({AgentConfig? config, CursorParser? parser})
-    : super(config: config ?? _defaultConfig, parser: parser ?? CursorParser());
+/// Model slugs are discovered from the ACP session and enriched with curated
+/// metadata from [AgentModelRegistry.cursorModels].
+class CursorAgent extends AcpAgent {
+  CursorAgent({AgentConfig? config}) : super(config: config ?? defaultConfig);
 
   static final defaultConfig = AgentConfig(
     name: AgentId.cursor,
     executable: 'cursor-agent',
-    parser: 'cursor_json',
+    parser: 'acp',
     defaultModel:
         AgentModelRegistry.defaultModelName(AgentId.cursor) ??
         'composer-2.5-fast',
-    additionalArgs: ['--print', '--output-format', 'json', '--force'],
+    additionalArgs: ['acp'],
     hardTimeoutSeconds: 1800,
     idleTimeoutSeconds: 900,
   );
-
-  static final _defaultConfig = defaultConfig;
-
-  @override
-  List<String> buildArgs({
-    required String prompt,
-    String? model,
-    String? systemPrompt,
-    String? resume,
-    Map<String, String>? extraArgs,
-    AgentRunContext? runContext,
-  }) {
-    final args = <String>[...config.additionalArgs];
-
-    if (model != null) {
-      args.addAll(['--model', model]);
-    }
-
-    if (resume != null) {
-      args.addAll(['--resume', resume]);
-    }
-
-    if (extraArgs != null) {
-      for (final entry in extraArgs.entries) {
-        args.addAll([entry.key, entry.value]);
-      }
-    }
-
-    final combinedPrompt = _applySystemPrompt(
-      prompt: prompt,
-      systemPrompt: systemPrompt,
-      hasResume: resume != null,
-    );
-    args.add(combinedPrompt);
-
-    return args;
-  }
-
-  String _applySystemPrompt({
-    required String prompt,
-    required String? systemPrompt,
-    required bool hasResume,
-  }) {
-    if (systemPrompt == null || systemPrompt.trim().isEmpty || hasResume) {
-      return prompt;
-    }
-
-    return '<system>\n$systemPrompt\n</system>\n\n'
-        '<user_main_prompt>\n$prompt\n</user_main_prompt>';
-  }
 }

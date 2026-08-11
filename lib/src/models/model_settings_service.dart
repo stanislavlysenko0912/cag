@@ -2,8 +2,15 @@ import '../agents/agent_catalog.dart';
 import '../config/agent_config_override.dart';
 import '../config/app_config.dart';
 import '../config/config_service.dart';
+import 'agent_config.dart';
+import 'agent_model_discovery.dart';
 import 'agent_models.dart';
 import 'model_config.dart';
+
+typedef AgentModelDiscoverer =
+    Future<Map<String, AgentModelDiscovery>> Function(
+      Map<String, AgentConfig> configs,
+    );
 
 class ModelSettingsSnapshot {
   const ModelSettingsSnapshot({required this.agents});
@@ -39,10 +46,17 @@ class AgentModelSettings {
 }
 
 class ModelSettingsService {
-  ModelSettingsService({String? configPath, ConfigService? configService})
-    : _configService = configService ?? ConfigService(configPath: configPath);
+  ModelSettingsService({
+    String? configPath,
+    ConfigService? configService,
+    AgentModelDiscoverer? discoverModels,
+  }) : _configService = configService ?? ConfigService(configPath: configPath),
+       _discoverModels =
+           discoverModels ??
+           ((configs) => AgentCatalog.discoverModels(configs));
 
   final ConfigService _configService;
+  final AgentModelDiscoverer _discoverModels;
 
   Future<ModelSettingsSnapshot> load() async {
     final appConfig = await _configService.loadOrCreate();
@@ -50,6 +64,7 @@ class ModelSettingsService {
       _configService,
       appConfig,
     );
+    final discoveries = await _discoverModels(resolvedConfigs);
 
     return ModelSettingsSnapshot(
       agents: [
@@ -58,9 +73,11 @@ class ModelSettingsService {
             definition: definition,
             override: appConfig.agents[definition.name],
             enabled: resolvedConfigs[definition.name]?.enabled ?? false,
-            defaultModel: definition.defaultModel(
-              resolvedConfigs[definition.name]!,
-            ),
+            defaultModel:
+                appConfig.agents[definition.name]?.defaultModel ??
+                discoveries[definition.name]?.defaultModel ??
+                definition.defaultModel(resolvedConfigs[definition.name]!),
+            discoveredModels: discoveries[definition.name]?.models,
           ),
       ],
     );
@@ -219,10 +236,13 @@ class ModelSettingsService {
     required AgentConfigOverride? override,
     required bool enabled,
     required String? defaultModel,
+    List<ModelConfig>? discoveredModels,
   }) {
-    final standardModels = definition.defaultConfig.availableModels.isEmpty
-        ? AgentModelRegistry.modelsFor(definition.name)
-        : definition.defaultConfig.availableModels;
+    final standardModels =
+        discoveredModels ??
+        (definition.defaultConfig.availableModels.isEmpty
+            ? AgentModelRegistry.modelsFor(definition.name)
+            : definition.defaultConfig.availableModels);
     final overrides = {
       for (final model in override?.models ?? []) model.name: model,
     };

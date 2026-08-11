@@ -43,6 +43,7 @@ class DetectService {
             displayName: definition.displayName,
             available: detection[definition.name] ?? false,
             enabled: resolved[definition.name]?.enabled ?? false,
+            isDetectionManaged: definition.isDetectionManaged,
           ),
       ],
       configPath: _configPath ?? AppPaths.configPath(),
@@ -65,6 +66,7 @@ class DetectService {
   AppConfig _applyDetection(AppConfig config, Map<String, bool> detection) {
     final agents = Map<String, AgentConfigOverride>.from(config.agents);
     for (final entry in detection.entries) {
+      if (AgentCatalog.find(entry.key)?.isDetectionManaged == false) continue;
       agents[entry.key] = _mergeOverride(
         current: agents[entry.key],
         enabled: entry.value,

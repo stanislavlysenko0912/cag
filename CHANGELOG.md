@@ -5,10 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.4.0] - 2026-08-11
 
 ### Added
 
+- Added opt-in Pi support through its JSON event stream, with explicit model selection, session resume, and manual model configuration through config or the TUI.
 - Added built-in OpenCode support through its `opencode acp` stdio server, including model selection and session resume.
 - Added config-defined ACP v1 agents over JSON-RPC/stdio, including session resume, model selection, streamed responses, and non-interactive `allow_once` permissions.
 - Added config-defined agents backed by existing CLI adapters, including custom arguments, structured adapter settings, model-specific environment variables, and secret mapping from a `.env` file beside the CAG config.
@@ -27,6 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Updated Claude models to `claude-opus-5` (alias `opus`, now the default) and `claude-sonnet-5` (alias `sonnet`), replacing `claude-opus-4-8` and `claude-sonnet-4-6`.
+- Updated curated Cursor front-tier Opus to `claude-opus-5-thinking-max`, and Antigravity Claude models to `claude-opus-5-thinking` and `claude-sonnet-5-thinking`.
 - Redesigned the `--tui` interface around a single, selection-driven interaction model: arrows or the mouse move a highlight, Enter opens the row, Space toggles it, and Esc goes back or quits. Every navigational action (Back, Add custom model) is now a highlighted row, and framed panels with titles replace the previous key-hint clutter.
 - Replaced the `[x]`/`[ ]` toggle markers with a colored status dot so enabled and disabled agents and models read at a glance.
 - Made the `--tui` Detect screen a preview: it now shows a diff of what applying detection would change and requires an explicit "Apply changes" action instead of writing config on open.
@@ -47,11 +50,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed single-agent model selection when the configured default is absent or disabled, and report a clear error instead of running a disabled model when none are enabled.
 - Fixed single-agent CLI runs appearing stalled by reporting provider startup to `stderr` immediately while preserving the final `stdout` response format.
 - Fixed Antigravity CLI integration to pass model overrides, preserve explicit conversation resume IDs, and capture new conversation IDs from per-run AGY logs.
 - Fixed CLI runner capturing agent stdout/stderr by streaming process output during execution, avoiding truncated JSON from Claude CLI and other agents on large responses (~192 KB+) without using temporary files for ordinary runs.
 - Fixed Windows CLI runner argument handling so direct process execution no longer breaks quoted arguments such as `python -c` scripts or nested `cmd /c` commands.
 - Restored Linux release artifact publishing and Homebrew formula checksum updates for the Linux installer flow.
+
+### Documentation
+
+- Refreshed README model lists to match the current catalog and documented model scores, TUI settings management, `cag doctor --mcp-url`, and `cag_agent` background runs with `cag_task`.
 
 ## [0.3.1] - 2026-05-29
 

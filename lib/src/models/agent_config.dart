@@ -16,6 +16,7 @@ class AgentConfig {
     this.shellArgs = const [],
     this.shellCommandPrefix,
     this.availableModels = const [],
+    this.hasModelCatalog = false,
     this.settings,
   });
 
@@ -58,6 +59,9 @@ class AgentConfig {
   /// List of available models for this agent.
   final List<ModelConfig> availableModels;
 
+  /// Whether this agent has a model catalog, even when every model is disabled.
+  final bool hasModelCatalog;
+
   /// Structured settings serialized by adapters that support them.
   final Map<String, dynamic>? settings;
 
@@ -69,5 +73,30 @@ class AgentConfig {
     }).firstOrNull;
     if (selected == null || selected.env.isEmpty) return env;
     return {...env, ...selected.env};
+  }
+
+  /// Returns this configuration with runtime model information applied.
+  AgentConfig copyWith({
+    String? defaultModel,
+    List<ModelConfig>? availableModels,
+    bool? hasModelCatalog,
+  }) {
+    return AgentConfig(
+      name: name,
+      executable: executable,
+      parser: parser,
+      enabled: enabled,
+      defaultModel: defaultModel ?? this.defaultModel,
+      additionalArgs: additionalArgs,
+      env: env,
+      hardTimeoutSeconds: hardTimeoutSeconds,
+      idleTimeoutSeconds: idleTimeoutSeconds,
+      shellExecutable: shellExecutable,
+      shellArgs: shellArgs,
+      shellCommandPrefix: shellCommandPrefix,
+      availableModels: availableModels ?? this.availableModels,
+      hasModelCatalog: hasModelCatalog ?? this.hasModelCatalog,
+      settings: settings,
+    );
   }
 }

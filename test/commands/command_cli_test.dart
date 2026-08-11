@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:cag/cag.dart';
+import 'package:cag/src/detect/detect.dart';
 import 'package:cag/src/doctor/doctor.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
@@ -42,6 +43,89 @@ void main() {
       expect(result.stdout, contains('Run OpenCode through ACP'));
       expect(result.stdout, contains('--model'));
       expect(result.stdout, contains('--resume'));
+    });
+
+    test(
+      'Claude rejects runs when every configured model is disabled',
+      () async {
+        await writeAgentConfig(
+          tempDir,
+          disabledAgentConfig({
+            'claude': {
+              'enabled': true,
+              'executable': 'missing-claude',
+              'default_model': 'claude-opus-4-8',
+              'models': [
+                for (final model in AgentModelRegistry.claudeModels)
+                  {'name': model.name, 'enabled': false},
+              ],
+            },
+          }),
+        );
+
+        for (final args in [
+          ['claude', 'hello'],
+          ['claude', '--model', 'claude-opus-4-8', 'hello'],
+        ]) {
+          final result = await runCli(args, environment);
+
+          expect(result.exitCode, equals(64));
+          expect(result.stdout, contains('No enabled models for "claude"'));
+        }
+      },
+    );
+
+    test('Pi is hidden until enabled in config', () async {
+      final result = await runCli(['pi', '--help'], environment);
+
+      expect(result.exitCode, equals(64));
+      expect(result.stdout, contains('Could not find a command named "pi"'));
+    });
+
+    test('Pi help is available after enabling it in config', () async {
+      await writeAgentConfig(
+        tempDir,
+        disabledAgentConfig({
+          'pi': {
+            'enabled': true,
+            'default_model': 'gpt',
+            'models': [
+              {'name': 'gpt', 'model': 'openai/gpt-5.6'},
+            ],
+          },
+        }),
+      );
+
+      final result = await runCli(['pi', '--help'], environment);
+
+      expect(result.exitCode, equals(0));
+      expect(result.stdout, contains('Run Pi coding agent'));
+      expect(result.stdout, contains('--model'));
+      expect(result.stdout, contains('--resume'));
+    });
+
+    test('prime discovers models exposed by an ACP agent', () async {
+      final fixture = p.join(
+        Directory.current.path,
+        'test',
+        'fixtures',
+        'fake_acp_agent.dart',
+      );
+      await writeAgentConfig(tempDir, {
+        ...disabledAgentConfig(),
+        'custom-acp': {
+          'adapter': 'acp',
+          'enabled': true,
+          'executable': Platform.resolvedExecutable,
+          'args': [fixture],
+        },
+      });
+
+      final result = await runCli(['prime'], environment);
+
+      expect(result.exitCode, equals(0));
+      expect(result.stdout, contains('| `fast` |'));
+      expect(result.stdout, contains('| `agent-default`'));
     });
   });
 
@@ -412,6 +496,32 @@ void main() {
       final agents = config['agents'] as Map<String, dynamic>;
       final antigravity = agents['antigravity'] as Map<String, dynamic>;
       expect(antigravity['enabled'], isTrue);
+    });
+
+    test('does not auto-enable opt-in Pi', () async {
+      await writeFakeExecutable(tempDir, 'pi');
+      environment['PATH'] = tempDir.path;
+      if (Platform.isWindows) {
+        environment['PATHEXT'] = '.cmd;.exe;.bat';
+      }
+
+      final result = await runCli(['detect'], environment);
+
+      expect(result.exitCode, equals(0));
+      final configFile = File(p.join(appDataDirFor(tempDir), 'config.json'));
+      final config =
+          jsonDecode(await configFile.readAsString()) as Map<String, dynamic>;
+      final agents = config['agents'] as Map<String, dynamic>;
+      expect(agents.containsKey('pi'), isFalse);
+
+      final piPreview = DetectRow(
+        name: AgentId.pi,
+        displayName: 'Pi',
+        available: true,
+        enabled: false,
+        isDetectionManaged: false,
+      );
+      expect(piPreview.willChange, isFalse);
     });
   });
 

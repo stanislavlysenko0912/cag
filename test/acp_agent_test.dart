@@ -6,6 +6,21 @@ import 'package:test/test.dart';
 
 void main() {
   group('AcpAgent', () {
+    test(
+      'discovers models and the agent default from session config',
+      () async {
+        final discovery = await _agent().discoverModels();
+
+        expect(discovery.defaultModel, 'agent-default');
+        expect(discovery.models.map((model) => model.name), [
+          'fast',
+          'agent-default',
+        ]);
+        expect(discovery.models.first.description, 'Fast model');
+        expect(discovery.models.last.isDefault, isTrue);
+      },
+    );
+
     test('runs ACP lifecycle and normalizes streamed response', () async {
       final workingDirectory = await Directory.systemTemp.createTemp(
         'cag_acp_cwd_',
@@ -42,6 +57,17 @@ void main() {
 
       expect(response.content, contains('model=agent-default'));
     });
+
+    test(
+      'accepts a completed turn when the ACP server needs termination',
+      () async {
+        final response = await _agent(
+          env: {'FAKE_ACP_MODE': 'linger_after_eof'},
+        ).execute(prompt: 'hello');
+
+        expect(response.content, contains('hello world'));
+      },
+    );
 
     test('loads resume session and excludes replayed messages', () async {
       final response = await _agent().execute(

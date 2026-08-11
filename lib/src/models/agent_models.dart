@@ -7,20 +7,19 @@ class AgentModelRegistry {
 
   static final claudeModels = [
     ModelConfig(
+      name: 'claude-opus-5',
+      scores: ModelScores(cost: 4, intelligence: 9, speed: 5, taste: 9),
+      isDefault: true,
+      aliases: ['opus'],
+    ),
+    ModelConfig(
       name: 'claude-fable-5',
       scores: ModelScores(cost: 2, intelligence: 9, speed: 3, taste: 7),
-      isDefault: true,
     ),
     ModelConfig(
-      name: 'claude-sonnet-4-6',
+      name: 'claude-sonnet-5',
       scores: ModelScores(cost: 5, intelligence: 5, speed: 7, taste: 7),
-      isDefault: true,
       aliases: ['sonnet'],
-    ),
-    ModelConfig(
-      name: 'claude-opus-4-8',
-      scores: ModelScores(cost: 4, intelligence: 7, speed: 4, taste: 8),
-      aliases: ['opus'],
     ),
     ModelConfig(
       name: 'claude-haiku-4-5',
@@ -120,7 +119,7 @@ class AgentModelRegistry {
       aliases: ['grok-4.5-fast', 'grok-fast'],
     ),
     ModelConfig(
-      name: 'claude-opus-4-8-thinking-max',
+      name: 'claude-opus-5-thinking-max',
       scores: ModelScores(cost: 4, intelligence: 7, speed: 3, taste: 8),
     ),
   ];
@@ -158,14 +157,14 @@ class AgentModelRegistry {
       aliases: ['pro-low'],
     ),
     ModelConfig(
-      name: 'claude-sonnet-4-6-thinking',
-      model: 'Claude Sonnet 4.6 (Thinking)',
+      name: 'claude-sonnet-5-thinking',
+      model: 'Claude Sonnet 5 (Thinking)',
       scores: ModelScores(cost: 5, intelligence: 5, speed: 5, taste: 7),
       aliases: ['sonnet'],
     ),
     ModelConfig(
-      name: 'claude-opus-4-6-thinking',
-      model: 'Claude Opus 4.6 (Thinking)',
+      name: 'claude-opus-5-thinking',
+      model: 'Claude Opus 5 (Thinking)',
       scores: ModelScores(cost: 4, intelligence: 7, speed: 3, taste: 8),
       aliases: ['opus'],
     ),

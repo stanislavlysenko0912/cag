@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:cag/cag.dart';
+import 'package:cag/src/config/agent_config_override.dart';
 import 'package:cag/src/utils/app_paths.dart';
 import 'package:mcp_dart/mcp_dart.dart';
 import 'package:test/test.dart';
@@ -193,11 +194,87 @@ void main() {
     });
   });
 
+  group('PiParser', () {
+    final parser = PiParser();
+
+    test('parses the final assistant message and session metadata', () {
+      final usage = {
+        'input': 12,
+        'output': 4,
+        'cacheRead': 3,
+        'cacheWrite': 0,
+        'totalTokens': 19,
+        'cost': {'total': 0.01},
+      };
+      final finalMessage = {
+        'role': 'assistant',
+        'content': [
+          {'type': 'text', 'text': 'Hello from Pi'},
+        ],
+        'provider': 'openai',
+        'model': 'gpt-5.6',
+        'usage': usage,
+        'stopReason': 'stop',
+      };
+      final stdout = [
+        jsonEncode({'type': 'session', 'id': 'pi-session'}),
+        jsonEncode({'type': 'message_end', 'message': finalMessage}),
+        jsonEncode({
+          'type': 'agent_end',
+          'messages': [finalMessage],
+        }),
+      ].join('\n');
+
+      final result = parser.parse(stdout: stdout, stderr: 'Pi warning');
+
+      expect(result.content, 'Hello from Pi');
+      expect(result.metadata['session_id'], 'pi-session');
+      expect(result.metadata['model_used'], 'openai/gpt-5.6');
+      expect(result.metadata['usage'], usage);
+      expect(result.metadata['stop_reason'], 'stop');
+      expect(result.metadata['stderr'], 'Pi warning');
+    });
+
+    test('reports a provider error instead of returning partial content', () {
+      final stdout = [
+        jsonEncode({'type': 'session', 'id': 'pi-session'}),
+        jsonEncode({
+          'type': 'message_end',
+          'message': {
+            'role': 'assistant',
+            'content': [
+              {'type': 'text', 'text': 'Partial'},
+            ],
+            'stopReason': 'error',
+            'errorMessage': 'Provider unavailable',
+          },
+        }),
+      ].join('\n');
+
+      expect(
+        () => parser.parse(stdout: stdout, stderr: ''),
+        throwsA(
+          isA<ParserException>()
+              .having(
+                (error) => error.reason,
+                'reason',
+                AgentExitReason.cliError,
+              )
+              .having(
+                (error) => error.message,
+                'message',
+                'Provider unavailable',
+              ),
+        ),
+      );
+    });
+  });
+
   group('AgentModelRegistry', () {
     test('resolves model aliases to canonical names', () {
       expect(
         AgentModelRegistry.findModel(AgentId.claude, 'sonnet')?.name,
-        equals('claude-sonnet-4-6'),
+        equals('claude-sonnet-5'),
       );
       expect(
         AgentModelRegistry.findModel(AgentId.claude, 'haiku')?.name,
@@ -230,7 +307,7 @@ void main() {
       );
       expect(
         AgentModelRegistry.findModel(AgentId.antigravity, 'sonnet')?.name,
-        equals('claude-sonnet-4-6-thinking'),
+        equals('claude-sonnet-5-thinking'),
       );
       expect(
         AgentModelRegistry.findModel(
@@ -242,9 +319,9 @@ void main() {
       expect(
         AgentModelRegistry.findModel(
           'antigravity',
-          'claude-sonnet-4-6-thinking',
+          'claude-sonnet-5-thinking',
         )?.name,
-        equals('claude-sonnet-4-6-thinking'),
+        equals('claude-sonnet-5-thinking'),
       );
       expect(
         AgentModelRegistry.findModel(
@@ -257,6 +334,70 @@ void main() {
   });
 
   group('ModelSettingsService', () {
+    test('keeps Pi disabled until configured with selected models', () async {
+      final tempDir = await Directory.systemTemp.createTemp(
+        'cag_pi_model_settings_',
+      );
+      addTearDown(() => tempDir.delete(recursive: true));
+      final configPath = '${tempDir.path}/config.json';
+      final service = ModelSettingsService(
+        configPath: configPath,
+        discoverModels: (_) async => const {},
+      );
+
+      var snapshot = await service.load();
+      var pi = snapshot.agents.firstWhere((agent) => agent.name == AgentId.pi);
+      expect(pi.enabled, isFalse);
+      expect(pi.standardModels, isEmpty);
+      expect(pi.customModels, isEmpty);
+
+      await service.setAgentEnabled(agentName: AgentId.pi, enabled: true);
+      await service.addCustomModel(
+        agentName: AgentId.pi,
+        name: 'gpt',
+        providerModel: 'openai/gpt-5.6',
+        description: 'Selected Pi model',
+      );
+      await service.setDefaultModel(agentName: AgentId.pi, modelName: 'gpt');
+
+      snapshot = await service.load();
+      pi = snapshot.agents.firstWhere((agent) => agent.name == AgentId.pi);
+      expect(pi.enabled, isTrue);
+      expect(pi.defaultModel, 'gpt');
+      expect(pi.standardModels, isEmpty);
+      expect(pi.customModels.single.resolvedModel, 'openai/gpt-5.6');
+    });
+
+    test('uses runtime-discovered ACP models', () async {
+      final tempDir = await Directory.systemTemp.createTemp(
+        'cag_model_discovery_',
+      );
+      addTearDown(() => tempDir.delete(recursive: true));
+      final service = ModelSettingsService(
+        configPath: '${tempDir.path}/config.json',
+        discoverModels: (_) async => {
+          AgentId.opencode: const AgentModelDiscovery(
+            defaultModel: 'provider/default',
+            models: [
+              ModelConfig(name: 'provider/default', isDefault: true),
+              ModelConfig(name: 'provider/fast', description: 'Fast'),
+            ],
+          ),
+        },
+      );
+
+      final snapshot = await service.load();
+      final openCode = snapshot.agents.firstWhere(
+        (agent) => agent.name == AgentId.opencode,
+      );
+
+      expect(openCode.defaultModel, 'provider/default');
+      expect(openCode.standardModels.map((model) => model.name), [
+        'provider/default',
+        'provider/fast',
+      ]);
+    });
+
     test('toggles agents and models', () async {
       final tempDir = await Directory.systemTemp.createTemp(
         'cag_model_settings_',
@@ -264,7 +405,10 @@ void main() {
       addTearDown(() => tempDir.delete(recursive: true));
 
       final configPath = '${tempDir.path}/config.json';
-      final service = ModelSettingsService(configPath: configPath);
+      final service = ModelSettingsService(
+        configPath: configPath,
+        discoverModels: (_) async => const {},
+      );
 
       await service.setAgentEnabled(agentName: AgentId.codex, enabled: false);
       await service.setModelEnabled(
@@ -338,7 +482,10 @@ void main() {
       addTearDown(() => tempDir.delete(recursive: true));
 
       final configPath = '${tempDir.path}/config.json';
-      final service = ModelSettingsService(configPath: configPath);
+      final service = ModelSettingsService(
+        configPath: configPath,
+        discoverModels: (_) async => const {},
+      );
 
       await service.addCustomModel(
         agentName: AgentId.codex,
@@ -406,7 +553,10 @@ void main() {
           }),
         );
 
-        final service = ModelSettingsService(configPath: configPath);
+        final service = ModelSettingsService(
+          configPath: configPath,
+          discoverModels: (_) async => const {},
+        );
         final snapshot = await service.load();
         final codex = snapshot.agents.firstWhere(
           (agent) => agent.name == AgentId.codex,
@@ -606,6 +756,62 @@ void main() {
       },
     );
 
+    test('ConfigService replaces a disabled default model', () {
+      final resolved = ConfigService().applyOverrides(
+        ClaudeAgent.defaultConfig,
+        AgentConfigOverride(
+          defaultModel: 'claude-opus-4-8',
+          models: [
+            for (final model in AgentModelRegistry.claudeModels)
+              ModelConfig(name: model.name, enabled: false),
+            const ModelConfig(name: 'claude-opus-5'),
+          ],
+        ),
+      );
+
+      expect(resolved.defaultModel, equals('claude-opus-5'));
+      expect(resolved.availableModels.map((model) => model.name), [
+        'claude-opus-5',
+      ]);
+      expect(resolved.hasModelCatalog, isTrue);
+    });
+
+    test('ConfigService picks an enabled model when no default is set', () {
+      final resolved = ConfigService().applyOverrides(
+        const AgentConfig(
+          name: 'custom',
+          executable: 'custom',
+          parser: 'claude_json',
+        ),
+        AgentConfigOverride(
+          models: const [
+            ModelConfig(name: 'standard', enabled: false),
+            ModelConfig(name: 'fast'),
+          ],
+        ),
+      );
+
+      expect(resolved.defaultModel, equals('fast'));
+      expect(resolved.hasModelCatalog, isTrue);
+    });
+
+    test('ConfigService clears the default when every model is disabled', () {
+      final resolved = ConfigService().applyOverrides(
+        ClaudeAgent.defaultConfig,
+        AgentConfigOverride(
+          defaultModel: 'claude-opus-4-8',
+          models: [
+            for (final model in AgentModelRegistry.claudeModels)
+              ModelConfig(name: model.name, enabled: false),
+          ],
+        ),
+      );
+
+      expect(resolved.defaultModel, isNull);
+      expect(resolved.availableModels, isEmpty);
+      expect(resolved.hasModelCatalog, isTrue);
+    });
+
     test('loads a custom Claude adapter with env and model settings', () async {
       final tempDir = await Directory.systemTemp.createTemp(
         'cag_custom_agent_',
@@ -703,6 +909,65 @@ void main() {
       expect(definition.defaultModel(config), isNull);
       expect(definition.createAgent(config), isA<OpenCodeAgent>());
       expect(CommandDefinitions.find(AgentId.opencode), isNotNull);
+    });
+
+    test('registers Pi disabled without a model catalog', () async {
+      final definition = AgentCatalog.find(AgentId.pi)!;
+      final config = definition.defaultConfig;
+
+      expect(AgentCatalog.names, contains(AgentId.pi));
+      expect(AgentId.all, contains(AgentId.pi));
+      expect(config.enabled, isFalse);
+      expect(config.availableModels, isEmpty);
+      expect(definition.defaultModel(config), isNull);
+      expect(definition.createAgent(config), isA<PiAgent>());
+      expect(CommandDefinitions.find(AgentId.pi), isNotNull);
+
+      await expectLater(
+        PiAgent().execute(prompt: 'Hello'),
+        throwsA(
+          isA<AgentExecutionException>().having(
+            (error) => error.failure.message,
+            'message',
+            'pi requires --model or a configured default model.',
+          ),
+        ),
+      );
+    });
+
+    test('builds Pi JSON mode arguments with model and resume', () {
+      final agent = PiAgent();
+
+      expect(
+        agent.buildArgs(
+          prompt: 'Continue',
+          model: 'openai/gpt-5.6',
+          systemPrompt: 'Be concise',
+          resume: 'pi-session',
+        ),
+        [
+          '--mode',
+          'json',
+          '--model',
+          'openai/gpt-5.6',
+          '--append-system-prompt',
+          'Be concise',
+          '--session',
+          'pi-session',
+          'Continue',
+        ],
+      );
+    });
+
+    test('runs Cursor through its ACP server', () {
+      final definition = AgentCatalog.find(AgentId.cursor)!;
+      final config = definition.defaultConfig;
+
+      expect(definition.adapterName, AgentId.acp);
+      expect(config.executable, 'cursor-agent');
+      expect(config.parser, 'acp');
+      expect(config.additionalArgs, ['acp']);
+      expect(definition.createAgent(config), isA<AcpAgent>());
     });
 
     test('allows overriding the OpenCode executable', () async {

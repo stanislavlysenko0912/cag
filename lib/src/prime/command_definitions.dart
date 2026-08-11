@@ -88,6 +88,19 @@ class CommandDefinitions {
     ],
   );
 
+  static const pi = CommandMetadata(
+    name: AgentId.pi,
+    description:
+        'Run Pi with a model explicitly selected in CAG config or on the command line.',
+    flags: [
+      CommandFlag(
+        flag: '--system',
+        shortFlag: '-s',
+        description: 'System prompt (appended)',
+      ),
+    ],
+  );
+
   static const consensus = CommandMetadata(
     name: 'consensus',
     description:
@@ -279,6 +292,7 @@ cag council -a "agent:model" -a "..." -c "agent:model" "<prompt>"
     cursor,
     antigravity,
     opencode,
+    pi,
     consensus,
     compare,
     council,

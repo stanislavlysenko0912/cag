@@ -21,7 +21,19 @@ void main(List<String> args) async {
 
   final configService = ConfigService();
   final config = await configService.loadOrCreate();
-  final agentConfigs = AgentCatalog.resolveConfigs(configService, config);
+  var agentConfigs = AgentCatalog.resolveConfigs(configService, config);
+  if (_needsModelDiscovery(args)) {
+    final discoveries = await AgentCatalog.discoverModels(
+      agentConfigs,
+      warningSink: stderr,
+    );
+    agentConfigs = AgentCatalog.applyModelDiscoveries(
+      configService,
+      config,
+      agentConfigs,
+      discoveries,
+    );
+  }
 
   final runner = CommandRunner<void>('cag', 'CLI wrapper for AI agents')
     ..addCommand(ConsensusCommand(agentConfigs: agentConfigs))
@@ -95,6 +107,7 @@ MetaPrinter _metaPrinterFor(String agentName) {
     AgentId.cursor => printCursorMeta,
     AgentId.antigravity => printAntigravityMeta,
     AgentId.acp => printAcpMeta,
+    AgentId.pi => printPiMeta,
     _ => throw ArgumentError('Unknown agent: $agentName'),
   };
 }
@@ -130,6 +143,16 @@ bool _isDoctorCommand(List<String> args) {
     if (arg == '--') return false;
     if (arg.startsWith('-')) continue;
     return arg == 'doctor';
+  }
+  return false;
+}
+
+bool _needsModelDiscovery(List<String> args) {
+  const commands = {'prime', 'compare', 'consensus', 'council'};
+  for (final arg in args) {
+    if (arg == '--') return false;
+    if (arg.startsWith('-')) continue;
+    return commands.contains(arg);
   }
   return false;
 }

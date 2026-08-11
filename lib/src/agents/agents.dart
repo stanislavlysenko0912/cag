@@ -8,4 +8,5 @@ export 'cursor_agent.dart';
 export 'gemini_agent.dart';
 export 'antigravity_agent.dart';
 export 'opencode_agent.dart';
+export 'pi_agent.dart';
 export 'agent_id.dart';

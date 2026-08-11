@@ -1,12 +1,12 @@
 # CAG - CLI Agents Wrapper
 
-CLI wrapper for multiple AI agent CLIs (Claude, Gemini, Codex, Cursor, Antigravity, OpenCode) with compare/consensus/council modes and session resume.
+CLI wrapper for multiple AI agent CLIs (Claude, Gemini, Codex, Cursor, Antigravity, OpenCode, Pi) with compare/consensus/council modes and session resume.
 
 <img src="docs/images/consensus-demo.png" width="700" alt="CAG - CLI Agents Wrapper">
 
 ## Features
 
-- **Unified interface** — single CLI for Claude, Gemini, Codex, Cursor, Antigravity, and OpenCode with consistent flags and output
+- **Unified interface** — single CLI for Claude, Gemini, Codex, Cursor, Antigravity, OpenCode, and Pi with consistent flags and output
 - **Session resume** — continue conversations with `-r <session_id>`
 - **Compare mode** — run multiple agents in parallel and keep each answer as a resumable branch
 - **Consensus mode** — run multiple models in parallel with stance-based prompts (for/against/neutral)
@@ -26,6 +26,7 @@ This tool wraps external AI CLIs that must be installed separately:
 | `codex` | [Codex CLI](https://github.com/openai/codex) |
 | `cursor` | [Cursor Agent CLI](https://cursor.com/cli) |
 | `opencode` | [OpenCode](https://opencode.ai/docs/) |
+| `pi` | [Pi](https://pi.dev/docs/latest/usage) |
 
 > [!NOTE]
 > **Gemini CLI** is deprecated in favor of **Antigravity CLI** (`agy`). The `gemini` agent remains available for now. And will be removed in the future.
@@ -90,6 +91,7 @@ cag codex -m gpt "Explain this architecture"
 cag cursor -m composer-2.5 "Summarize this architecture"
 cag opencode "Review this change"
 cag opencode -m provider/model -r session_id "Continue"
+cag pi -m openai/gpt-5.6 "Review this change" # disabled by default
 ```
 
 Common flags:
@@ -109,18 +111,41 @@ git diff | cag codex -m mini "Review this change"
 
 Models and aliases:
 
-- **claude**: `claude-sonnet-4-6` (alias `sonnet`, default), `claude-opus-4-8` (alias `opus`), `claude-haiku-4-5` (alias `haiku`)
+- **claude**: `claude-opus-5` (alias `opus`, default), `claude-fable-5`, `claude-sonnet-5` (alias `sonnet`), `claude-haiku-4-5` (alias `haiku`)
 - **gemini** (deprecated): `gemini-3-flash-preview` (alias `flash`, default), `gemini-3.1-pro-preview` (alias `pro`), `gemini-3.1-flash-lite-preview` (alias `flash-lite`)
-- **antigravity**: `gemini-3-5-flash-medium` (alias `flash`, default), `gemini-3-5-flash-high` (alias `flash-high`), `gemini-3-5-flash-low` (alias `flash-low`), `gemini-3-1-pro-high` (alias `pro-high`), `gemini-3-1-pro-low` (alias `pro-low`), `claude-sonnet-4-6-thinking` (alias `sonnet`), `claude-opus-4-6-thinking` (alias `opus`), `gpt-oss-120b-medium` (alias `oss`)
-- **codex**: `gpt-5.5` (alias `gpt`, default), `gpt-5.3-codex` (alias `codex`), `gpt-5.5-mini` (alias `mini`)
+- **antigravity**: `gemini-3-6-flash-medium` (alias `flash`, default), `gemini-3-6-flash-high` (alias `flash-high`), `gemini-3-6-flash-low` (alias `flash-low`), `gemini-3-1-pro-high` (alias `pro-high`), `gemini-3-1-pro-low` (alias `pro-low`), `claude-sonnet-5-thinking` (alias `sonnet`), `claude-opus-5-thinking` (alias `opus`), `gpt-oss-120b-medium` (alias `oss`)
+- **codex**: `gpt-5.6-sol` (aliases `sol`, `gpt`, default), `gpt-5.6-terra` (alias `terra`), `gpt-5.6-luna` (alias `luna`), `gpt-5.3-codex` (alias `codex`), `gpt-5.5-mini` (alias `mini`)
 - **cursor**: curated slugs below; run `cursor-agent models` for the full account list
   - `composer-2.5-fast` (default), `composer-2.5` — solid-tier agent models
-  - `gemini-3.5-flash` — solid-tier, fast and capable for advice and discussion
+  - `gemini-3.6-flash` — solid-tier, fast and capable for advice and discussion
   - `gemini-3.1-pro` — top-tier
-  - `grok-4.3` — mid-tier second opinion
-  - `gpt-5.5-high`, `claude-opus-4-8-thinking-max` — front-tier (above top)
+  - `cursor-grok-4.5-high` (aliases `grok-4.5`, `grok`), `cursor-grok-4.5-high-fast` (aliases `grok-4.5-fast`, `grok-fast`) — contrasting second opinion
+  - `gpt-5.5-high`, `claude-opus-5-thinking-max` — front-tier (above top)
 - **opencode**: CAG leaves the model unset by default; use OpenCode's
   `provider/model` identifier with `-m` when an explicit model is needed
+- **pi**: disabled by default and has no imported model catalog; enable it in
+  config or the TUI, then add only the models you want or pass a one-off
+  `provider/model` identifier with `-m`; `cag detect` deliberately leaves it
+  disabled
+
+### Model scores
+
+Every built-in model carries four routing scores from 1 to 10, higher is better.
+They are shown in `cag prime`, the `cag_models` MCP tool, and the TUI:
+
+| Score | Meaning |
+|-------|---------|
+| `cost` | Effective cost — higher means cheaper |
+| `intelligence` | How hard a problem the model handles unsupervised |
+| `speed` | How fast the answer comes back |
+| `taste` | UI/UX, code quality, API design, and copy |
+
+Use `cost` only as a tie-breaker. When the axes conflict for work that ships,
+prefer `intelligence`, then `taste`, then `cost`; user-facing UI, copy, and API
+design want `taste` 7 or higher.
+
+Scores are configurable: override them for built-in models in `config.json`, or
+set them on custom models directly in the TUI model form.
 
 > [!CAUTION]
 > **⚠️ Permission Note:** Agents run with elevated permissions for non-interactive execution:
@@ -133,6 +158,10 @@ Models and aliases:
 > | **cursor** | `--force` | Force allow commands unless explicitly denied |
 >
 > These flags enable automated usage. Override via config if you need different behavior.
+
+Pi runs headlessly with its configured tools; `--mode json` changes only the
+output format. CAG does not add `--approve`, so project trust follows Pi's own
+settings.
 
 ### consensus
 
@@ -260,6 +289,21 @@ Available MCP tools:
 - `cag_models` – list supported models
 - `cag_task` – manage background tasks started with `cag_agent` `mode: background`
 
+#### Background runs
+
+`cag_agent` accepts `mode: sync` (default, waits for the answer) or
+`mode: background`, which returns a `task_id` immediately so the host can keep
+working while the agent runs.
+
+Manage those tasks with `cag_task`: `list`, `get`, `result`, `wait`, `wait_any`,
+and `cancel`. Prefer `action: wait` over tight polling loops, and pass
+`include_log: true` only when you actually need the run log — logs are opt-in to
+keep payloads small. Cancellation is non-graceful: the underlying process is
+killed. Finished tasks are kept in memory for one hour and then dropped.
+
+A `task_id` is a wrapper handle, not a `session_id` — resume the conversation
+with the `session_id` from the task result.
+
 > [!NOTE]
 > All tools use about ~3k context tokens. If you very care about context tokens, you can use `cag prime` with hooks, or directly tell agent to run prime command before start working (if your agent don't support hooks) to get the usage guide, instead of mcp tools.
 
@@ -316,17 +360,52 @@ Use JSON output when scripting:
 cag doctor --json
 ```
 
+Pass `--mcp-url` to also probe a running MCP HTTP server with a cheap `GET`:
+
+```bash
+cag doctor --mcp-url http://127.0.0.1:7331
+```
+
 ### Setup (TUI)
 
-For interactive setup and model configuration, launch the terminal UI:
+The terminal UI is where you manage CAG settings interactively — prefer it over
+hand-editing `config.json`:
 
 ```bash
 cag --tui
 ```
 
+From it you can:
+
+- enable or disable agents and individual models
+- pick each agent's default model
+- add, edit, and delete custom models, including their routing scores
+- run status diagnostics and preview CLI detection before applying it
+
 ## Config
 
 Config is optional and auto-created on first run. For interactive editing, prefer `cag --tui` over hand-editing `config.json`.
+
+Pi is disabled by default and deliberately does not import its full model
+catalog. Enable it and define a small model list in the TUI, or configure
+it directly:
+
+```json
+{
+  "agents": {
+    "pi": {
+      "enabled": true,
+      "default_model": "gpt",
+      "models": [
+        {
+          "name": "gpt",
+          "model": "openai/gpt-5.6"
+        }
+      ]
+    }
+  }
+}
+```
 
 Paths:
 - macOS: `~/.cag/config.json`

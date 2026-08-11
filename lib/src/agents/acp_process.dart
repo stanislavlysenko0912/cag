@@ -200,7 +200,7 @@ class AcpProcessRunner {
     required int durationMs,
     required AgentConfig config,
   }) {
-    if (outcome is _InteractionSuccess && exitCode == 0) return null;
+    if (outcome is _InteractionSuccess) return null;
     if (outcome is _AcpTimeout) {
       return AgentFailure(
         reason: outcome.reason,
