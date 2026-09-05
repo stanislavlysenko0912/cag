@@ -294,7 +294,7 @@ void main() {
       );
       expect(
         AgentModelRegistry.findModel(AgentId.codex, 'mini')?.name,
-        equals('gpt-5.5-mini'),
+        equals('gpt-5.4-mini'),
       );
       expect(AgentModelRegistry.findModel(AgentId.cursor, 'auto'), isNull);
       expect(
@@ -303,11 +303,11 @@ void main() {
       );
       expect(
         AgentModelRegistry.findModel(AgentId.antigravity, 'flash-low')?.name,
-        equals('gemini-3-6-flash-low'),
+        equals('gemini-3-8-flash-low'),
       );
       expect(
         AgentModelRegistry.findModel(AgentId.antigravity, 'sonnet')?.name,
-        equals('claude-sonnet-4-6-thinking'),
+        equals('claude-sonnet-4-6'),
       );
       expect(
         AgentModelRegistry.findModel(
@@ -321,7 +321,7 @@ void main() {
           'antigravity',
           'claude-sonnet-4-6-thinking',
         )?.name,
-        equals('claude-sonnet-4-6-thinking'),
+        equals('claude-sonnet-4-6'),
       );
       expect(
         AgentModelRegistry.findModel(
@@ -537,7 +537,7 @@ void main() {
               'codex': {
                 'models': [
                   {
-                    'name': 'gpt-5.3-codex',
+                    'name': 'gpt-5.6-terra',
                     'description': '',
                     'scores': {
                       'cost': 10,
@@ -546,7 +546,7 @@ void main() {
                       'taste': 7,
                     },
                   },
-                  {'name': 'gpt-5.5-mini', 'description': ''},
+                  {'name': 'gpt-5.4-mini', 'description': ''},
                 ],
               },
             },
@@ -561,15 +561,15 @@ void main() {
         final codex = snapshot.agents.firstWhere(
           (agent) => agent.name == AgentId.codex,
         );
-        final codexReview = codex.standardModels.firstWhere(
-          (model) => model.name == 'gpt-5.3-codex',
+        final terra = codex.standardModels.firstWhere(
+          (model) => model.name == 'gpt-5.6-terra',
         );
         final mini = codex.standardModels.firstWhere(
-          (model) => model.name == 'gpt-5.5-mini',
+          (model) => model.name == 'gpt-5.4-mini',
         );
 
-        expect(codexReview.description, equals('finding subtle bugs'));
-        expect(codexReview.scores?.cost, equals(10));
+        expect(terra.description, equals('everyday agentic coding model'));
+        expect(terra.scores?.cost, equals(10));
         expect(mini.scores?.cost, equals(10));
         expect(mini.scores?.intelligence, equals(6));
         expect(mini.scores?.speed, equals(8));
@@ -717,7 +717,7 @@ void main() {
               'codex': {
                 'models': [
                   {
-                    'name': 'gpt-5.3-codex',
+                    'name': 'gpt-5.6-terra',
                     'description': '',
                     'scores': {
                       'cost': 10,
@@ -726,7 +726,7 @@ void main() {
                       'taste': 7,
                     },
                   },
-                  {'name': 'gpt-5.5-mini', 'description': ''},
+                  {'name': 'gpt-5.4-mini', 'description': ''},
                 ],
               },
             },
@@ -740,16 +740,16 @@ void main() {
           CodexAgent.defaultConfig,
           appConfig.agents[AgentId.codex],
         );
-        final codexReview = resolved.availableModels.firstWhere(
-          (model) => model.name == 'gpt-5.3-codex',
+        final terra = resolved.availableModels.firstWhere(
+          (model) => model.name == 'gpt-5.6-terra',
         );
         final mini = resolved.availableModels.firstWhere(
-          (model) => model.name == 'gpt-5.5-mini',
+          (model) => model.name == 'gpt-5.4-mini',
         );
 
-        expect(codexReview.description, equals('finding subtle bugs'));
-        expect(codexReview.scores?.cost, equals(10));
-        expect(codexReview.scores?.taste, equals(7));
+        expect(terra.description, equals('everyday agentic coding model'));
+        expect(terra.scores?.cost, equals(10));
+        expect(terra.scores?.taste, equals(7));
         expect(mini.description, isNull);
         expect(mini.scores?.cost, equals(10));
         expect(mini.scores?.taste, equals(4));

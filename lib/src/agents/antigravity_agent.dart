@@ -24,7 +24,7 @@ class AntigravityAgent extends BaseAgent {
     parser: AgentId.antigravity,
     defaultModel:
         AgentModelRegistry.defaultModelName(AgentId.antigravity) ??
-        'gemini-3-6-flash-medium',
+        'gemini-3-8-flash-medium',
     additionalArgs: ['--print', '--dangerously-skip-permissions'],
     hardTimeoutSeconds: 1800,
     idleTimeoutSeconds: 900,

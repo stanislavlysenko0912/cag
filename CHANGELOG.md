@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Updated canonical model lists across Codex, Cursor, Antigravity, and Claude:
+  - **Claude**: Added `claude-fable-5-1` (with `claude-fable-5` and `fable` aliases) and aligned descriptions with Anthropic model overview.
+  - **Codex**: Added `gpt-6-astra` as default, refreshed line-up to `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-5.5`, `gpt-5.4-mini`, and `gpt-5.2` from OpenAI `models.json`.
+  - **Cursor**: Curated `cursor-agent models` with `cursor-grok-4.6-high` / `cursor-grok-4.6-high-fast`, `gemini-3.8-flash-high`, `gpt-5.6-sol-high`, and `claude-sonnet-5-thinking-high`.
+  - **Antigravity**: Bumped default to `gemini-3-8-flash-medium`, added Gemini 3.8 and 3.7 Flash variants (`high`, `medium`, `low`), and aligned `claude-sonnet-4-6` slug with `agy models`.
+
 ### Fixed
 
 - Restored Cursor's curated/configured model list instead of replacing it with every model advertised by its ACP session.
