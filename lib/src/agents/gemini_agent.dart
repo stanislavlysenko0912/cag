@@ -17,7 +17,7 @@ class GeminiAgent extends BaseAgent {
     parser: 'gemini_json',
     defaultModel:
         AgentModelRegistry.defaultModelName(AgentId.gemini) ??
-        'gemini-3-flash-preview',
+        'gemini-3.8-flash',
     additionalArgs: ['-o', 'json', '--yolo'],
     hardTimeoutSeconds: 1800,
     idleTimeoutSeconds: 900,

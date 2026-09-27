@@ -9,10 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Updated canonical model lists across Codex, Cursor, Antigravity, and Claude:
-  - **Claude**: Added `claude-fable-5-1` (with `claude-fable-5` and `fable` aliases) and aligned descriptions with Anthropic model overview.
-  - **Codex**: Added `gpt-6-astra` as default, refreshed line-up to `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-5.5`, `gpt-5.4-mini`, and `gpt-5.2` from OpenAI `models.json`.
-  - **Cursor**: Curated `cursor-agent models` with `cursor-grok-4.6-high` / `cursor-grok-4.6-high-fast`, `gemini-3.8-flash-high`, `gpt-5.6-sol-high`, and `claude-sonnet-5-thinking-high`.
+- Updated canonical model lists across Codex, Cursor, Antigravity, Gemini, and Claude:
+  - **Claude**: Added `claude-fable-5-1` (with `claude-fable-5` and `fable` aliases), replaced `claude-opus-5` with `claude-opus-5-5` as the default `opus`, and aligned descriptions with Anthropic model overview.
+  - **Codex**: Added `gpt-6-sol` as default (aliases `sol`, `gpt`), `gpt-6-astra`, and `gpt-6-luna` (aliases `luna`, `mini`); kept `gpt-5.6-sol`, `gpt-5.6-terra`, and `gpt-5.5`; removed `gpt-5.6-luna`, `gpt-5.4-mini`, and `gpt-5.2` per OpenAI `models.json`.
+  - **Cursor**: Curated `cursor-agent models` with `grok-4.7-high` / `grok-4.7-high-fast` (now `grok` / `grok-fast`), `cursor-grok-4.6-high` / `cursor-grok-4.6-high-fast`, `gemini-3.8-flash-high`, `gpt-5.6-sol-high`, `claude-sonnet-5-thinking-high`, `claude-opus-5-5-high` (replacing `claude-opus-5-thinking-max` as `opus`), and `claude-fable-5-1-high`.
+  - **Gemini**: Moved `flash` to `gemini-3.8-flash` and `flash-lite` to `gemini-3.5-flash-lite`.
   - **Antigravity**: Bumped default to `gemini-3-8-flash-medium`, added Gemini 3.8 and 3.7 Flash variants (`high`, `medium`, `low`), and aligned `claude-sonnet-4-6` slug with `agy models`.
 
 ### Fixed

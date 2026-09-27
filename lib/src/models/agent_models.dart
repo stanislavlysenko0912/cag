@@ -7,11 +7,11 @@ class AgentModelRegistry {
 
   static final claudeModels = [
     ModelConfig(
-      name: 'claude-opus-5',
-      description: 'complex agentic coding and enterprise work',
-      scores: ModelScores(cost: 4, intelligence: 8, speed: 5, taste: 9),
+      name: 'claude-opus-5-5',
+      description: 'long-running agentic coding and knowledge work',
+      scores: ModelScores(cost: 4, intelligence: 10, speed: 5, taste: 7),
       isDefault: true,
-      aliases: ['opus'],
+      aliases: ['opus', 'opus-5-5'],
     ),
     ModelConfig(
       name: 'claude-fable-5-1',
@@ -35,14 +35,14 @@ class AgentModelRegistry {
 
   static final geminiModels = [
     ModelConfig(
-      name: 'gemini-3-flash-preview',
-      scores: ModelScores(cost: 8, intelligence: 7, speed: 8, taste: 5),
+      name: 'gemini-3.8-flash',
+      scores: ModelScores(cost: 8, intelligence: 8, speed: 8, taste: 5),
       isDefault: true,
       aliases: ['flash'],
     ),
     ModelConfig(name: 'gemini-3.1-pro-preview', scores: ModelScores(cost: 4, intelligence: 9, speed: 5, taste: 6), aliases: ['pro']),
     ModelConfig(
-      name: 'gemini-3.1-flash-lite-preview',
+      name: 'gemini-3.5-flash-lite',
       scores: ModelScores(cost: 10, intelligence: 5, speed: 10, taste: 3),
       aliases: ['flash-lite'],
     ),
@@ -53,14 +53,26 @@ class AgentModelRegistry {
       name: 'gpt-6-astra',
       description: 'frontier model for complex, demanding work',
       scores: ModelScores(cost: 6, intelligence: 10, speed: 6, taste: 8),
-      isDefault: true,
       aliases: ['astra', 'gpt-6'],
+    ),
+    ModelConfig(
+      name: 'gpt-6-sol',
+      description: 'workhorse model for coding and everyday work',
+      scores: ModelScores(cost: 8, intelligence: 9, speed: 7, taste: 7),
+      isDefault: true,
+      aliases: ['sol', 'gpt'],
+    ),
+    ModelConfig(
+      name: 'gpt-6-luna',
+      description: 'fast and affordable model for easier tasks',
+      scores: ModelScores(cost: 10, intelligence: 7, speed: 9, taste: 5),
+      aliases: ['luna', 'mini', 'gpt-5.5-mini'],
     ),
     ModelConfig(
       name: 'gpt-5.6-sol',
       description: 'frontier agentic coding model',
       scores: ModelScores(cost: 8, intelligence: 8, speed: 6, taste: 6),
-      aliases: ['sol', 'gpt-5.6', 'gpt'],
+      aliases: ['gpt-5.6'],
     ),
     ModelConfig(
       name: 'gpt-5.6-terra',
@@ -69,26 +81,10 @@ class AgentModelRegistry {
       aliases: ['terra'],
     ),
     ModelConfig(
-      name: 'gpt-5.6-luna',
-      description: 'lightweight agentic coding model',
-      scores: ModelScores(cost: 10, intelligence: 6, speed: 8, taste: 4),
-      aliases: ['luna'],
-    ),
-    ModelConfig(
       name: 'gpt-5.5',
       description: 'frontier model for complex coding and research',
       scores: ModelScores(cost: 7, intelligence: 8, speed: 5, taste: 6),
       aliases: ['gpt-5'],
-    ),
-    ModelConfig(
-      name: 'gpt-5.4-mini',
-      scores: ModelScores(cost: 10, intelligence: 6, speed: 8, taste: 4),
-      aliases: ['mini', 'gpt-5.5-mini'],
-    ),
-    ModelConfig(
-      name: 'gpt-5.2',
-      description: 'optimized for long-running agents',
-      scores: ModelScores(cost: 8, intelligence: 7, speed: 6, taste: 5),
     ),
   ];
 
@@ -112,19 +108,26 @@ class AgentModelRegistry {
       name: 'cursor-grok-4.6-high',
       description: 'contrasting second opinion',
       scores: ModelScores(cost: 8, intelligence: 7, speed: 6, taste: 6),
-      aliases: ['grok-4.6', 'grok', 'cursor-grok-4.5-high', 'grok-4.5'],
+      aliases: ['grok-4.6', 'cursor-grok-4.5-high', 'grok-4.5'],
     ),
     ModelConfig(
       name: 'cursor-grok-4.6-high-fast',
       scores: ModelScores(cost: 7, intelligence: 7, speed: 8, taste: 6),
-      aliases: ['grok-4.6-fast', 'grok-fast', 'cursor-grok-4.5-high-fast', 'grok-4.5-fast'],
+      aliases: ['grok-4.6-fast', 'cursor-grok-4.5-high-fast', 'grok-4.5-fast'],
+    ),
+    ModelConfig(name: 'grok-4.7-high', scores: ModelScores(cost: 8, intelligence: 8, speed: 6, taste: 6), aliases: ['grok-4.7', 'grok']),
+    ModelConfig(
+      name: 'grok-4.7-high-fast',
+      scores: ModelScores(cost: 7, intelligence: 8, speed: 8, taste: 6),
+      aliases: ['grok-4.7-fast', 'grok-fast'],
     ),
     ModelConfig(
       name: 'claude-sonnet-5-thinking-high',
       scores: ModelScores(cost: 6, intelligence: 8, speed: 6, taste: 7),
       aliases: ['sonnet'],
     ),
-    ModelConfig(name: 'claude-opus-5-thinking-max', scores: ModelScores(cost: 4, intelligence: 9, speed: 3, taste: 9), aliases: ['opus']),
+    ModelConfig(name: 'claude-opus-5-5-high', scores: ModelScores(cost: 4, intelligence: 10, speed: 5, taste: 7), aliases: ['opus']),
+    ModelConfig(name: 'claude-fable-5-1-high', scores: ModelScores(cost: 2, intelligence: 10, speed: 3, taste: 7), aliases: ['fable']),
   ];
 
   static final antigravityModels = [

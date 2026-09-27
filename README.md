@@ -111,17 +111,17 @@ git diff | cag codex -m mini "Review this change"
 
 Models and aliases:
 
-- **claude**: `claude-opus-5` (alias `opus`, default), `claude-fable-5-1` (aliases `fable`, `fable-5-1`), `claude-sonnet-5` (alias `sonnet`), `claude-haiku-4-5` (alias `haiku`)
-- **gemini** (deprecated): `gemini-3-flash-preview` (alias `flash`, default), `gemini-3.1-pro-preview` (alias `pro`), `gemini-3.1-flash-lite-preview` (alias `flash-lite`)
+- **claude**: `claude-opus-5-5` (aliases `opus`, `opus-5-5`, default), `claude-fable-5-1` (aliases `fable`, `fable-5-1`), `claude-sonnet-5` (alias `sonnet`), `claude-haiku-4-5` (alias `haiku`)
+- **gemini** (deprecated): `gemini-3.8-flash` (alias `flash`, default), `gemini-3.1-pro-preview` (alias `pro`), `gemini-3.5-flash-lite` (alias `flash-lite`)
 - **antigravity**: `gemini-3-8-flash-medium` (alias `flash`, default), `gemini-3-8-flash-high` (alias `flash-high`), `gemini-3-8-flash-low` (alias `flash-low`), `gemini-3-7-flash-*`, `gemini-3-6-flash-*`, `gemini-3-1-pro-high` (alias `pro-high`), `gemini-3-1-pro-low` (alias `pro-low`), `claude-sonnet-4-6` (alias `sonnet`), `claude-opus-4-6-thinking` (alias `opus`), `gpt-oss-120b-medium` (alias `oss`)
-- **codex**: `gpt-6-astra` (aliases `astra`, `gpt-6`, default), `gpt-5.6-sol` (aliases `sol`, `gpt-5.6`, `gpt`), `gpt-5.6-terra` (alias `terra`), `gpt-5.6-luna` (alias `luna`), `gpt-5.5` (alias `gpt-5`), `gpt-5.4-mini` (alias `mini`), `gpt-5.2`
+- **codex**: `gpt-6-sol` (aliases `sol`, `gpt`, default), `gpt-6-astra` (aliases `astra`, `gpt-6`), `gpt-6-luna` (aliases `luna`, `mini`), `gpt-5.6-sol` (alias `gpt-5.6`), `gpt-5.6-terra` (alias `terra`), `gpt-5.5` (alias `gpt-5`)
 - **cursor**: curated slugs below; run `cursor-agent models` for the full account list
   - `composer-2.5-fast` (default), `composer-2.5` — solid-tier agent models
   - `gemini-3.8-flash-high` (aliases `gemini-3.8-flash`, `gemini-3.6-flash`) — solid-tier, fast and capable for advice and discussion
   - `gemini-3.1-pro` — top-tier
   - `gpt-5.6-sol-high` (aliases `sol`, `gpt-5.6`), `gpt-5.5-high` — front-tier
-  - `cursor-grok-4.6-high` (aliases `grok-4.6`, `grok`), `cursor-grok-4.6-high-fast` (aliases `grok-4.6-fast`, `grok-fast`) — contrasting second opinion
-  - `claude-sonnet-5-thinking-high` (alias `sonnet`), `claude-opus-5-thinking-max` (alias `opus`) — front-tier
+  - `grok-4.7-high` (aliases `grok-4.7`, `grok`), `grok-4.7-high-fast` (aliases `grok-4.7-fast`, `grok-fast`), `cursor-grok-4.6-high` (alias `grok-4.6`), `cursor-grok-4.6-high-fast` (alias `grok-4.6-fast`) — contrasting second opinion
+  - `claude-sonnet-5-thinking-high` (alias `sonnet`), `claude-opus-5-5-high` (alias `opus`), `claude-fable-5-1-high` (alias `fable`) — front-tier
 - **opencode**: CAG leaves the model unset by default; use OpenCode's
   `provider/model` identifier with `-m` when an explicit model is needed
 - **pi**: disabled by default and has no imported model catalog; enable it in

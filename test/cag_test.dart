@@ -286,15 +286,15 @@ void main() {
       );
       expect(
         AgentModelRegistry.findModel(AgentId.gemini, 'flash')?.name,
-        equals('gemini-3-flash-preview'),
+        equals('gemini-3.8-flash'),
       );
       expect(
         AgentModelRegistry.findModel(AgentId.codex, 'gpt')?.name,
-        equals('gpt-5.6-sol'),
+        equals('gpt-6-sol'),
       );
       expect(
         AgentModelRegistry.findModel(AgentId.codex, 'mini')?.name,
-        equals('gpt-5.4-mini'),
+        equals('gpt-6-luna'),
       );
       expect(AgentModelRegistry.findModel(AgentId.cursor, 'auto'), isNull);
       expect(
